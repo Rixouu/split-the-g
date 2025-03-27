@@ -1,30 +1,3 @@
-# Split the G
-
-An interactive web application for splitting the G pattern in Guinness beer. This app analyzes photos of Guinness pints and scores how well the iconic G pattern is visible in the pour.
-
-## Features
-
-- Camera-based analysis of Guinness pour
-- Image upload capability
-- Scoring system based on G pattern position and clarity
-- Leaderboard functionality
-- Mobile-friendly design
-
-## Technologies
-
-- React Router
-- TypeScript
-- Tailwind CSS
-- Supabase for backend storage
-- Roboflow API for image analysis
-
-## Setup
-
-1. Clone the repository
-2. Install dependencies with `npm install`
-3. Set up environment variables in `.env` file
-4. Run the development server with `npm run dev`
-
 # Welcome to React Router!
 
 A modern, production-ready template for building full-stack React applications using React Router.
