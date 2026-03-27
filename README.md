@@ -34,6 +34,10 @@ Players can submit pours, save scores, claim their profile with Google, add frie
 - The UI is built around a dark Guinness-inspired visual system.
 - Profile, friends, leaderboard sync, and competition flows depend on Supabase migrations being applied in order.
 
+## Documentation
+
+Developer-oriented docs live in [`docs/`](docs/) (overview, architecture, features, database, integrations).
+
 ## Local Setup
 
 ### Requirements
