@@ -447,7 +447,7 @@ export default function Profile() {
         .eq("user_id", u.id)
         .maybeSingle();
 
-      let prof = profRes.data;
+      let prof = (profRes.data ?? null) as PublicProfileRow | null;
       let profErr = profRes.error;
 
       if (profErr) {
@@ -460,7 +460,7 @@ export default function Profile() {
             .select("display_name")
             .eq("user_id", u.id)
             .maybeSingle();
-          prof = r2.data;
+          prof = (r2.data ?? null) as PublicProfileRow | null;
           profErr = r2.error;
         }
       }

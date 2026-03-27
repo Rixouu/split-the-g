@@ -33,147 +33,316 @@ export function buildFriendInviteEmail({
   const safeInviterLabel = escapeHtml(inviterLabel);
   const safeInviterEmail = escapeHtml(inviterEmail.trim());
   const safeInviteeEmail = escapeHtml(inviteeEmail.trim());
+  const inviteeMailto = `mailto:${encodeURIComponent(inviteeEmail.trim())}`;
+  const inviterMailto = `mailto:${encodeURIComponent(inviterEmail.trim())}`;
   const subject = `${inviterLabel} invited you to Split The G`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="x-apple-disable-message-reformatting" />
-    <title>${escapeHtml(subject)}</title>
-    <style>
-      @import url("https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap");
-      body {
-        margin: 0;
-        padding: 0;
-        background: #050608;
-        color: #f5efe6;
-        font-family: "Google Sans", Arial, sans-serif;
-      }
-      a {
-        color: inherit;
-      }
-      @media only screen and (max-width: 640px) {
-        .shell {
-          padding: 24px 14px !important;
-        }
-        .card {
-          border-radius: 22px !important;
-        }
-        .card-pad {
-          padding: 28px 22px !important;
-        }
-        .display {
-          font-size: 30px !important;
-          line-height: 36px !important;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="shell" style="padding: 36px 18px; background: #050608;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-        <tr>
-          <td align="center">
-            <table
-              role="presentation"
-              width="100%"
-              cellspacing="0"
-              cellpadding="0"
-              style="max-width: 620px;"
-            >
-              <tr>
-                <td
-                  class="card"
-                  style="border: 1px solid rgba(197,160,89,0.28); border-radius: 28px; background: linear-gradient(180deg, #15120c 0%, #0e0d0a 100%); overflow: hidden;"
-                >
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                    <tr>
-                      <td
-                        class="card-pad"
-                        style="padding: 34px 34px 18px; text-align: center; border-bottom: 1px solid rgba(197,160,89,0.12);"
-                      >
-                        <img
-                          src="${logoUrl}"
-                          alt="Split The G"
-                          width="220"
-                          style="display: block; width: 220px; max-width: 72%; height: auto; margin: 0 auto 18px;"
-                        />
-                        <div
-                          style="display: inline-block; padding: 7px 12px; border-radius: 999px; background: rgba(197,160,89,0.12); color: #c5a059; font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;"
-                        >
-                          Friend Invite
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td class="card-pad" style="padding: 34px;">
-                        <div
-                          class="display"
-                          style="font-size: 36px; line-height: 42px; font-weight: 700; letter-spacing: -0.03em; color: #f5efe6;"
-                        >
-                          ${safeInviterLabel} wants you on the board.
-                        </div>
-                        <p style="margin: 18px 0 0; font-size: 17px; line-height: 28px; color: rgba(245,239,230,0.8);">
-                          You have been invited to join <strong style="color: #f5efe6;">Split The G</strong> and compete in live leaderboards, save your pours, and connect with friends.
-                        </p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 24px;">
-                          <tr>
-                            <td
-                              style="border: 1px solid rgba(197,160,89,0.18); border-radius: 20px; padding: 18px 18px; background: rgba(255,255,255,0.02);"
-                            >
-                              <div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(197,160,89,0.82); font-weight: 700;">
-                                Sign in with this email
-                              </div>
-                              <div style="margin-top: 8px; font-size: 18px; line-height: 26px; color: #f5efe6; font-weight: 500;">
-                                ${safeInviteeEmail}
-                              </div>
-                              <div style="margin-top: 10px; font-size: 14px; line-height: 23px; color: rgba(245,239,230,0.64);">
-                                The app will show the invite automatically when you sign in with the same address.
-                              </div>
-                            </td>
-                          </tr>
-                        </table>
-                        <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top: 28px;">
-                          <tr>
-                            <td
-                              style="border-radius: 16px; background: #c5a059; text-align: center;"
-                            >
-                              <a
-                                href="${inviteUrl}"
-                                style="display: inline-block; padding: 15px 28px; color: #050608; font-size: 16px; font-weight: 700; text-decoration: none;"
-                              >
-                                Open Split The G
-                              </a>
-                            </td>
-                          </tr>
-                        </table>
-                        <p style="margin: 24px 0 0; font-size: 14px; line-height: 23px; color: rgba(245,239,230,0.62);">
-                          Invited by ${safeInviterLabel}
-                          <span style="color: rgba(245,239,230,0.42);">•</span>
-                          ${safeInviterEmail}
-                        </p>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        style="padding: 20px 34px 30px; border-top: 1px solid rgba(197,160,89,0.1); font-size: 12px; line-height: 20px; color: rgba(245,239,230,0.48); text-align: center;"
-                      >
-                        Split The G
-                        <span style="color: rgba(245,239,230,0.28);">•</span>
-                        Simple pours, live boards, good friends.
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting" />
+<title>${escapeHtml(subject)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: #0a0a09;
+    font-family: 'DM Sans', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 16px;
+  }
+
+  .wrapper {
+    max-width: 580px;
+    margin: 0 auto;
+  }
+
+  .header {
+    background-color: #14120c;
+    border: 1px solid #2a2418;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .logo img {
+    height: 34px;
+    width: auto;
+    display: block;
+  }
+
+  .badge {
+    font-family: 'DM Sans', Arial, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #c49a3c;
+    background-color: rgba(196,154,60,.1);
+    border: 1px solid rgba(196,154,60,.25);
+    border-radius: 3px;
+    padding: 5px 10px;
+    white-space: nowrap;
+  }
+
+  .rule {
+    height: 1px;
+    background: linear-gradient(90deg, #2a2418 0%, #3d3120 40%, #2a2418 100%);
+    margin: 0;
+  }
+
+  .hero {
+    background-color: #14120c;
+    border-left: 1px solid #2a2418;
+    border-right: 1px solid #2a2418;
+    padding: 48px 40px 40px;
+  }
+
+  .hero-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #c49a3c;
+    margin-bottom: 16px;
+  }
+
+  .hero-heading {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1.08;
+    color: #f5f0e8;
+    letter-spacing: -.02em;
+    margin-bottom: 20px;
+  }
+
+  .hero-heading span {
+    color: #c49a3c;
+  }
+
+  .hero-body {
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.65;
+    color: #8a8070;
+    max-width: 440px;
+  }
+
+  .hero-body strong {
+    color: #d4c9b0;
+    font-weight: 500;
+  }
+
+  .card-wrap {
+    background-color: #14120c;
+    border-left: 1px solid #2a2418;
+    border-right: 1px solid #2a2418;
+    padding: 0 40px 8px;
+  }
+
+  .info-card {
+    background-color: #0f0e09;
+    border: 1px solid #2a2418;
+    border-radius: 4px;
+    padding: 24px 28px;
+  }
+
+  .info-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: #c49a3c;
+    margin-bottom: 10px;
+  }
+
+  .info-email {
+    font-size: 15px;
+    font-weight: 500;
+    color: #6b9fd4;
+    text-decoration: none;
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .info-note {
+    font-size: 13px;
+    color: #5a5346;
+    line-height: 1.55;
+  }
+
+  .cta-wrap {
+    background-color: #14120c;
+    border-left: 1px solid #2a2418;
+    border-right: 1px solid #2a2418;
+    padding: 32px 40px 0;
+  }
+
+  .cta-btn {
+    display: inline-block;
+    background-color: #c49a3c;
+    color: #0f0e09;
+    font-family: 'DM Sans', Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-decoration: none;
+    padding: 14px 32px;
+    border-radius: 4px;
+  }
+
+  .meta-wrap {
+    background-color: #14120c;
+    border-left: 1px solid #2a2418;
+    border-right: 1px solid #2a2418;
+    padding: 28px 40px 32px;
+  }
+
+  .meta-line {
+    font-size: 12.5px;
+    color: #4a4438;
+  }
+
+  .meta-line a {
+    color: #6b9fd4;
+    text-decoration: none;
+  }
+
+  .meta-dot {
+    display: inline-block;
+    width: 3px;
+    height: 3px;
+    background-color: #c49a3c;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin: 0 8px;
+    position: relative;
+    top: -1px;
+  }
+
+  .footer {
+    background-color: #0f0e09;
+    border: 1px solid #2a2418;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .footer-brand {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    color: #3a3428;
+    text-transform: uppercase;
+  }
+
+  .footer-tagline {
+    font-size: 12px;
+    color: #3a3428;
+    letter-spacing: .01em;
+    text-align: right;
+  }
+
+  @media only screen and (max-width: 640px) {
+    body {
+      padding: 24px 12px;
+    }
+
+    .header,
+    .hero,
+    .card-wrap,
+    .cta-wrap,
+    .meta-wrap,
+    .footer {
+      padding-left: 22px !important;
+      padding-right: 22px !important;
+    }
+
+    .header,
+    .footer {
+      display: block !important;
+    }
+
+    .badge,
+    .footer-tagline {
+      margin-top: 14px;
+      display: inline-block;
+    }
+
+    .hero-heading {
+      font-size: 34px !important;
+      line-height: 1.08 !important;
+    }
+
+    .footer-tagline {
+      text-align: left;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="logo">
+      <img src="${logoUrl}" alt="Split The G" />
     </div>
-  </body>
+    <span class="badge">Friend Invite</span>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="hero">
+    <p class="hero-eyebrow">You've been invited</p>
+    <h1 class="hero-heading">${safeInviterLabel}<br>wants you on<br>the <span>board.</span></h1>
+    <p class="hero-body">
+      You've been invited to join <strong>Split The G</strong> — compete in live leaderboards, save your pours, and connect with friends.
+    </p>
+  </div>
+
+  <div class="card-wrap">
+    <div style="height:24px;"></div>
+    <div class="info-card">
+      <p class="info-label">Sign in with this email</p>
+      <a href="${inviteeMailto}" class="info-email">${safeInviteeEmail}</a>
+      <p class="info-note">The app will show the invite automatically when you sign in with the same address.</p>
+    </div>
+    <div style="height:8px;"></div>
+  </div>
+
+  <div class="cta-wrap">
+    <div style="height:8px;"></div>
+    <a href="${inviteUrl}" class="cta-btn">Open Split The G</a>
+  </div>
+
+  <div class="meta-wrap">
+    <div style="height:20px;"></div>
+    <p class="meta-line">
+      Invited by ${safeInviterLabel}
+      <span class="meta-dot"></span>
+      <a href="${inviterMailto}">${safeInviterEmail}</a>
+    </p>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="footer">
+    <span class="footer-brand">Split The G</span>
+    <span class="footer-tagline">Simple pours, live boards, good friends.</span>
+  </div>
+</div>
+</body>
 </html>`;
 
   const text = [
