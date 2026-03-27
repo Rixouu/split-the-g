@@ -155,9 +155,9 @@ const deskIdle =
   "text-guinness-tan/85 hover:bg-guinness-gold/10 hover:text-guinness-cream";
 
 const mobItem =
-  "relative flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1 text-[9px] font-bold uppercase leading-tight tracking-wide transition-all duration-200 sm:text-[10px]";
+  "relative flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1 text-[9px] font-bold uppercase leading-tight tracking-wide outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:text-[10px]";
 const mobActive =
-  "text-guinness-gold bg-guinness-gold/[0.08] shadow-inner";
+  "text-guinness-gold bg-guinness-gold/[0.08] shadow-inner ring-1 ring-guinness-gold/35 ring-inset";
 const mobIdle = "text-guinness-tan/55 hover:text-guinness-cream active:scale-[0.98]";
 
 export function shouldShowAppNav(pathname: string): boolean {
@@ -262,7 +262,7 @@ export function AppNavigation() {
               [
                 "absolute left-1/2 top-0 z-10 flex h-[4.25rem] w-[4.25rem] -translate-x-1/2 -translate-y-[40%] flex-col items-center justify-center gap-0.5 rounded-full border-2 border-guinness-black/30 bg-guinness-gold text-[10px] font-bold uppercase leading-none tracking-wide text-guinness-black shadow-[0_8px_28px_rgba(0,0,0,0.45),0_0_0_1px_rgba(197,160,89,0.35)] transition-transform duration-200 active:scale-95",
                 isActive
-                  ? "ring-2 ring-guinness-gold ring-offset-2 ring-offset-guinness-brown"
+                  ? "ring-2 ring-guinness-gold/90 ring-offset-2 ring-offset-guinness-black"
                   : "hover:brightness-110",
               ].join(" ")
             }
@@ -270,7 +270,7 @@ export function AppNavigation() {
             <IconPint className="h-5 w-5" />
             <span className="mt-0.5">Pour</span>
           </NavLink>
-          <div className="rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+          <div className="rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
             <ul className="flex list-none items-stretch gap-0.5">
               <li className="flex min-w-0 flex-1 gap-0.5">
                 {mobileDockItems.slice(0, 2).map(({ to, label }) => (

@@ -62,6 +62,11 @@ function normalizeEmail(e: string): string {
   return e.trim().toLowerCase();
 }
 
+/** PostgREST `ilike` treats `%` and `_` as wildcards; escape for literal email match. */
+function escapeIlikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,13 +154,25 @@ export default function Profile() {
     async (u: User) => {
       const email = u.email;
       if (email) {
-        const { data: scoreRows } = await supabase
+        const emailTrim = email.trim();
+        const pattern = escapeIlikePattern(emailTrim);
+        const { data: scoreRows, error: scoresQerr } = await supabase
           .from("scores")
           .select("id, slug, split_score, created_at, bar_name")
-          .eq("email", email)
+          .ilike("email", pattern)
           .order("created_at", { ascending: false })
           .limit(40);
-        setScores((scoreRows ?? []) as ScoreSummary[]);
+        if (scoresQerr || !scoreRows?.length) {
+          const { data: fallbackRows } = await supabase
+            .from("scores")
+            .select("id, slug, split_score, created_at, bar_name")
+            .eq("email", emailTrim)
+            .order("created_at", { ascending: false })
+            .limit(40);
+          setScores((fallbackRows ?? scoreRows ?? []) as ScoreSummary[]);
+        } else {
+          setScores(scoreRows as ScoreSummary[]);
+        }
       } else {
         setScores([]);
       }
@@ -204,11 +221,29 @@ export default function Profile() {
         u.email?.split("@")[0] ||
         "Player";
 
-      const { data: prof, error: profErr } = await supabase
+      const profRes = await supabase
         .from("public_profiles")
         .select("display_name, nickname")
         .eq("user_id", u.id)
         .maybeSingle();
+
+      let prof = profRes.data;
+      let profErr = profRes.error;
+
+      if (profErr) {
+        const msg = `${profErr.message ?? ""} ${profErr.code ?? ""}`.toLowerCase();
+        const likelyMissingNickCol =
+          msg.includes("nickname") || msg.includes("column") || profErr.code === "42703";
+        if (likelyMissingNickCol) {
+          const r2 = await supabase
+            .from("public_profiles")
+            .select("display_name")
+            .eq("user_id", u.id)
+            .maybeSingle();
+          prof = r2.data;
+          profErr = r2.error;
+        }
+      }
 
       if (profErr) {
         setFullName(fromGoogle);
@@ -227,7 +262,7 @@ export default function Profile() {
         setNickname("");
       } else {
         setFullName(prof.display_name?.trim() || fromGoogle);
-        const rawNick = prof.nickname;
+        const rawNick = "nickname" in prof ? prof.nickname : null;
         setNickname(
           rawNick != null && String(rawNick).trim() !== ""
             ? String(rawNick).trim()
@@ -345,13 +380,22 @@ export default function Profile() {
       }
 
       const leaderboardName = nickTrim || nameTrim;
-      const { error: serr } = await supabase
-        .from("scores")
-        .update({ username: leaderboardName })
-        .eq("email", user.email);
-      if (serr) {
-        setMessage(serr.message);
-        return;
+      const emailTrim = user.email.trim();
+      const ilikePattern = escapeIlikePattern(emailTrim);
+
+      const { error: rpcErr } = await supabase.rpc("sync_scores_username_for_jwt", {
+        p_username: leaderboardName,
+      });
+
+      if (rpcErr) {
+        const { error: serr } = await supabase
+          .from("scores")
+          .update({ username: leaderboardName })
+          .ilike("email", ilikePattern);
+        if (serr) {
+          setMessage(serr.message);
+          return;
+        }
       }
 
       setFullName(nameTrim);
