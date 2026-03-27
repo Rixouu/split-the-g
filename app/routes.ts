@@ -19,6 +19,7 @@ export default [
   route("score/:splitId", "./routes/score/redirect-to-pour.tsx"),
   route("leaderboard", "./routes/leaderboard/leaderboard.tsx"),
   route("api/email", "./routes/email.tsx"),
+  route("api/friend-invite", "./routes/friend-invite-email.tsx"),
   route("wall", "./routes/collage.tsx"),
   route("collage", "./routes/collage-redirect.tsx"),
   route("countryleaderboard", "./routes/leaderboard/country-leaderboard.tsx"),

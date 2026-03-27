@@ -750,7 +750,7 @@ export default function Competitions() {
               <h2 className="type-card-title">New competition</h2>
               <button
                 type="button"
-                aria-expanded={createFormOpen ? "true" : "false"}
+                aria-expanded={createFormOpen}
                 onClick={() => setCreateFormOpen((o) => !o)}
                 className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
               >
@@ -1047,9 +1047,16 @@ export default function Competitions() {
 
                       {isOwner ? (
                         <div className="space-y-3 border-t border-guinness-gold/10 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-                          <p className="type-label text-guinness-tan/80">
-                            Invite by email
-                          </p>
+                          <div className="space-y-1">
+                            <p className="type-label text-guinness-tan/80">
+                              Invite by email
+                            </p>
+                            <p className="type-meta text-guinness-tan/60">
+                              If they sign up later with this email, they&apos;ll see the
+                              invite and can join manually. This does not auto-add them as
+                              a friend or auto-join them.
+                            </p>
+                          </div>
                           <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
                             <input
                               type="email"
@@ -1097,7 +1104,11 @@ export default function Competitions() {
                           {myFriends.length > 0 ? (
                             <div>
                               <p className="type-label mb-2 text-guinness-tan/80">
-                                Add friends (accepted on Profile)
+                                Invite accepted friends
+                              </p>
+                              <p className="type-meta mb-3 text-guinness-tan/60">
+                                Friends must already be accepted in Profile before you can
+                                add them straight into a competition.
                               </p>
                               <ul className="grid gap-2 sm:grid-cols-2">
                                 {myFriends.map((f) => (

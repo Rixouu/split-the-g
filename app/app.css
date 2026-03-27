@@ -30,6 +30,56 @@ body {
   background: linear-gradient(180deg, rgba(213, 178, 99, 1), rgba(197, 160, 89, 1));
 }
 
+@keyframes profile-progress-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes profile-progress-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.profile-progress-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-progress-glow {
+  position: absolute;
+  inset: 8px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle, rgba(213, 178, 99, 0.26) 0%, rgba(213, 178, 99, 0.08) 42%, transparent 72%);
+  filter: blur(12px);
+  animation: profile-progress-glow 4.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.profile-progress-orbit {
+  position: absolute;
+  inset: 3px;
+  border-radius: 9999px;
+  border: 1px solid rgba(197, 160, 89, 0.16);
+  border-top-color: rgba(213, 178, 99, 0.7);
+  border-right-color: rgba(255, 255, 255, 0.06);
+  animation: profile-progress-orbit 16s linear infinite;
+  pointer-events: none;
+}
+
 @layer components {
   .type-display {
     @apply text-3xl md:text-5xl font-bold tracking-tight text-guinness-gold;

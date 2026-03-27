@@ -11,7 +11,8 @@ import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 
-type ProfileTab = "progress" | "favorites";
+type ProfileTab = "progress" | "scores" | "favorites" | "friends";
+type ProgressRange = "7d" | "30d" | "90d" | "all";
 
 type ScoreSummary = {
   id: string;
@@ -49,6 +50,36 @@ type UserFriendRow = {
   created_at: string;
 };
 
+type PublicProfileRow = {
+  user_id: string;
+  display_name: string | null;
+  nickname?: string | null;
+};
+
+type ComparisonScoreRow = {
+  email: string | null;
+  username: string | null;
+  split_score: number;
+  created_at: string;
+};
+
+type FriendLeaderboardEntry = {
+  email: string;
+  label: string;
+  pours: number;
+  avg: number;
+  best: number;
+  latestAt: string;
+  isCurrentUser: boolean;
+};
+
+const progressRangeOptions: { value: ProgressRange; label: string }[] = [
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "90d", label: "90d" },
+  { value: "all", label: "All" },
+];
+
 function favoriteMapsUrl(f: FavoriteRow): string {
   const q = [f.bar_name, f.bar_address].filter(Boolean).join(" ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
@@ -62,9 +93,79 @@ function normalizeEmail(e: string): string {
   return e.trim().toLowerCase();
 }
 
+function emailDisplayName(email: string): string {
+  const local = email.split("@")[0]?.trim();
+  return local || email;
+}
+
 /** PostgREST `ilike` treats `%` and `_` as wildcards; escape for literal email match. */
 function escapeIlikePattern(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function progressRangeStart(range: ProgressRange): number | null {
+  const now = Date.now();
+  switch (range) {
+    case "7d":
+      return now - 7 * 24 * 60 * 60 * 1000;
+    case "30d":
+      return now - 30 * 24 * 60 * 60 * 1000;
+    case "90d":
+      return now - 90 * 24 * 60 * 60 * 1000;
+    default:
+      return null;
+  }
+}
+
+function buildFriendLeaderboard(
+  rows: ComparisonScoreRow[],
+  labels: Record<string, string>,
+  currentEmail: string | null,
+): FriendLeaderboardEntry[] {
+  const grouped = new Map<
+    string,
+    { total: number; count: number; best: number; latestAt: string; latestName: string | null }
+  >();
+
+  for (const row of rows) {
+    const rawEmail = row.email?.trim();
+    if (!rawEmail) continue;
+    const email = normalizeEmail(rawEmail);
+    const current = grouped.get(email) ?? {
+      total: 0,
+      count: 0,
+      best: 0,
+      latestAt: "",
+      latestName: null,
+    };
+
+    current.total += Number(row.split_score ?? 0);
+    current.count += 1;
+    current.best = Math.max(current.best, Number(row.split_score ?? 0));
+    if (!current.latestAt || new Date(row.created_at) > new Date(current.latestAt)) {
+      current.latestAt = row.created_at;
+      current.latestName = row.username?.trim() || null;
+    }
+    grouped.set(email, current);
+  }
+
+  return [...grouped.entries()]
+    .map(([email, entry]) => ({
+      email,
+      label:
+        labels[email] || entry.latestName || emailDisplayName(email),
+      pours: entry.count,
+      avg: entry.total / entry.count,
+      best: entry.best,
+      latestAt: entry.latestAt,
+      isCurrentUser: currentEmail != null && normalizeEmail(currentEmail) === email,
+    }))
+    .sort((a, b) => {
+      if (b.avg !== a.avg) return b.avg - a.avg;
+      if (b.best !== a.best) return b.best - a.best;
+      if (b.pours !== a.pours) return b.pours - a.pours;
+      return new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime();
+    });
 }
 
 export default function Profile() {
@@ -91,6 +192,9 @@ export default function Profile() {
   const [fullName, setFullName] = useState("");
   const [nickname, setNickname] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [progressRange, setProgressRange] = useState<ProgressRange>("30d");
+  const [comparisonScores, setComparisonScores] = useState<ComparisonScoreRow[]>([]);
+  const [comparisonLabels, setComparisonLabels] = useState<Record<string, string>>({});
 
   const progressStats = useMemo(() => {
     if (scores.length === 0) {
@@ -118,7 +222,53 @@ export default function Profile() {
     };
   }, [scores]);
 
-  const loadSocial = useCallback(async (u: User) => {
+  const acceptedFriends = useMemo(
+    () => friends.filter((f) => user != null && f.user_id === user.id),
+    [friends, user],
+  );
+
+  const comparisonWindowStart = useMemo(
+    () => progressRangeStart(progressRange),
+    [progressRange],
+  );
+
+  const filteredComparisonScores = useMemo(() => {
+    if (comparisonWindowStart == null) return comparisonScores;
+    return comparisonScores.filter(
+      (row) => new Date(row.created_at).getTime() >= comparisonWindowStart,
+    );
+  }, [comparisonScores, comparisonWindowStart]);
+
+  const friendProgressLeaderboard = useMemo(
+    () =>
+      buildFriendLeaderboard(
+        filteredComparisonScores,
+        comparisonLabels,
+        user?.email ? normalizeEmail(user.email) : null,
+      ),
+    [comparisonLabels, filteredComparisonScores, user],
+  );
+
+  const allTimeFriendLeaderboard = useMemo(
+    () =>
+      buildFriendLeaderboard(
+        comparisonScores,
+        comparisonLabels,
+        user?.email ? normalizeEmail(user.email) : null,
+      ),
+    [comparisonLabels, comparisonScores, user],
+  );
+
+  const allTimeFriendStatsByEmail = useMemo(
+    () =>
+      allTimeFriendLeaderboard.reduce<Record<string, FriendLeaderboardEntry>>((acc, entry) => {
+        acc[entry.email] = entry;
+        return acc;
+      }, {}),
+    [allTimeFriendLeaderboard],
+  );
+
+  const loadSocial = useCallback(async (u: User): Promise<UserFriendRow[]> => {
     const uid = u.id;
     const emailNorm = u.email ? normalizeEmail(u.email) : "";
 
@@ -147,8 +297,78 @@ export default function Profile() {
         (r) => normalizeEmail(String(r.to_email)) === emailNorm && r.from_user_id !== uid,
       ),
     );
-    setFriends((fr ?? []) as UserFriendRow[]);
+    const friendRows = (fr ?? []) as UserFriendRow[];
+    setFriends(friendRows);
+    return friendRows;
   }, []);
+
+  const loadFriendComparison = useCallback(async (u: User, friendRows: UserFriendRow[]) => {
+    if (!u.email) {
+      setComparisonScores([]);
+      setComparisonLabels({});
+      return;
+    }
+
+    const ownFriendRows = friendRows.filter((row) => row.user_id === u.id);
+    const comparisonEmails = [
+      normalizeEmail(u.email),
+      ...ownFriendRows
+        .map((row) => row.peer_email?.trim())
+        .filter((value): value is string => Boolean(value))
+        .map(normalizeEmail),
+    ];
+    const uniqueEmails = [...new Set(comparisonEmails)].filter(Boolean);
+    const friendUserIds = ownFriendRows.map((row) => row.friend_user_id);
+    const profileIds = [...new Set([u.id, ...friendUserIds])];
+
+    if (uniqueEmails.length === 0) {
+      setComparisonScores([]);
+      setComparisonLabels({});
+      return;
+    }
+
+    const { data: scoreRows } = await supabase
+      .from("scores")
+      .select("email, username, split_score, created_at")
+      .in("email", uniqueEmails)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    const profileRes = await supabase
+      .from("public_profiles")
+      .select("user_id, display_name, nickname")
+      .in("user_id", profileIds);
+
+    let profileRows = (profileRes.data ?? []) as PublicProfileRow[];
+    if (profileRes.error) {
+      const fallback = await supabase
+        .from("public_profiles")
+        .select("user_id, display_name")
+        .in("user_id", profileIds);
+      profileRows = (fallback.data ?? []) as PublicProfileRow[];
+    }
+
+    const profileByUserId = new Map(profileRows.map((row) => [row.user_id, row]));
+    const labels: Record<string, string> = {};
+    labels[normalizeEmail(u.email)] =
+      profileByUserId.get(u.id)?.nickname?.trim() ||
+      profileByUserId.get(u.id)?.display_name?.trim() ||
+      fullName.trim() ||
+      emailDisplayName(u.email);
+
+    for (const row of ownFriendRows) {
+      const peerEmail = row.peer_email?.trim();
+      if (!peerEmail) continue;
+      const profile = profileByUserId.get(row.friend_user_id);
+      labels[normalizeEmail(peerEmail)] =
+        profile?.nickname?.trim() ||
+        profile?.display_name?.trim() ||
+        emailDisplayName(peerEmail);
+    }
+
+    setComparisonLabels(labels);
+    setComparisonScores((scoreRows ?? []) as ComparisonScoreRow[]);
+  }, [fullName]);
 
   const loadProfileData = useCallback(
     async (u: User) => {
@@ -248,7 +468,8 @@ export default function Profile() {
       if (profErr) {
         setFullName(fromGoogle);
         setNickname("");
-        await loadSocial(u);
+        const socialRows = await loadSocial(u);
+        await loadFriendComparison(u, socialRows);
         return;
       }
 
@@ -270,9 +491,10 @@ export default function Profile() {
         );
       }
 
-      await loadSocial(u);
+      const socialRows = await loadSocial(u);
+      await loadFriendComparison(u, socialRows);
     },
-    [loadSocial],
+    [loadFriendComparison, loadSocial],
   );
 
   useEffect(() => {
@@ -298,6 +520,8 @@ export default function Profile() {
         setOutgoingRequests([]);
         setIncomingRequests([]);
         setFriends([]);
+        setComparisonScores([]);
+        setComparisonLabels({});
       }
     });
 
@@ -324,6 +548,8 @@ export default function Profile() {
     setOutgoingRequests([]);
     setIncomingRequests([]);
     setFriends([]);
+    setComparisonScores([]);
+    setComparisonLabels({});
     setFullName("");
     setNickname("");
   };
@@ -400,6 +626,8 @@ export default function Profile() {
 
       setFullName(nameTrim);
       setNickname(nickTrim);
+      await loadProfileData(user);
+      setMessage("Profile saved.");
     } finally {
       setProfileSaving(false);
     }
@@ -466,20 +694,75 @@ export default function Profile() {
       setMessage("You cannot add yourself.");
       return;
     }
+    if (
+      acceptedFriends.some(
+        (friend) => friend.peer_email && normalizeEmail(friend.peer_email) === to,
+      )
+    ) {
+      setMessage("You are already friends with that email.");
+      return;
+    }
     setBusy(true);
     try {
-      const { error } = await supabase.from("friend_requests").insert({
-        from_user_id: user.id,
-        to_email: to,
-        from_email: user.email ?? null,
-        status: "pending",
-      });
-      if (error) {
-        setMessage(error.message);
-        return;
+      const alreadyPending = outgoingRequests.some(
+        (request) => normalizeEmail(String(request.to_email)) === to,
+      );
+
+      if (!alreadyPending) {
+        const { error } = await supabase.from("friend_requests").insert({
+          from_user_id: user.id,
+          to_email: to,
+          from_email: user.email ?? null,
+          status: "pending",
+        });
+        if (error) {
+          setMessage(error.message);
+          return;
+        }
       }
+
+      const inviterName =
+        fullName.trim() ||
+        (user.user_metadata?.full_name as string | undefined)?.trim() ||
+        (user.user_metadata?.name as string | undefined)?.trim() ||
+        null;
+
+      const emailResponse = await fetch("/api/friend-invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inviterEmail: user.email,
+          inviterName,
+          toEmail: to,
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const emailResult = (await emailResponse.json().catch(() => null)) as
+          | { error?: string; details?: string }
+          | null;
+        setMessage(
+          emailResult?.error
+            ? alreadyPending
+              ? `Request already pending, but email invite failed: ${emailResult.error}`
+              : `Request saved, but email invite failed: ${emailResult.error}`
+            : alreadyPending
+              ? "Request already pending, but email invite failed."
+              : "Request saved, but email invite failed.",
+        );
+      } else {
+        setMessage(
+          alreadyPending
+            ? "Friend request already pending. Invite email sent again."
+            : "Friend request sent.",
+        );
+      }
+
       setFriendEmail("");
-      await loadSocial(user);
+      const socialRows = await loadSocial(user);
+      await loadFriendComparison(user, socialRows);
     } finally {
       setBusy(false);
     }
@@ -542,7 +825,8 @@ export default function Profile() {
         .delete()
         .eq("user_id", other)
         .eq("friend_user_id", user.id);
-      await loadSocial(user);
+      const socialRows = await loadSocial(user);
+      await loadFriendComparison(user, socialRows);
     } finally {
       setBusy(false);
     }
@@ -550,6 +834,12 @@ export default function Profile() {
 
   const inputClass =
     "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
+  const messageTone =
+    message === "Profile saved."
+      ? "text-emerald-400/90"
+      : message?.startsWith("Request saved, but")
+        ? "text-amber-300/90"
+        : "text-red-400/90";
 
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
@@ -652,74 +942,122 @@ export default function Profile() {
               </div>
             </section>
 
+            <section className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/35 p-5 sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-2xl">
+                  <h2 className="type-card-title">Friends & invites</h2>
+                  <p className="type-meta mt-2 text-guinness-tan/75">
+                    Invite people by email from here. If they create an account later
+                    with that same email, they&apos;ll see the pending friend request and
+                    any competition invites. They still choose whether to accept the
+                    friendship or join the competition.
+                  </p>
+                </div>
+                <div className="grid w-full gap-3 lg:max-w-xl lg:grid-cols-[minmax(0,1fr)_auto]">
+                  <input
+                    type="email"
+                    value={friendEmail}
+                    onChange={(e) => setFriendEmail(e.target.value)}
+                    placeholder="friend@email.com"
+                    className={inputClass}
+                    autoComplete="email"
+                  />
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void sendFriendRequest()}
+                    className="min-h-11 rounded-lg bg-guinness-gold px-5 py-2.5 font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50 lg:min-w-[10rem]"
+                  >
+                    Send request
+                  </button>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                {[
+                  { label: "Friends", value: acceptedFriends.length },
+                  { label: "Incoming", value: incomingRequests.length },
+                  { label: "Pending", value: outgoingRequests.length },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-[#372C16] bg-guinness-black/30 px-4 py-3"
+                  >
+                    <p className="type-meta text-guinness-tan/65">{item.label}</p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums text-guinness-gold">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             <div
-              className="grid w-full grid-cols-2 gap-2"
+              className="grid w-full grid-cols-2 gap-2 lg:grid-cols-4"
               role="group"
               aria-label="Profile sections"
             >
-              <button
-                type="button"
-                onClick={() => setTab("progress")}
-                className={`min-h-11 rounded-xl px-2 text-sm font-semibold transition-colors sm:px-4 ${
-                  tab === "progress"
-                    ? "bg-guinness-gold text-guinness-black"
-                    : "border border-guinness-gold/20 bg-guinness-black/35 text-guinness-tan/80 hover:text-guinness-cream"
-                }`}
-              >
-                Progress
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("favorites")}
-                className={`min-h-11 rounded-xl px-2 text-sm font-semibold transition-colors sm:px-4 ${
-                  tab === "favorites"
-                    ? "bg-guinness-gold text-guinness-black"
-                    : "border border-guinness-gold/20 bg-guinness-black/35 text-guinness-tan/80 hover:text-guinness-cream"
-                }`}
-              >
-                Favorite bars
-              </button>
+              {[
+                { key: "progress", label: "Progress" },
+                { key: "scores", label: "Scores" },
+                { key: "favorites", label: "Favorite bars" },
+                { key: "friends", label: "Friends" },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setTab(item.key as ProfileTab)}
+                  className={`min-h-11 rounded-xl px-2 text-sm font-semibold transition-colors sm:px-4 ${
+                    tab === item.key
+                      ? "bg-guinness-gold text-guinness-black"
+                      : "border border-guinness-gold/20 bg-guinness-black/35 text-guinness-tan/80 hover:text-guinness-cream"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
 
             {tab === "progress" ? (
               <div className="space-y-8">
                 {scores.length > 0 ? (
                   <>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/35 p-4 text-center">
-                        <p className="type-meta text-guinness-tan/70">Pours</p>
-                        <p className="mt-1 text-3xl font-bold tabular-nums text-guinness-gold">
-                          {progressStats.count}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/35 p-4 text-center">
-                        <p className="type-meta text-guinness-tan/70">Best</p>
-                        <p className="mt-1 text-3xl font-bold tabular-nums text-guinness-gold">
-                          {progressStats.best.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/35 p-4 text-center">
-                        <p className="type-meta text-guinness-tan/70">Avg / 5</p>
-                        <p className="mt-1 text-3xl font-bold tabular-nums text-guinness-gold">
-                          {progressStats.avg.toFixed(2)}
-                        </p>
-                      </div>
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                      {[
+                        { label: "Pours", value: String(progressStats.count) },
+                        { label: "Best", value: progressStats.best.toFixed(2) },
+                        { label: "Avg / 5", value: progressStats.avg.toFixed(2) },
+                        { label: "Last 7d", value: String(progressStats.last7) },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/35 p-4 text-center"
+                        >
+                          <p className="type-meta text-guinness-tan/70">{item.label}</p>
+                          <p className="mt-1 text-3xl font-bold tabular-nums text-guinness-gold">
+                            {item.value}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                     <div className="rounded-2xl border border-guinness-gold/20 bg-guinness-brown/30 p-4 sm:p-6">
-                      <div className="grid gap-5 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)] lg:items-center">
-                        <div className="mx-auto flex w-full max-w-[15rem] flex-col items-center gap-3">
-                          <div
-                            className="relative flex h-40 w-40 items-center justify-center rounded-full border border-guinness-gold/20 shadow-[0_0_40px_rgba(197,160,89,0.15)]"
-                            style={{
-                              background: `conic-gradient(var(--guinness-gold, #c5a059) ${progressStats.dialPct}%, rgba(255,255,255,0.06) 0)`,
-                            }}
-                            aria-hidden
-                          >
-                            <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-guinness-black">
-                              <span className="type-meta text-guinness-tan/70">Average</span>
-                              <span className="text-3xl font-bold tabular-nums text-guinness-gold">
-                                {progressStats.avg.toFixed(2)}
-                              </span>
+                      <div className="grid gap-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:items-center">
+                        <div className="mx-auto flex w-full max-w-[16rem] flex-col items-center gap-3">
+                          <div className="profile-progress-shell">
+                            <div className="profile-progress-glow" />
+                            <div className="profile-progress-orbit" />
+                            <div
+                              className="relative flex h-44 w-44 items-center justify-center rounded-full border border-guinness-gold/10 shadow-[inset_0_0_0_10px_rgba(9,9,7,0.7)]"
+                              style={{
+                                background: `conic-gradient(rgba(213,178,99,0.98) 0 ${progressStats.dialPct}%, rgba(255,255,255,0.06) ${progressStats.dialPct}% 100%)`,
+                              }}
+                              aria-hidden
+                            >
+                              <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full border border-guinness-gold/10 bg-guinness-black/95 shadow-[0_0_22px_rgba(0,0,0,0.45)]">
+                                <span className="type-meta text-guinness-tan/70">Average</span>
+                                <span className="text-3xl font-bold tabular-nums text-guinness-gold">
+                                  {progressStats.avg.toFixed(2)}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <p className="type-meta text-center text-guinness-tan/75">
@@ -773,152 +1111,118 @@ export default function Profile() {
                         </div>
                       </div>
                     </div>
+
+                    <section className="rounded-2xl border border-guinness-gold/20 bg-guinness-brown/30 p-5 sm:p-6">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <h2 className="type-card-title">Friends leaderboard</h2>
+                          <p className="type-meta mt-1 text-guinness-tan/70">
+                            Compare your average, best score, and volume against accepted
+                            friends.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {progressRangeOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setProgressRange(option.value)}
+                              className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                                progressRange === option.value
+                                  ? "bg-guinness-gold text-guinness-black"
+                                  : "border border-guinness-gold/20 text-guinness-tan/75 hover:text-guinness-cream"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {friendProgressLeaderboard.length > 0 ? (
+                        <ol className="mt-5 space-y-2">
+                          {friendProgressLeaderboard.slice(0, 8).map((entry, index) => (
+                            <li
+                              key={entry.email}
+                              className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-3 sm:grid-cols-[auto_minmax(0,1.3fr)_repeat(3,auto)] sm:gap-4 ${
+                                entry.isCurrentUser
+                                  ? "border-guinness-gold/35 bg-guinness-gold/10"
+                                  : "border-guinness-gold/10 bg-guinness-black/30"
+                              }`}
+                            >
+                              <span className="text-sm font-semibold tabular-nums text-guinness-gold">
+                                #{index + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-guinness-cream">
+                                  {entry.label}
+                                  {entry.isCurrentUser ? " · You" : ""}
+                                </p>
+                                <p className="type-meta truncate text-guinness-tan/60">
+                                  {entry.email}
+                                </p>
+                              </div>
+                              <span className="text-sm tabular-nums text-guinness-tan/80 sm:text-right">
+                                {entry.pours} pours
+                              </span>
+                              <span className="hidden text-sm tabular-nums text-guinness-tan/80 sm:block">
+                                Avg {entry.avg.toFixed(2)}
+                              </span>
+                              <span className="hidden text-sm tabular-nums text-guinness-tan/80 sm:block">
+                                Best {entry.best.toFixed(2)}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className="type-meta mt-5 text-guinness-tan/70">
+                          Accept a few friends to unlock side-by-side progress comparisons.
+                        </p>
+                      )}
+                    </section>
                   </>
                 ) : (
                   <p className="type-meta text-guinness-tan/70">
-                    No scores linked to this email yet. Open a result you own and
-                    tap &quot;Claim with Google&quot;.
+                    No scores linked to this email yet. Open a result you own and tap
+                    &quot;Claim with Google&quot;.
                   </p>
                 )}
-
-                <section className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/30 p-5">
-                  <h2 className="type-card-title mb-4">Friends</h2>
-                  <p className="type-meta mb-4 text-guinness-tan/75">
-                    Invite by email. They&apos;ll see the request when they sign
-                    in with that address.
-                  </p>
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                    <input
-                      type="email"
-                      value={friendEmail}
-                      onChange={(e) => setFriendEmail(e.target.value)}
-                      placeholder="friend@email.com"
-                      className={inputClass}
-                      autoComplete="email"
-                    />
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void sendFriendRequest()}
-                      className="min-h-11 rounded-lg bg-guinness-gold px-5 py-2.5 font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50 lg:min-w-[10rem]"
-                    >
-                      Send request
-                    </button>
-                  </div>
-                  {outgoingRequests.length > 0 ? (
-                    <div className="mt-4 border-t border-guinness-gold/15 pt-4">
-                      <p className="type-label mb-2 text-guinness-tan/80">
-                        Pending sent
-                      </p>
-                      <ul className="space-y-1 text-sm text-guinness-tan/70">
-                        {outgoingRequests.map((r) => (
-                          <li key={r.id}>→ {String(r.to_email)}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {incomingRequests.length > 0 ? (
-                    <div className="mt-4 border-t border-guinness-gold/15 pt-4">
-                      <p className="type-label mb-2 text-guinness-gold">
-                        Incoming
-                      </p>
-                      <ul className="space-y-2">
-                        {incomingRequests.map((r) => (
-                          <li
-                            key={r.id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-guinness-black/40 px-3 py-2"
-                          >
-                            <span className="text-sm text-guinness-cream">
-                              {r.from_email
-                                ? `Request from ${r.from_email}`
-                                : "Someone wants to connect"}
-                            </span>
-                            <span className="flex gap-2">
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void respondRequest(r, "accepted")}
-                                className="rounded-md bg-guinness-gold px-3 py-1 text-xs font-semibold text-guinness-black"
-                              >
-                                Accept
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void respondRequest(r, "declined")}
-                                className="rounded-md border border-guinness-gold/30 px-3 py-1 text-xs text-guinness-tan"
-                              >
-                                Decline
-                              </button>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {friends.filter((f) => f.user_id === user.id).length > 0 ? (
-                    <div className="mt-4 border-t border-guinness-gold/15 pt-4">
-                      <p className="type-label mb-2 text-guinness-tan/80">
-                        Your friends
-                      </p>
-                      <ul className="space-y-2">
-                        {friends
-                          .filter((f) => f.user_id === user.id)
-                          .map((f) => (
-                            <li
-                              key={`${f.user_id}-${f.friend_user_id}`}
-                              className="flex items-center justify-between gap-2 rounded-lg border border-guinness-gold/10 bg-guinness-black/35 px-3 py-2"
-                            >
-                              <span className="truncate text-sm text-guinness-cream">
-                                {f.peer_email ||
-                                  `Player ${f.friend_user_id.slice(0, 8)}…`}
-                              </span>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void removeFriendship(f)}
-                                className="shrink-0 text-xs text-red-400/90 hover:underline"
-                              >
-                                Remove
-                              </button>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </section>
-
-                {scores.length > 0 ? (
-                  <section>
-                    <h2 className="type-card-title mb-3">Recent scores</h2>
-                    <ul className="grid gap-3 sm:grid-cols-2">
-                      {scores.map((s) => (
-                        <li key={s.id}>
-                          <Link
-                            to={scorePourPathFromFields(s)}
-                            className="block rounded-xl border border-guinness-gold/15 bg-guinness-brown/30 p-4 transition-colors hover:border-guinness-gold/35"
-                          >
-                            <div className="flex items-baseline justify-between gap-2">
-                              <span className="text-2xl font-bold tabular-nums text-guinness-gold">
-                                {s.split_score.toFixed(2)}
-                              </span>
-                              <span className="type-meta text-guinness-tan/65">
-                                {new Date(s.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            {s.bar_name ? (
-                              <p className="type-meta mt-2 text-guinness-tan/55">
-                                {s.bar_name}
-                              </p>
-                            ) : null}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
               </div>
-            ) : (
+            ) : tab === "scores" ? (
+              scores.length > 0 ? (
+                <section>
+                  <h2 className="type-card-title mb-3">Recent scores</h2>
+                  <ul className="grid gap-3 sm:grid-cols-2">
+                    {scores.map((s) => (
+                      <li key={s.id}>
+                        <Link
+                          to={scorePourPathFromFields(s)}
+                          className="block rounded-xl border border-guinness-gold/15 bg-guinness-brown/30 p-4 transition-colors hover:border-guinness-gold/35"
+                        >
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-2xl font-bold tabular-nums text-guinness-gold">
+                              {s.split_score.toFixed(2)}
+                            </span>
+                            <span className="type-meta text-guinness-tan/65">
+                              {new Date(s.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {s.bar_name ? (
+                            <p className="type-meta mt-2 text-guinness-tan/55">
+                              {s.bar_name}
+                            </p>
+                          ) : null}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : (
+                <p className="type-meta text-guinness-tan/70">
+                  No scores linked to this email yet. Claim a pour to start a score log.
+                </p>
+              )
+            ) : tab === "favorites" ? (
               <section className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/40 p-4 sm:p-6">
                 <h2 className="type-card-title mb-1">Favorite bars</h2>
                 <p className="type-meta mb-4 text-guinness-tan/65">
@@ -970,7 +1274,7 @@ export default function Profile() {
                       return (
                         <li
                           key={f.id}
-                          className="rounded-lg border border-guinness-gold/12 bg-guinness-black/35 p-3 sm:p-4"
+                          className="rounded-lg border border-[#372C16] bg-guinness-black/35 p-3 sm:p-4"
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0 flex-1">
@@ -1023,12 +1327,148 @@ export default function Profile() {
                   </p>
                 )}
               </section>
+            ) : (
+              <section className="space-y-5">
+                {incomingRequests.length > 0 ? (
+                  <div className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/30 p-5">
+                    <h2 className="type-card-title">Incoming requests</h2>
+                    <ul className="mt-4 space-y-3">
+                      {incomingRequests.map((r) => (
+                        <li
+                          key={r.id}
+                          className="flex flex-col gap-3 rounded-xl border border-guinness-gold/10 bg-guinness-black/30 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold text-guinness-cream">
+                              {r.from_email || "Someone wants to connect"}
+                            </p>
+                            <p className="type-meta mt-1 text-guinness-tan/65">
+                              Sent {new Date(r.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void respondRequest(r, "accepted")}
+                              className="rounded-lg bg-guinness-gold px-3 py-2 text-xs font-semibold text-guinness-black"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void respondRequest(r, "declined")}
+                              className="rounded-lg border border-guinness-gold/25 px-3 py-2 text-xs font-semibold text-guinness-tan"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <div className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/30 p-5">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <h2 className="type-card-title">Your friends</h2>
+                      <p className="type-meta mt-1 text-guinness-tan/70">
+                        Accepted friends appear here with a quick performance snapshot.
+                      </p>
+                    </div>
+                    <p className="type-meta text-guinness-tan/55">
+                      {acceptedFriends.length} accepted
+                    </p>
+                  </div>
+                  {acceptedFriends.length > 0 ? (
+                    <ul className="mt-4 grid gap-3 lg:grid-cols-2">
+                      {acceptedFriends.map((f) => {
+                        const email = f.peer_email ? normalizeEmail(f.peer_email) : null;
+                        const stats = email ? allTimeFriendStatsByEmail[email] : null;
+                        return (
+                          <li
+                            key={`${f.user_id}-${f.friend_user_id}`}
+                            className="rounded-xl border border-guinness-gold/10 bg-guinness-black/30 p-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-guinness-cream">
+                                  {stats?.label ||
+                                    f.peer_email ||
+                                    `Player ${f.friend_user_id.slice(0, 8)}…`}
+                                </p>
+                                <p className="type-meta mt-1 truncate text-guinness-tan/60">
+                                  {f.peer_email || "No email linked yet"}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void removeFriendship(f)}
+                                className="shrink-0 rounded-lg border border-red-400/35 px-3 py-1.5 text-xs font-semibold text-red-400/90 hover:bg-red-950/25"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <div className="mt-4 grid grid-cols-3 gap-2">
+                              <div className="rounded-lg bg-guinness-brown/35 px-3 py-2">
+                                <p className="type-meta text-guinness-tan/55">Pours</p>
+                                <p className="mt-1 text-base font-semibold tabular-nums text-guinness-gold">
+                                  {stats?.pours ?? 0}
+                                </p>
+                              </div>
+                              <div className="rounded-lg bg-guinness-brown/35 px-3 py-2">
+                                <p className="type-meta text-guinness-tan/55">Avg</p>
+                                <p className="mt-1 text-base font-semibold tabular-nums text-guinness-gold">
+                                  {stats ? stats.avg.toFixed(2) : "—"}
+                                </p>
+                              </div>
+                              <div className="rounded-lg bg-guinness-brown/35 px-3 py-2">
+                                <p className="type-meta text-guinness-tan/55">Best</p>
+                                <p className="mt-1 text-base font-semibold tabular-nums text-guinness-gold">
+                                  {stats ? stats.best.toFixed(2) : "—"}
+                                </p>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="type-meta mt-4 text-guinness-tan/70">
+                      No accepted friends yet. Send a few requests above.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/30 p-5">
+                  <h2 className="type-card-title">Pending sent</h2>
+                  {outgoingRequests.length > 0 ? (
+                    <ul className="mt-4 space-y-2 text-sm text-guinness-tan/75">
+                      {outgoingRequests.map((r) => (
+                        <li
+                          key={r.id}
+                          className="rounded-lg border border-guinness-gold/10 bg-guinness-black/25 px-3 py-2"
+                        >
+                          {String(r.to_email)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="type-meta mt-4 text-guinness-tan/70">
+                      No pending requests right now.
+                    </p>
+                  )}
+                </div>
+              </section>
             )}
           </div>
         )}
 
         {message ? (
-          <p className="type-meta mt-6 text-center text-red-400/90">
+          <p className={`type-meta mt-6 text-center ${messageTone}`}>
             {message}
           </p>
         ) : null}
