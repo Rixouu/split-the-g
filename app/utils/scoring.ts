@@ -71,8 +71,12 @@ function calculateNonSplitScore(
   const distanceFromCenter = Math.abs(beerTopY - gCenterY);
   const maxDistance = 0.5;
   const normalizedDistance = Math.min(distanceFromCenter / maxDistance, 1);
+  // Foam line vs vertical center of the G (0 = aligned, 1 = half a frame or more off).
+  // Full 0–5 scale: serverless workflows use `toLegacyScoringOutputs`, which does not
+  // populate split-line detections, so this path is the only scorer for those pours.
+  // Previously this capped at 2.5 while the UI shows /5.0, which made great pours look broken.
   const decayFactor = Math.pow(1 - normalizedDistance, 2);
-  return 2.5 * decayFactor;
+  return 5 * decayFactor;
 }
 
 export function calculateScore(results: ScoreResults): number {

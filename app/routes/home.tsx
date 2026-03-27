@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useSubmit,
   useActionData,
@@ -384,6 +384,21 @@ export default function Home() {
   const [showQRCode, setShowQRCode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** Holds the active stream so we can stop tracks on unmount / tab hide even if the video node is gone. */
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  const stopCameraTracks = useCallback(() => {
+    const stream = mediaStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+    const vid = videoRef.current;
+    if (vid) {
+      vid.srcObject = null;
+    }
+    setIsVideoReady(false);
+  }, []);
   const submit = useSubmit();
   const actionData = useActionData<typeof action>();
 
@@ -421,9 +436,11 @@ export default function Home() {
 
   const [isVideoReady, setIsVideoReady] = useState(false);
 
-  // Add effect to handle camera initialization
+  // Camera: start when active; always stop tracks on deactivate, unmount, or aborted getUserMedia.
   useEffect(() => {
-    if (!isCameraActive || !videoRef.current) return;
+    if (!isCameraActive) return;
+
+    if (!videoRef.current) return;
 
     const constraints = {
       video: {
@@ -433,19 +450,56 @@ export default function Home() {
       },
     };
 
+    let cancelled = false;
+
     navigator.mediaDevices
       .getUserMedia(constraints)
       .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        mediaStreamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play();
+          void videoRef.current.play();
         }
       })
       .catch((err) => {
         console.error("Camera error:", err);
+        mediaStreamRef.current = null;
         setIsCameraActive(false);
       });
+
+    return () => {
+      cancelled = true;
+      const active = mediaStreamRef.current;
+      if (active) {
+        active.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      setIsVideoReady(false);
+    };
   }, [isCameraActive]);
+
+  // Release camera when the user leaves the tab (indicator otherwise stays on in many browsers).
+  useEffect(() => {
+    if (!isCameraActive || typeof document === "undefined") return;
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        stopCameraTracks();
+        setIsCameraActive(false);
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [isCameraActive, stopCameraTracks]);
 
   // Add new state for tracking detections
   const [consecutiveDetections, setConsecutiveDetections] = useState(0);
@@ -510,9 +564,7 @@ export default function Home() {
                 ""
               );
 
-              // Stop the camera stream
-              const stream = videoRef.current.srcObject as MediaStream;
-              stream?.getTracks().forEach((track) => track.stop());
+              stopCameraTracks();
               setIsCameraActive(false);
 
               // Submit form data to action
@@ -557,6 +609,7 @@ export default function Home() {
     isVideoReady,
     consecutiveDetections,
     submit,
+    stopCameraTracks,
   ]);
 
   // Update the effect that handles action response
@@ -791,6 +844,7 @@ export default function Home() {
                     onLoadedMetadata={() => setIsVideoReady(true)}
                     onError={(err) => {
                       console.error("Camera error:", err);
+                      stopCameraTracks();
                       setIsCameraActive(false);
                     }}
                   />
