@@ -6,7 +6,7 @@ import {
   PageHeader,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
+  wallPageDescription,
 } from "~/components/PageHeader";
 import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
 import { scorePourPathFromFields } from "~/utils/scorePath";
@@ -139,7 +139,7 @@ export default function Collage() {
         <div className="mb-8 space-y-6">
           <PageHeader
             title="Split the G Collection"
-            description={standardPageDescription}
+            description={wallPageDescription}
           >
             <LeaderboardButton />
             <Link to="/" className={pageHeaderActionButtonClass}>
@@ -243,13 +243,15 @@ export default function Collage() {
             </button>
           </div>
         ) : (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {filtered.map((submission) => {
               const loc = formatLocation(submission);
               return (
                 <li key={submission.id} className="min-w-0">
                   <Link
                     to={scorePourPathFromFields(submission)}
+                    prefetch="intent"
+                    viewTransition
                     className="group block h-full rounded-lg border border-guinness-gold/15 bg-guinness-gold/5 p-3 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-gold/10"
                   >
                     <div className="overflow-hidden rounded-lg bg-guinness-black/50 aspect-[3/4]">

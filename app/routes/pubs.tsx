@@ -5,7 +5,7 @@ import {
   PageHeader,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
+  pubsPageDescription,
 } from "~/components/PageHeader";
 import { supabase } from "~/utils/supabase";
 
@@ -250,7 +250,7 @@ export default function Pubs() {
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Pubs" description={standardPageDescription}>
+        <PageHeader title="Pubs" description={pubsPageDescription}>
           <Link to="/feed" className={pageHeaderActionButtonClass}>
             Browse feed
           </Link>

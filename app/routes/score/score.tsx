@@ -7,6 +7,12 @@ import {
   Link,
 } from "react-router";
 import type { User } from "@supabase/supabase-js";
+import { BrandedNotice } from "~/components/branded/BrandedNotice";
+import { BrandedToast } from "~/components/branded/BrandedToast";
+import {
+  scorePageFeedbackVariant,
+  toastAutoCloseForVariant,
+} from "~/components/branded/feedback-variant";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import { type Score } from "~/types/score";
 import { supabase } from "~/utils/supabase";
@@ -151,6 +157,10 @@ export default function Score() {
   const [competitionAttachMessage, setCompetitionAttachMessage] = useState<
     string | null
   >(null);
+  const [authNotice, setAuthNotice] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
 
   async function attachScoreToCompetition(compId: string, scoreId: string) {
     const { data: u } = await supabase.auth.getUser();
@@ -197,6 +207,7 @@ export default function Score() {
 
   const handleGoogleSignIn = async () => {
     setClaimMessage(null);
+    setAuthNotice(null);
     const redirectTo = window.location.href;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -205,7 +216,12 @@ export default function Score() {
       },
     });
     if (error) {
-      setClaimMessage("Google sign-in failed. Please try again.");
+      setAuthNotice({
+        title: "Sign-in didn’t work",
+        description:
+          error.message?.trim() ||
+          "We couldn’t start Google sign-in. Try again shortly.",
+      });
     }
   };
 
@@ -296,7 +312,6 @@ export default function Score() {
         void attachScoreToCompetition(competitionId, score.id);
       }
       revalidator.revalidate();
-      setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (error) {
       const msg =
         error instanceof Error ? error.message : "Could not save rating.";
@@ -367,6 +382,16 @@ export default function Score() {
     ? parseFloat(pourRating).toFixed(1)
     : "0.0";
 
+  const scoreToastText =
+    submitError ??
+    claimMessage ??
+    competitionAttachMessage ??
+    (submitSuccess ? "Rating saved successfully." : null) ??
+    "";
+  const scoreToastVariant = scoreToastText
+    ? scorePageFeedbackVariant(scoreToastText)
+    : "info";
+
   return (
     <main className="min-h-screen bg-guinness-black">
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 md:max-w-5xl md:py-8 md:px-8">
@@ -384,6 +409,7 @@ export default function Score() {
               This pour is linked to a{" "}
               <Link
                 to={`/competitions/${competitionId}`}
+                viewTransition
                 className="font-semibold text-guinness-gold underline hover:text-guinness-tan"
               >
                 competition
@@ -391,11 +417,6 @@ export default function Score() {
               . Join the comp (if needed), claim with Google, then save your bar
               &amp; rating — we&apos;ll add this score automatically.
             </p>
-            {competitionAttachMessage ? (
-              <p className="type-meta mt-2 text-guinness-tan/90">
-                {competitionAttachMessage}
-              </p>
-            ) : null}
           </div>
         ) : null}
 
@@ -505,9 +526,6 @@ export default function Score() {
               </button>
             )}
 
-            {claimMessage ? (
-              <p className="type-label mt-3 text-guinness-gold">{claimMessage}</p>
-            ) : null}
           </div>
         )}
 
@@ -591,11 +609,6 @@ export default function Score() {
                       <span>5</span>
                     </div>
                   </div>
-                  {submitError ? (
-                    <p className="text-center text-sm text-red-400/90">
-                      {submitError}
-                    </p>
-                  ) : null}
                   <button
                     type="submit"
                     disabled={isSubmitting}
@@ -603,11 +616,6 @@ export default function Score() {
                   >
                     {isSubmitting ? "Saving..." : "Save rating"}
                   </button>
-                  {submitSuccess ? (
-                    <p className="text-center text-guinness-gold">
-                      Rating saved successfully.
-                    </p>
-                  ) : null}
                 </div>
               </form>
             )}
@@ -634,6 +642,7 @@ export default function Score() {
 
           <Link
             to="/"
+            viewTransition
             className="flex min-h-12 w-full items-center justify-center rounded-lg bg-guinness-gold px-6 py-3 text-center text-base font-semibold text-guinness-black transition-colors hover:bg-guinness-tan active:bg-guinness-tan/90 md:w-56 md:shrink-0"
           >
             Try again
@@ -642,6 +651,38 @@ export default function Score() {
           <LeaderboardButton className="min-h-12 w-full px-6 py-3 text-base font-semibold md:w-56 md:shrink-0" />
         </div>
       </div>
+
+      <BrandedToast
+        open={Boolean(scoreToastText)}
+        message={scoreToastText}
+        variant={scoreToastVariant}
+        title={
+          scoreToastVariant === "danger"
+            ? "Couldn’t complete that"
+            : scoreToastVariant === "warning"
+              ? "Heads up"
+              : undefined
+        }
+        onClose={() => {
+          setSubmitError(null);
+          setClaimMessage(null);
+          setSubmitSuccess(false);
+          setCompetitionAttachMessage(null);
+        }}
+        autoCloseMs={toastAutoCloseForVariant(scoreToastVariant)}
+      />
+
+      <BrandedNotice
+        open={authNotice != null}
+        onOpenChange={(open) => {
+          if (!open) setAuthNotice(null);
+        }}
+        title={authNotice?.title ?? ""}
+        description={authNotice?.description}
+        variant="danger"
+        primaryLabel="OK"
+        onPrimary={() => setAuthNotice(null)}
+      />
     </main>
   );
 }

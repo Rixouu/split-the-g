@@ -2,9 +2,9 @@ import { Link, useLoaderData } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import {
   PageHeader,
+  feedPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
 } from "~/components/PageHeader";
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
@@ -51,8 +51,8 @@ export default function Feed() {
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Feed" description={standardPageDescription}>
-          <Link to="/" className={pageHeaderActionButtonClass}>
+        <PageHeader title="Feed" description={feedPageDescription}>
+          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
             New pour
           </Link>
         </PageHeader>
@@ -67,6 +67,8 @@ export default function Feed() {
               <li key={row.id} className="min-w-0">
                 <Link
                   to={scorePourPathFromFields(row)}
+                  prefetch="intent"
+                  viewTransition
                   className="group block overflow-hidden rounded-lg border border-guinness-gold/15 bg-guinness-brown/30 transition-colors hover:border-guinness-gold/35"
                 >
                   <div className="aspect-[3/4] bg-guinness-black/60">

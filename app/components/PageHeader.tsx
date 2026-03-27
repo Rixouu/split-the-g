@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Shared under page titles — keep copy identical wherever this appears. */
-export const standardPageDescription =
-  "Public or private challenges with live leaderboards. Invite by email or add friends from Profile.";
+export * from "./page-descriptions";
 
 export interface PageHeaderProps {
   title: string;

@@ -3,9 +3,9 @@ import { Link } from "react-router";
 import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
 import {
   PageHeader,
+  faqPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
 } from "~/components/PageHeader";
 
 export function meta() {
@@ -133,9 +133,9 @@ export default function FAQ() {
       <div className={pageShellClass}>
         <PageHeader
           title="Frequently asked questions"
-          description={standardPageDescription}
+          description={faqPageDescription}
         >
-          <Link to="/" className={pageHeaderActionButtonClass}>
+          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
             Back to Split
           </Link>
         </PageHeader>
@@ -144,7 +144,7 @@ export default function FAQ() {
           {faqItems.map((item) => (
             <details
               key={item.question}
-              className="group rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 transition-colors open:border-guinness-gold/35 open:bg-guinness-brown/60"
+              className="group rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 transition-[border-color,background-color] duration-200 open:border-guinness-gold/35 open:bg-guinness-brown/60"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-left [&::-webkit-details-marker]:hidden">
                 <span className="pr-2 text-base font-semibold text-guinness-gold sm:text-lg">
@@ -154,7 +154,7 @@ export default function FAQ() {
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  className="h-5 w-5 flex-shrink-0 text-guinness-tan transition-transform duration-200 group-open:rotate-180"
+                  className="h-5 w-5 shrink-0 text-guinness-tan transition-transform duration-300 ease-out group-open:rotate-180"
                   aria-hidden
                 >
                   <path
@@ -164,15 +164,23 @@ export default function FAQ() {
                   />
                 </svg>
               </summary>
-              <div className="type-body border-t border-guinness-gold/15 px-4 pb-4 pt-3 leading-relaxed text-guinness-tan/90">
-                {item.answer}
+              <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none group-open:grid-rows-[1fr]">
+                <div className="min-h-0 overflow-hidden">
+                  <div className="type-body border-t border-guinness-gold/15 px-4 pb-4 pt-3 leading-relaxed text-guinness-tan/90">
+                    {item.answer}
+                  </div>
+                </div>
               </div>
             </details>
           ))}
         </div>
 
         <div className="mt-12 flex justify-center pb-8">
-          <Link to="/" className={`${pageHeaderActionButtonClass} w-full max-w-xs sm:w-auto`}>
+          <Link
+            to="/"
+            viewTransition
+            className={`${pageHeaderActionButtonClass} w-full max-w-xs sm:w-auto`}
+          >
             Back to Split
           </Link>
         </div>

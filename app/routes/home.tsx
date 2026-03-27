@@ -6,7 +6,6 @@ import {
   useLoaderData,
   useSearchParams,
 } from "react-router";
-import { QRCode } from "~/components/QRCode";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import { PintGlassOverlay } from "~/components/PintGlassOverlay";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
@@ -22,7 +21,7 @@ import { SubmissionsButton } from "~/components/leaderboard/SubmissionsButton";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { getLocationData } from "~/utils/locationService";
 import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
-import { standardPageDescription } from "~/components/PageHeader";
+import { homePageDescription } from "~/components/PageHeader";
 import * as crypto from "crypto";
 import {
   extractDetectionsFromWorkflow,
@@ -381,7 +380,6 @@ export default function Home() {
   const [searchParams] = useSearchParams();
   const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [showQRCode, setShowQRCode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** Holds the active stream so we can stop tracks on unmount / tab hide even if the video node is gone. */
@@ -657,39 +655,6 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-start bg-guinness-black text-guinness-cream">
-      {/* QR Code Modal */}
-      {showQRCode && (
-        <div
-          className="fixed inset-0 bg-guinness-black/95 flex items-center justify-center z-50"
-          onClick={() => setShowQRCode(false)}
-        >
-          <div className="relative max-w-[90vw] max-h-[90vh]">
-            <QRCode className="w-full h-full object-contain" />
-            <button
-              onClick={() => setShowQRCode(false)}
-              aria-label="Close QR code modal"
-              title="Close"
-              className="absolute top-4 right-4 text-guinness-gold hover:text-guinness-tan transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* FAQ Button — desktop only (mobile: use nav on other routes or /faq URL) */}
       <a
         href="/faq"
@@ -711,36 +676,6 @@ export default function Home() {
         </svg>
         <span className="text-sm">FAQ</span>
       </a>
-
-      {/* QR Code Icon — desktop only */}
-      <button
-        type="button"
-        onClick={() => setShowQRCode(true)}
-        aria-label="Show QR code"
-        title="Show QR code"
-        className="fixed top-4 right-4 z-40 hidden rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-2 text-guinness-gold transition-colors hover:bg-guinness-gold/20 md:block"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 3h6v6H3V3zm12 0h6v6h-6V3zM3 15h6v6H3v-6zm12 0h6v6h-6v-6z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 9h2v2H9V9zm4 0h2v2h-2V9zm0 4h2v2h-2v-2z"
-          />
-        </svg>
-      </button>
 
       {isUploadProcessing && (
         <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
@@ -790,7 +725,7 @@ export default function Home() {
             <SplitTheGLogo />
             <div className="h-px w-20 bg-guinness-gold/50 md:w-28" aria-hidden />
             <p className="type-body-muted mx-auto max-w-2xl text-base font-normal leading-relaxed text-guinness-tan/85 md:text-lg">
-              {standardPageDescription}
+              {homePageDescription}
             </p>
             <div className="flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
               <LeaderboardButton className="min-h-11 w-full justify-center sm:w-auto" />

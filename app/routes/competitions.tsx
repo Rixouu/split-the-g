@@ -9,10 +9,15 @@ import {
 } from "react";
 import {
   PageHeader,
+  competitionsOpenListingsDescription,
+  competitionsPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
 } from "~/components/PageHeader";
+import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
+import { BrandedNotice } from "~/components/branded/BrandedNotice";
+import { BrandedToast } from "~/components/branded/BrandedToast";
+import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 import { supabase } from "~/utils/supabase";
 
 export type CompetitionRow = {
@@ -116,6 +121,11 @@ export default function Competitions() {
   const [createWinRule, setCreateWinRule] = useState<WinRuleChoice>("highest_score");
   const [createTargetScore, setCreateTargetScore] = useState("2.50");
   const [formError, setFormError] = useState<string | null>(null);
+  const [uiToast, setUiToast] = useState<{
+    text: string;
+    variant: BrandedNoticeVariant;
+  } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CompetitionRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -387,6 +397,10 @@ export default function Competitions() {
       setStartsAt("");
       setEndsAt("");
       revalidator.revalidate();
+      setUiToast({
+        text: "Competition created. You’re on the board.",
+        variant: "success",
+      });
     } finally {
       setSaving(false);
     }
@@ -459,20 +473,29 @@ export default function Competitions() {
 
       cancelEdit();
       revalidator.revalidate();
+      setUiToast({
+        text: "Competition updated.",
+        variant: "success",
+      });
     } finally {
       setEditBusy(false);
     }
   }
 
-  async function handleDelete(c: CompetitionRow) {
+  async function requestDeleteCompetition(c: CompetitionRow) {
     setFormError(null);
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user || userData.user.id !== c.created_by) {
       setFormError("You can only delete your own competition.");
       return;
     }
-    if (!confirm(`Delete “${c.title}”? This cannot be undone.`)) return;
+    setDeleteTarget(c);
+  }
 
+  async function confirmDeleteCompetition() {
+    if (!deleteTarget) return;
+    const c = deleteTarget;
+    setDeleteTarget(null);
     const { error } = await supabase.from("competitions").delete().eq("id", c.id);
     if (error) {
       setFormError(error.message);
@@ -480,6 +503,10 @@ export default function Competitions() {
     }
     if (editing?.id === c.id) cancelEdit();
     revalidator.revalidate();
+    setUiToast({
+      text: "Competition deleted.",
+      variant: "success",
+    });
   }
 
   async function handleJoin(compId: string) {
@@ -507,6 +534,7 @@ export default function Competitions() {
     }
     setJoinedIds((prev) => new Set(prev).add(compId));
     revalidator.revalidate();
+    setUiToast({ text: "You’ve joined this competition.", variant: "success" });
   }
 
   async function handleLeave(compId: string) {
@@ -530,6 +558,7 @@ export default function Competitions() {
       return next;
     });
     revalidator.revalidate();
+    setUiToast({ text: "You’ve left this competition.", variant: "info" });
   }
 
   async function addEmailInvite(compId: string) {
@@ -554,6 +583,10 @@ export default function Competitions() {
     }
     setInviteInputs((prev) => ({ ...prev, [compId]: "" }));
     revalidator.revalidate();
+    setUiToast({
+      text: "Invite sent. They’ll see it when they sign up with that email.",
+      variant: "success",
+    });
   }
 
   async function removeInvite(compId: string, inviteId: string) {
@@ -562,7 +595,10 @@ export default function Competitions() {
       .delete()
       .eq("id", inviteId);
     if (error) setFormError(error.message);
-    else revalidator.revalidate();
+    else {
+      revalidator.revalidate();
+      setUiToast({ text: "Invite removed.", variant: "info" });
+    }
   }
 
   async function addFriendParticipant(compId: string, friendUserId: string) {
@@ -572,17 +608,37 @@ export default function Competitions() {
       user_id: friendUserId,
     });
     if (error) setFormError(error.message);
-    else revalidator.revalidate();
+    else {
+      revalidator.revalidate();
+      setUiToast({
+        text: "Friend added to this competition.",
+        variant: "success",
+      });
+    }
   }
 
   const fieldClass =
     "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
 
+  const toastOpen = Boolean(formError || uiToast);
+  const toastMessage = uiToast?.text ?? formError ?? "";
+  const toastVariant = uiToast?.variant ?? "danger";
+  const toastAuto =
+    uiToast != null
+      ? toastAutoCloseForVariant(uiToast.variant)
+      : formError
+        ? 9000
+        : undefined;
+
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Competitions" description={standardPageDescription}>
-          <Link to="/profile" className={pageHeaderActionButtonClass}>
+        <PageHeader title="Competitions" description={competitionsPageDescription}>
+          <Link
+            to="/profile"
+            viewTransition
+            className={pageHeaderActionButtonClass}
+          >
             Profile & friends
           </Link>
         </PageHeader>
@@ -721,9 +777,6 @@ export default function Competitions() {
                   className={fieldClass}
                 />
               </div>
-              {formError ? (
-                <p className="text-sm text-red-400/90">{formError}</p>
-              ) : null}
               <div className="flex flex-wrap gap-2">
                 <button
                   type="submit"
@@ -884,9 +937,6 @@ export default function Competitions() {
                 competition. Add friends from Profile after they accept your
                 request.
               </p>
-              {formError && !editing ? (
-                <p className="text-sm text-red-400/90">{formError}</p>
-              ) : null}
               <button
                 type="submit"
                 disabled={saving}
@@ -902,7 +952,7 @@ export default function Competitions() {
               <div className="min-w-0">
                 <h2 className="type-card-title">Open listings</h2>
                 <p className="type-meta mt-1 max-w-2xl text-guinness-tan/75">
-                  {standardPageDescription}
+                  {competitionsOpenListingsDescription}
                 </p>
               </div>
               <p className="type-meta shrink-0 text-guinness-tan/60">
@@ -978,7 +1028,7 @@ export default function Competitions() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => void handleDelete(c)}
+                                  onClick={() => void requestDeleteCompetition(c)}
                                   className="w-full rounded-lg border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-400/90 hover:bg-red-950/30 sm:w-auto sm:py-1.5"
                                 >
                                   Delete
@@ -1148,6 +1198,35 @@ export default function Competitions() {
           </section>
         </div>
       </div>
+
+      <BrandedToast
+        open={toastOpen}
+        message={toastMessage}
+        variant={toastVariant}
+        title={
+          formError && !uiToast ? "Couldn’t complete that" : undefined
+        }
+        onClose={() => {
+          setFormError(null);
+          setUiToast(null);
+        }}
+        autoCloseMs={toastAuto}
+      />
+
+      <BrandedNotice
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget ? `Delete “${deleteTarget.title}”?` : "Delete competition?"
+        }
+        description="This cannot be undone. Invites and participant links for this competition will be removed."
+        variant="danger"
+        secondaryLabel="Keep competition"
+        primaryLabel="Delete competition"
+        onPrimary={() => void confirmDeleteCompetition()}
+      />
     </main>
   );
 }

@@ -9,6 +9,8 @@ export function SubmissionsButton({ className = "" }: SubmissionsButtonProps) {
   return (
     <Link
       to="/wall"
+      prefetch="intent"
+      viewTransition
       className={`${pageHeaderActionButtonClass} ${className}`.trim()}
     >
       View Submissions

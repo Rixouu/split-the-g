@@ -2,9 +2,9 @@ import { type LoaderFunction } from "react-router";
 import { useLoaderData, Link } from "react-router";
 import {
   PageHeader,
+  leaderboardPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
 } from "~/components/PageHeader";
 import { supabase } from "~/utils/supabase";
 import { SubmissionsButton } from "~/components/leaderboard/SubmissionsButton";
@@ -44,7 +44,7 @@ export default function Leaderboard() {
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Top splits this week" description={standardPageDescription}>
+        <PageHeader title="Top splits this week" description={leaderboardPageDescription}>
           <SubmissionsButton />
         </PageHeader>
 
@@ -53,6 +53,8 @@ export default function Leaderboard() {
             <Link
               key={entry.id}
               to={scorePourPathFromFields(entry)}
+              prefetch="intent"
+              viewTransition
               className="mb-4 block rounded-2xl border border-guinness-gold/15 bg-guinness-brown/35 p-4 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/50 sm:p-5"
             >
               <div className="flex items-center gap-3 sm:gap-5">
@@ -70,8 +72,8 @@ export default function Leaderboard() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-lg font-semibold text-guinness-cream sm:text-2xl">
                         {entry.username}
                       </p>
@@ -79,11 +81,13 @@ export default function Leaderboard() {
                         {new Date(entry.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="shrink-0 text-left sm:text-right">
-                      <p className="text-3xl font-bold tabular-nums text-guinness-gold">
+                    <div className="shrink-0 text-right">
+                      <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
                         {entry.split_score.toFixed(2)}
                       </p>
-                      <p className="type-meta text-guinness-tan/60">out of 5.0</p>
+                      <p className="type-meta whitespace-nowrap text-guinness-tan/60">
+                        out of 5.0
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -93,7 +97,7 @@ export default function Leaderboard() {
         </div>
 
         <div className="mt-8 flex justify-center">
-          <Link to="/" className={pageHeaderActionButtonClass}>
+          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
             Back to Split
           </Link>
         </div>

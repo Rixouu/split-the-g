@@ -51,6 +51,81 @@ body {
   }
 }
 
+/* Branded overlays (notice + toast) */
+@keyframes branded-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes branded-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes branded-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-branded-backdrop-in {
+  animation: branded-backdrop-in 0.2s ease-out forwards;
+}
+
+.animate-branded-panel-in {
+  animation: branded-panel-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-branded-toast-in {
+  animation: branded-toast-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* SPA route transitions (View Transitions API + React Router) */
+@supports (view-transition-name: none) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.24s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  ::view-transition-old(root) {
+    animation-name: stg-route-out;
+  }
+
+  ::view-transition-new(root) {
+    animation-name: stg-route-in;
+  }
+}
+
+@keyframes stg-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes stg-route-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 .profile-progress-shell {
   position: relative;
   display: flex;

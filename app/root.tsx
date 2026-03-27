@@ -15,6 +15,8 @@ import {
   AppNavigation,
   shouldShowAppNav,
 } from "~/components/AppNavigation";
+import { GoogleMapsScript } from "~/components/GoogleMapsScript";
+import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
 
 declare global {
   interface Window {
@@ -58,6 +60,8 @@ export default function App() {
   const { pathname } = useLocation();
   const padForShellNav = shouldShowAppNav(pathname);
   const mapsKey = env.GOOGLE_PLACES_API_KEY ?? "";
+  const mapsScriptActive =
+    Boolean(mapsKey) && pathnameNeedsGoogleMapsScript(pathname);
 
   return (
     <html lang="en">
@@ -75,7 +79,7 @@ export default function App() {
           id="root"
           className={
             padForShellNav
-              ? "min-h-dvh pb-[10rem] pt-0 md:pb-0 md:pt-[3.75rem]"
+              ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-0 md:pb-0 md:pt-[3.75rem]"
               : "min-h-dvh"
           }
         >
@@ -96,17 +100,11 @@ export default function App() {
           }}
         />
         {/*
-          Google Maps JS: enable "Maps JavaScript API" and "Places API (New)", billing, and
-          HTTP referrer restrictions that include your dev origin (e.g. http://localhost:5173/*)
-          and production URL. InvalidKeyMapError in the console means the key or APIs/restrictions
-          are misconfigured in Google Cloud Console — not an app bug.
+          Maps JS loads only on /profile and /pour/* via GoogleMapsScript (see google-maps-routes).
+          Enable Maps JavaScript API + Places API (New), billing, and referrer restrictions.
         */}
         {mapsKey ? (
-          <script
-            async
-            defer
-            src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(mapsKey)}&libraries=places&v=weekly&loading=async`}
-          />
+          <GoogleMapsScript apiKey={mapsKey} active={mapsScriptActive} />
         ) : null}
       </body>
     </html>

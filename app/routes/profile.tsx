@@ -5,8 +5,14 @@ import {
   PageHeader,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
+  profilePageDescription,
 } from "~/components/PageHeader";
+import { BrandedNotice } from "~/components/branded/BrandedNotice";
+import { BrandedToast } from "~/components/branded/BrandedToast";
+import {
+  feedbackVariantFromMessage,
+  toastAutoCloseForVariant,
+} from "~/components/branded/feedback-variant";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
@@ -179,6 +185,11 @@ export default function Profile() {
   const [favName, setFavName] = useState("");
   const [favAddress, setFavAddress] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+  const [authNotice, setAuthNotice] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<ProfileTab>("progress");
   const [friendEmail, setFriendEmail] = useState("");
@@ -533,15 +544,22 @@ export default function Profile() {
 
   const signInGoogle = async () => {
     setMessage(null);
+    setAuthNotice(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.href },
     });
-    if (error) setMessage("Sign-in failed. Try again.");
+    if (error) {
+      setAuthNotice({
+        title: "Sign-in didn’t work",
+        description:
+          error.message?.trim() ||
+          "We couldn’t start Google sign-in. Try again in a moment.",
+      });
+    }
   };
 
   const signOut = async () => {
-    setMessage(null);
     await supabase.auth.signOut();
     setScores([]);
     setFavorites([]);
@@ -834,18 +852,14 @@ export default function Profile() {
 
   const inputClass =
     "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
-  const messageTone =
-    message === "Profile saved."
-      ? "text-emerald-400/90"
-      : message?.startsWith("Request saved, but")
-        ? "text-amber-300/90"
-        : "text-red-400/90";
+
+  const messageVariant = message ? feedbackVariantFromMessage(message) : "info";
 
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Profile" description={standardPageDescription}>
-          <Link to="/" className={pageHeaderActionButtonClass}>
+        <PageHeader title="Profile" description={profilePageDescription}>
+          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
             New pour
           </Link>
         </PageHeader>
@@ -934,7 +948,7 @@ export default function Profile() {
               <div className="mt-5 border-t border-guinness-gold/10 pt-4">
                 <button
                   type="button"
-                  onClick={() => void signOut()}
+                  onClick={() => setSignOutConfirmOpen(true)}
                   className="w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-3 text-sm font-semibold text-guinness-tan transition-colors hover:border-guinness-gold/50 hover:bg-guinness-brown/55 hover:text-guinness-cream"
                 >
                   Sign out
@@ -1197,6 +1211,8 @@ export default function Profile() {
                       <li key={s.id}>
                         <Link
                           to={scorePourPathFromFields(s)}
+                          prefetch="intent"
+                          viewTransition
                           className="block rounded-xl border border-guinness-gold/15 bg-guinness-brown/30 p-4 transition-colors hover:border-guinness-gold/35"
                         >
                           <div className="flex items-baseline justify-between gap-2">
@@ -1467,15 +1483,52 @@ export default function Profile() {
           </div>
         )}
 
-        {message ? (
-          <p className={`type-meta mt-6 text-center ${messageTone}`}>
-            {message}
-          </p>
-        ) : null}
+        <BrandedToast
+          open={Boolean(message)}
+          message={message ?? ""}
+          variant={messageVariant}
+          title={
+            messageVariant === "danger"
+              ? "Couldn’t complete that"
+              : messageVariant === "warning"
+                ? "Heads up"
+                : undefined
+          }
+          onClose={() => setMessage(null)}
+          autoCloseMs={toastAutoCloseForVariant(messageVariant)}
+        />
+
+        <BrandedNotice
+          open={signOutConfirmOpen}
+          onOpenChange={setSignOutConfirmOpen}
+          title="Sign out?"
+          description="You’ll need to sign in again to manage your profile, friends, and favorites."
+          variant="warning"
+          secondaryLabel="Stay signed in"
+          primaryLabel="Sign out"
+          onPrimary={async () => {
+            setSignOutConfirmOpen(false);
+            await signOut();
+            setMessage("Signed out successfully.");
+          }}
+        />
+
+        <BrandedNotice
+          open={authNotice != null}
+          onOpenChange={(open) => {
+            if (!open) setAuthNotice(null);
+          }}
+          title={authNotice?.title ?? ""}
+          description={authNotice?.description}
+          variant="danger"
+          primaryLabel="OK"
+          onPrimary={() => setAuthNotice(null)}
+        />
 
         <div className="mt-10 flex justify-center">
           <Link
             to="/"
+            viewTransition
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-guinness-gold/25 px-5 py-2.5 text-sm font-medium text-guinness-gold hover:bg-guinness-brown/50"
           >
             Back to pour

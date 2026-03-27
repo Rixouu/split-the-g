@@ -3,10 +3,15 @@ import type { LoaderFunctionArgs } from "react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   PageHeader,
+  competitionDetailPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
-  standardPageDescription,
 } from "~/components/PageHeader";
+import { BrandedToast } from "~/components/branded/BrandedToast";
+import {
+  competitionDetailMessageVariant,
+  toastAutoCloseForVariant,
+} from "~/components/branded/feedback-variant";
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import type { CompetitionRow } from "~/routes/competitions";
@@ -394,6 +399,7 @@ export default function CompetitionDetail() {
       setJoined(true);
       revalidator.revalidate();
       void refreshAll();
+      setMessage("You’re in! Welcome to the competition.");
     }
   }
 
@@ -411,6 +417,7 @@ export default function CompetitionDetail() {
       setJoined(false);
       revalidator.revalidate();
       void refreshAll();
+      setMessage("You’ve left this competition.");
     }
   }
 
@@ -432,6 +439,7 @@ export default function CompetitionDetail() {
     else {
       revalidator.revalidate();
       void refreshAll();
+      setMessage("Pour submitted to this competition.");
     }
   }
 
@@ -444,7 +452,11 @@ export default function CompetitionDetail() {
       <main className="min-h-screen bg-guinness-black text-guinness-cream">
         <div className={pageShellClass}>
           <p className="type-meta text-red-400/90">{loadError}</p>
-          <Link to="/competitions" className="mt-4 inline-block text-guinness-gold underline">
+          <Link
+            to="/competitions"
+            viewTransition
+            className="mt-4 inline-block text-guinness-gold underline"
+          >
             Back to competitions
           </Link>
         </div>
@@ -475,8 +487,12 @@ export default function CompetitionDetail() {
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title={competition.title} description={standardPageDescription}>
-          <Link to="/competitions" className={pageHeaderActionButtonClass}>
+        <PageHeader title={competition.title} description={competitionDetailPageDescription}>
+          <Link
+            to="/competitions"
+            viewTransition
+            className={pageHeaderActionButtonClass}
+          >
             All competitions
           </Link>
         </PageHeader>
@@ -540,10 +556,6 @@ export default function CompetitionDetail() {
           </dl>
         </div>
 
-        {message ? (
-          <p className="type-meta mb-4 text-red-400/90">{message}</p>
-        ) : null}
-
         <div className="mb-8 flex w-full flex-wrap items-center justify-center gap-2">
           {!userId ? (
             <p className="type-meta text-guinness-tan/70">
@@ -561,6 +573,7 @@ export default function CompetitionDetail() {
               {canSubmit ? (
                 <Link
                   to={`/?competition=${encodeURIComponent(competitionId)}`}
+                  viewTransition
                   className={pageHeaderActionButtonClass}
                 >
                   New pour for comp
@@ -632,6 +645,7 @@ export default function CompetitionDetail() {
                 <li key={r.userId}>
                   <Link
                     to={r.pourPath}
+                    viewTransition
                     className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-guinness-gold/15 bg-guinness-brown/35 px-4 py-3 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold"
                   >
                     <div className="flex min-w-0 items-center gap-3">
@@ -663,6 +677,29 @@ export default function CompetitionDetail() {
           )}
         </section>
       </div>
+
+      <BrandedToast
+        open={Boolean(message)}
+        message={message ?? ""}
+        variant={
+          message ? competitionDetailMessageVariant(message) : "info"
+        }
+        title={
+          message && competitionDetailMessageVariant(message) === "danger"
+            ? "Couldn’t complete that"
+            : message && competitionDetailMessageVariant(message) === "warning"
+              ? "Sign in required"
+              : undefined
+        }
+        onClose={() => setMessage(null)}
+        autoCloseMs={
+          message
+            ? toastAutoCloseForVariant(
+                competitionDetailMessageVariant(message),
+              )
+            : undefined
+        }
+      />
     </main>
   );
 }

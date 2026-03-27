@@ -1,5 +1,8 @@
 import { NavLink, useLocation } from "react-router";
 
+/** Prefetch loader payloads and lazy chunks on hover, focus, or touch (before click). */
+const LINK_PREFETCH = "intent" as const;
+
 const primaryItems: { to: string; label: string; end?: boolean }[] = [
   { to: "/", label: "Pour", end: true },
   { to: "/feed", label: "Feed" },
@@ -15,10 +18,11 @@ const secondaryItems: { to: string; label: string }[] = [
   { to: "/faq", label: "FAQ" },
 ];
 
-/** Mobile dock second row — Wall + Leaderboard (no FAQ in dock) */
+/** Mobile dock second row — matches desktop “More” links (compact labels where needed) */
 const mobileSecondaryItems: { to: string; label: string }[] = [
   { to: "/wall", label: "Wall" },
-  { to: "/leaderboard", label: "Leaderboard" },
+  { to: "/leaderboard", label: "Ranks" },
+  { to: "/faq", label: "FAQ" },
 ];
 
 /** Mobile dock: four corner tabs; Pour is the center FAB */
@@ -95,39 +99,80 @@ function IconUser({ className }: { className?: string }) {
   );
 }
 
-function IconWall({ className }: { className?: string }) {
+/** Stacked frames — reads as photo gallery / collection */
+function IconWallGallery({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       aria-hidden
     >
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="5" width="14" height="14" rx="2" />
+      <rect x="7" y="3" width="14" height="14" rx="2" />
+      <path d="M10 8.5h8M10 11.5h6" opacity={0.85} />
+      <circle cx="17" cy="7.5" r="1.25" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-function IconLeaderboard({ className }: { className?: string }) {
+/** Podium ranks — center bar tallest */
+function IconPodium({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       aria-hidden
     >
-      <path d="M12 15v6M8 21h8M6 10h12M4 10V6a2 2 0 0 1 2-2h2v6H4zm0 0h4m8 0h4m0 0V6a2 2 0 0 0-2-2h-2v6h4" />
+      <path d="M4 18V12h4v6M10 18V8h4v10M16 18v-4h4v4" />
+      <path d="M3 18.5h18" />
+      <path d="M11 6.5h2M12 5.5v2" />
     </svg>
   );
+}
+
+function IconHelpCircle({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 0 1 4.2-1.7c.6.6.9 1.4.8 2.2-.1 1.2-1 2-2.5 2.5V14" />
+      <path d="M12 16.5h.01" strokeWidth={2.5} />
+    </svg>
+  );
+}
+
+function secondaryDockIcon(to: string, className: string) {
+  switch (to) {
+    case "/wall":
+      return <IconWallGallery className={className} />;
+    case "/leaderboard":
+      return <IconPodium className={className} />;
+    case "/faq":
+      return <IconHelpCircle className={className} />;
+    default:
+      return null;
+  }
 }
 
 const dockIconClass = "h-[1.125rem] w-[1.125rem] shrink-0";
@@ -204,6 +249,8 @@ export function AppNavigation() {
           <div className="mx-auto flex h-[3.75rem] max-w-6xl items-center gap-4 px-4 lg:px-8">
             <NavLink
               to="/"
+              prefetch={LINK_PREFETCH}
+              viewTransition
               className="group shrink-0 text-[0.8125rem] font-bold uppercase tracking-[0.12em] text-guinness-cream transition-colors hover:text-guinness-gold"
             >
               Split the G
@@ -219,6 +266,8 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     end={end}
+                    prefetch={LINK_PREFETCH}
+                    viewTransition
                     className={({ isActive }) =>
                       `${deskPill} ${isActive ? deskActive : deskIdle}`
                     }
@@ -235,6 +284,8 @@ export function AppNavigation() {
                   <NavLink
                     key={to}
                     to={to}
+                    prefetch={LINK_PREFETCH}
+                    viewTransition
                     className={({ isActive }) =>
                       `${deskPill} text-xs ${isActive ? deskActive : deskIdle}`
                     }
@@ -253,11 +304,13 @@ export function AppNavigation() {
         className="fixed bottom-3 left-3 right-3 z-50 md:hidden"
         aria-label="Main"
       >
-        <div className="relative mx-auto max-w-md">
+        <div className="relative mx-auto w-full max-w-md min-w-0">
           <NavLink
             to="/"
             end
             title="Pour"
+            prefetch={LINK_PREFETCH}
+            viewTransition
             className={({ isActive }) =>
               [
                 "absolute left-1/2 top-0 z-10 flex h-[4.25rem] w-[4.25rem] -translate-x-1/2 -translate-y-[40%] flex-col items-center justify-center gap-0.5 rounded-full border-2 border-guinness-black/30 bg-guinness-gold text-[10px] font-bold uppercase leading-none tracking-wide text-guinness-black shadow-[0_8px_28px_rgba(0,0,0,0.45),0_0_0_1px_rgba(197,160,89,0.35)] transition-transform duration-200 active:scale-95",
@@ -270,13 +323,15 @@ export function AppNavigation() {
             <IconPint className="h-5 w-5" />
             <span className="mt-0.5">Pour</span>
           </NavLink>
-          <div className="rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
+          <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
             <ul className="flex list-none items-stretch gap-0.5">
               <li className="flex min-w-0 flex-1 gap-0.5">
                 {mobileDockItems.slice(0, 2).map(({ to, label }) => (
                   <NavLink
                     key={to}
                     to={to}
+                    prefetch={LINK_PREFETCH}
+                    viewTransition
                     className={({ isActive }) =>
                       `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
                     }
@@ -295,6 +350,8 @@ export function AppNavigation() {
                   <NavLink
                     key={to}
                     to={to}
+                    prefetch={LINK_PREFETCH}
+                    viewTransition
                     className={({ isActive }) =>
                       `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
                     }
@@ -305,21 +362,29 @@ export function AppNavigation() {
                 ))}
               </li>
             </ul>
-            <div className="mt-1 flex items-center justify-center gap-3 border-t border-guinness-gold/10 pt-1.5">
+            <div className="mt-1 flex w-full flex-row gap-0.5 border-t border-guinness-gold/10 pt-1.5">
               {mobileSecondaryItems.map(({ to, label }) => (
                 <NavLink
                   key={to}
                   to={to}
+                  prefetch={LINK_PREFETCH}
+                  viewTransition
+                  title={
+                    to === "/leaderboard" ? "Leaderboard" : to === "/faq" ? "FAQ" : "Wall"
+                  }
+                  aria-label={
+                    to === "/leaderboard"
+                      ? "Leaderboard"
+                      : to === "/faq"
+                        ? "FAQ"
+                        : "Wall"
+                  }
                   className={({ isActive }) =>
-                    `flex items-center gap-1 rounded-full px-2 py-1.5 text-[9px] font-semibold uppercase tracking-wide transition-colors sm:text-[10px] ${isActive ? "bg-guinness-gold/20 text-guinness-gold" : "text-guinness-tan/50 hover:text-guinness-tan"}`
+                    `flex min-h-[2.75rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1 text-[8px] font-semibold uppercase leading-tight tracking-wide transition-colors sm:px-1 sm:text-[9px] ${isActive ? "bg-guinness-gold/20 text-guinness-gold" : "text-guinness-tan/50 hover:text-guinness-tan"}`
                   }
                 >
-                  {to === "/wall" ? (
-                    <IconWall className="h-3.5 w-3.5 shrink-0" />
-                  ) : (
-                    <IconLeaderboard className="h-3.5 w-3.5 shrink-0" />
-                  )}
-                  {label}
+                  {secondaryDockIcon(to, "h-[1.125rem] w-[1.125rem] shrink-0")}
+                  <span className="w-full text-center leading-none">{label}</span>
                 </NavLink>
               ))}
             </div>
