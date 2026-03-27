@@ -1,37 +1,83 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSubmit, useActionData, redirect } from "react-router";
-import { RoboflowLogo } from "../components/RoboflowLogo";
-import { PintGlassOverlay } from "../components/PintGlassOverlay";
-import type { ActionFunctionArgs } from "react-router";
-import { calculateScore, calculateScoreFromPredictions } from "~/utils/scoring";
+import {
+  useSubmit,
+  useActionData,
+  redirect,
+  useLoaderData,
+  useSearchParams,
+} from "react-router";
+import { QRCode } from "~/components/QRCode";
+import { SplitTheGLogo } from "~/components/SplitTheGLogo";
+import { PintGlassOverlay } from "~/components/PintGlassOverlay";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import type {
+  InferenceEngine as RoboflowInferenceEngine,
+  InferencePrediction,
+} from "inferencejs";
+import { calculateScore } from "~/utils/scoring";
 import { uploadImage } from "~/utils/imageStorage";
 import { supabase } from "~/utils/supabase";
-import { LeaderboardButton } from "../components/LeaderboardButton";
-import { SubmissionsButton } from "../components/SubmissionsButton";
+import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
+import { SubmissionsButton } from "~/components/leaderboard/SubmissionsButton";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { getLocationData } from "~/utils/locationService";
-import { CountryLeaderboardButton } from "../components/CountryLeaderboard";
+import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
+import { standardPageDescription } from "~/components/PageHeader";
+import * as crypto from "crypto";
+import {
+  extractDetectionsFromWorkflow,
+  extractWorkflowOutputImageByNames,
+  extractPreferredWorkflowImageBase64,
+  predictionsIncludeClass,
+  runServerlessWorkflow,
+  stripBase64ImagePayload,
+  toLegacyScoringOutputs,
+} from "~/utils/roboflowWorkflow";
+import { cropGCloseupBase64 } from "~/utils/gCloseupCrop";
+import { generatePourSlug } from "~/utils/pourSlug";
+import { scorePourPath } from "~/utils/scorePath";
 
 const isClient = typeof window !== "undefined";
 
-// Generate a UUID that works in both Node.js and browser environments
-function generateUUID() {
-  // On the server (Node.js)
-  if (typeof window === 'undefined') {
-    try {
-      const { randomUUID } = require('crypto');
-      return randomUUID();
-    } catch (e) {
-      console.error("Failed to use Node crypto", e);
-    }
-  }
-  
-  // In the browser or fallback
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+/**
+ * Roboflow workflow API base. Official Deploy snippets often use `https://detect.roboflow.com`;
+ * some use `https://serverless.roboflow.com` — paths differ; `buildWorkflowInferUrl` handles both.
+ */
+const ROBOFLOW_API_BASE_URL =
+  import.meta.env.VITE_ROBOFLOW_API_URL ?? "https://detect.roboflow.com";
+const ROBOFLOW_WORKSPACE = import.meta.env.VITE_ROBOFLOW_WORKSPACE ?? "";
+const ROBOFLOW_WORKFLOW_ID = import.meta.env.VITE_ROBOFLOW_WORKFLOW_ID ?? "";
+/** Paste full infer URL from Deploy if 404 (overrides base + workspace + id). */
+const ROBOFLOW_WORKFLOW_INFER_URL =
+  import.meta.env.VITE_ROBOFLOW_WORKFLOW_INFER_URL ?? "";
+const ROBOFLOW_WORKFLOW_VERSION_ID =
+  import.meta.env.VITE_ROBOFLOW_WORKFLOW_VERSION_ID ?? "";
+
+const ROBOFLOW_USE_SERVERLESS = Boolean(ROBOFLOW_WORKSPACE && ROBOFLOW_WORKFLOW_ID);
+
+/** Legacy: `workspace-id/workflow-id` on detect.roboflow.com — only if serverless env is not set. */
+const ROBOFLOW_LEGACY_WORKFLOW_PATH =
+  import.meta.env.VITE_ROBOFLOW_WORKFLOW ?? "hunter-diminick/split-g-scoring";
+
+/** inferencejs (browser) — Roboflow Publishable key (`rf_...`); optional override, else falls back to VITE_ROBOFLOW_API_KEY. */
+const ROBOFLOW_PUBLISHABLE_KEY =
+  import.meta.env.VITE_ROBOFLOW_PUBLISHABLE_KEY ??
+  import.meta.env.VITE_ROBOFLOW_API_KEY ??
+  "";
+
+/** inferencejs (browser) — project slug + version from your model’s Deploy page (not the workflow id). */
+const ROBOFLOW_INFERENCE_MODEL =
+  import.meta.env.VITE_ROBOFLOW_INFERENCE_MODEL ?? "split-g-label-experiment";
+const ROBOFLOW_INFERENCE_VERSION =
+  import.meta.env.VITE_ROBOFLOW_INFERENCE_VERSION ?? "8";
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  // Get total splits (all-time)
+  const { count: totalSplits } = await supabase
+    .from("scores")
+    .select("*", { count: "exact", head: true });
+
+  return { totalSplits };
 }
 
 export function meta() {
@@ -44,200 +90,277 @@ export function meta() {
   ];
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const base64Image = formData.get("image") as string;
+  const competitionRaw = formData.get("competition");
+  const competitionId =
+    typeof competitionRaw === "string" && UUID_RE.test(competitionRaw.trim())
+      ? competitionRaw.trim()
+      : "";
+  const username = generateBeerUsername();
+  const sessionId = crypto.randomUUID();
+
+  // Prioritize Fly.io headers since we're using Fly hosting
+  const clientIP =
+    request.headers.get("Fly-Client-IP") ||
+    request.headers.get("fly-client-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-client-ip") ||
+    request.headers.get("fastly-client-ip") ||
+    "unknown";
+
   try {
-    const formData = await request.formData();
-    const base64Image = formData.get("image") as string;
-    const bypassFlag = formData.get("bypass");
-    
-    if (!base64Image) {
-      console.error("No image data found in form submission");
-      return {
-        success: false,
-        error: "Missing image data",
-        message: "No image was provided",
-        status: 400,
-      };
+    /** Server workflow API — use Roboflow Private API key (not publishable). Non-VITE so it is not bundled for the browser. */
+    const roboflowServerKey =
+      (typeof process !== "undefined" && process.env?.ROBOFLOW_PRIVATE_API_KEY) ||
+      import.meta.env.VITE_ROBOFLOW_API_KEY;
+    if (!roboflowServerKey) {
+      throw new Error(
+        "Missing Roboflow server key. Set ROBOFLOW_PRIVATE_API_KEY (Private API key) in .env.local, or temporarily VITE_ROBOFLOW_API_KEY. Restart dev server.",
+      );
     }
-    
-    const username = generateBeerUsername();
-    const sessionId = generateUUID();
 
-    console.log("Processing image submission...");
-    console.log("Headers:", Object.fromEntries(request.headers.entries()));
-    console.log("Bypass flag present:", !!bypassFlag);
+    const imagePayload = stripBase64ImagePayload(base64Image);
+    let splitImage: string;
+    let pintImage: string;
+    let splitScore: number;
+    let gCloseupBase64: string | null = null;
 
-    // Prioritize Fly.io headers since we're using Fly hosting
-    const clientIP =
-      request.headers.get("Fly-Client-IP") ||
-      request.headers.get("fly-client-ip") ||
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-client-ip") ||
-      request.headers.get("fastly-client-ip") ||
-      "unknown";
+    if (ROBOFLOW_USE_SERVERLESS) {
+      const result = await runServerlessWorkflow(
+        {
+          apiUrl: ROBOFLOW_API_BASE_URL,
+          workspace: ROBOFLOW_WORKSPACE,
+          workflowId: ROBOFLOW_WORKFLOW_ID,
+          apiKey: roboflowServerKey,
+          inferUrlOverride: ROBOFLOW_WORKFLOW_INFER_URL || undefined,
+          workflowVersionId: ROBOFLOW_WORKFLOW_VERSION_ID || undefined,
+        },
+        imagePayload,
+      );
 
-    console.log("Detected client IP:", clientIP);
-    
-    // Check for the bypass flag - if present, skip API processing
-    let predictions: any[] = [];
-    if (bypassFlag) {
-      console.log("Bypass flag is set - skipping API processing");
-    } else {
-      // Check for Roboflow API key
-      if (!process.env.ROBOFLOW_API_KEY) {
-        console.error("Missing Roboflow API key in environment variables");
+      const extracted = extractDetectionsFromWorkflow(result);
+      if (!extracted) {
+        throw new Error(
+          "Workflow returned no object-detection block this app understands. Ensure a detection step exposes predictions + image size (see Roboflow object-detection JSON).",
+        );
+      }
+
+      if (!predictionsIncludeClass(extracted, "G")) {
         return {
           success: false,
-          error: "Configuration error",
-          message: "The application is missing required API keys. Please check the .env file.",
-          status: 500,
+          error: "No G detected",
+          message: "No G pattern detected",
+          status: 400,
         };
       }
 
-      // Make API request if not bypassed
-      console.log("Making API request to Roboflow...");
+      const scoringBlock = toLegacyScoringOutputs(extracted);
+      splitScore = calculateScore(scoringBlock);
+
+      const splitImageFromNamedOutput = extractWorkflowOutputImageByNames(result, [
+        // In this workflow, `pint_image` is the full annotated frame and is best for "Your Split G".
+        "pint_image",
+        "pint image",
+        // Keep compatibility fallback if another workflow maps split visualization here.
+        "split_image",
+        "split image",
+      ]);
+
+      // Prefer annotated outputs from workflow steps; fall back to original capture.
+      const splitVisualization =
+        splitImageFromNamedOutput ??
+        extractPreferredWorkflowImageBase64(result, [
+          "visualize_split",
+          "g_label",
+          "g_visualization",
+          "beer_label",
+        ]) ?? imagePayload;
+      // "Original Pour" should always be the untouched source image from camera/upload.
+      const pintVisualization = imagePayload;
+
+      splitImage = stripBase64ImagePayload(splitVisualization);
+      pintImage = stripBase64ImagePayload(pintVisualization);
+
       try {
-        const response = await fetch(
-          // Use the correct API endpoint with project and version
-          "https://detect.roboflow.com/split-g/1",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${process.env.ROBOFLOW_API_KEY}`
-            },
-            body: JSON.stringify({
-              image: base64Image,
-              confidence: 5, // Lower confidence threshold to 5%
-              overlap: 30, // Lower overlap threshold
-              labels: true // Get labels in the response
-            }),
-          }
+        gCloseupBase64 = await cropGCloseupBase64(
+          imagePayload,
+          extracted.predictions,
         );
-
-        console.log("Roboflow API Response Status:", response.status);
-        
-        if (!response.ok) {
-          console.error(`API request failed (${response.status}): ${await response.text()}`);
-          // Continue anyway even if the API fails
-        } else {
-          const result = await response.json();
-          console.log("Received API response:", JSON.stringify(result, null, 2));
-          
-          if (result.predictions) {
-            predictions = result.predictions;
-            console.log(`Found ${predictions.length} predictions`);
-          } else {
-            console.log("No predictions in API response");
-          }
+      } catch (cropErr) {
+        console.error("G close-up crop failed:", cropErr);
+      }
+    } else {
+      const response = await fetch(
+        `https://detect.roboflow.com/infer/workflows/${ROBOFLOW_LEGACY_WORKFLOW_PATH}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            api_key: roboflowServerKey,
+            inputs: {
+              image: { type: "base64", value: imagePayload },
+            },
+          }),
         }
-      } catch (apiError) {
-        console.error("API request error:", apiError);
-        // Continue anyway even if the API fails
-      }
-    }
+      );
 
-    // For standard Roboflow API, the response format is different
-    // Check if we have predictions
-    if (predictions.length === 0) {
-      console.log("No predictions in API response - using default score anyway");
-      // Continue with the process instead of returning an error
-    }
-
-    // Since we're using the standard API, we need to process the image differently
-    try {
-      // Calculate score based on predictions when available
-      let score;
-      
-      if (predictions && predictions.length > 0) {
-        // Use the scoring function with real predictions
-        score = calculateScoreFromPredictions(predictions);
-        console.log(`Using calculated score from predictions: ${score}`);
-      } else if (bypassFlag) {
-        // Only if explicitly bypassed with the continue anyway button
-        score = 3.5;
-        console.log("Using bypass default score: 3.5");
-      } else {
-        // If no predictions but not explicitly bypassed, try with a lower score
-        score = 2.0;
-        console.log("No predictions found, using minimal score: 2.0");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API request failed (${response.status}): ${errorText}`);
       }
-      
-      // We won't have split images from the standard API, so we'll use the original image
-      console.log("Uploading image to Supabase storage...");
-      let splitImageUrl = "";
-      let pintImageUrl = "";
-      
+
+      const result = await response.json();
+
+      const pintPredictions: {
+        class: string;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        confidence?: number;
+      }[] =
+        result.outputs?.[0]?.["pint results"]?.predictions?.predictions || [];
+      const hasG = pintPredictions.some((pred: { class: string }) => pred.class === "G");
+
+      if (!hasG) {
+        return {
+          success: false,
+          error: "No G detected",
+          message: "No G pattern detected",
+          status: 400,
+        };
+      }
+
+      if (!result.outputs?.[0]) {
+        throw new Error("No outputs received from API");
+      }
+
+      const splitImageData = result.outputs[0]["split image"];
+      const pintImageData = result.outputs[0]["pint image"];
+
+      const legacySplit = splitImageData?.[0]?.value;
+      const legacyPint = pintImageData?.value;
+
+      if (!legacySplit || !legacyPint) {
+        throw new Error("Missing required image data from API response");
+      }
+
+      splitImage = legacySplit;
+      pintImage = legacyPint;
+      splitScore = calculateScore(result.outputs[0]);
+
       try {
-        splitImageUrl = await uploadImage(base64Image, "split-images");
-        pintImageUrl = splitImageUrl; // Use the same image for both
-        console.log("Image uploaded successfully:", splitImageUrl);
-      } catch (uploadError) {
-        console.error("Image upload failed:", uploadError);
-        // Continue with empty URLs if upload fails
-        splitImageUrl = "";
-        pintImageUrl = "";
+        gCloseupBase64 = await cropGCloseupBase64(imagePayload, pintPredictions);
+      } catch (cropErr) {
+        console.error("G close-up crop failed:", cropErr);
       }
+    }
 
-      // Get location data with client IP
-      console.log("Getting location data for IP:", clientIP);
-      const locationData = await getLocationData(clientIP);
-      console.log("Location data:", JSON.stringify(locationData));
+    // Upload images to storage
+    const splitImageUrl = await uploadImage(splitImage, "split-images");
+    const pintImageUrl = await uploadImage(pintImage, "pint-images");
+    let gCloseupImageUrl: string | null = null;
+    if (gCloseupBase64) {
+      try {
+        gCloseupImageUrl = await uploadImage(gCloseupBase64, "g-closeup-images");
+      } catch (uploadErr) {
+        console.error("G close-up upload failed:", uploadErr);
+      }
+    }
 
-      // Create database record with session_id and location
-      console.log("Inserting record into Supabase...");
-      const { data: scoreData, error: dbError } = await supabase
+    // Get location data with client IP
+    const locationData = await getLocationData(clientIP);
+
+    // Create database record with session_id, location, and short public slug when supported
+    const insertPayload = {
+      split_score: splitScore,
+      split_image_url: splitImageUrl,
+      pint_image_url: pintImageUrl,
+      g_closeup_image_url: gCloseupImageUrl,
+      username: username,
+      created_at: new Date().toISOString(),
+      session_id: sessionId,
+      city: locationData.city,
+      region: locationData.region,
+      country: locationData.country,
+      country_code: locationData.country_code,
+    };
+
+    let score: {
+      id: string;
+      slug?: string | null;
+    } | null = null;
+    let dbError: Error | null = null;
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const slug = generatePourSlug(8);
+      const res = await supabase
         .from("scores")
-        .insert({
-          split_score: score,
-          split_image_url: splitImageUrl,
-          pint_image_url: pintImageUrl,
-          username: username,
-          created_at: new Date().toISOString(),
-          session_id: sessionId,
-          city: locationData.city,
-          region: locationData.region,
-          country: locationData.country,
-          country_code: locationData.country_code,
-        })
-        .select()
+        .insert({ ...insertPayload, slug })
+        .select("id, slug")
         .single();
 
-      if (dbError) {
-        console.error("Database error:", dbError);
-        throw dbError;
+      if (!res.error && res.data) {
+        score = res.data;
+        break;
       }
-      
-      console.log("Database record created:", scoreData);
 
-      // Set the session cookie before redirecting
-      const headers = new Headers();
-      headers.append(
-        "Set-Cookie",
-        `split-g-session=${sessionId}; Path=/; Max-Age=31536000; SameSite=Lax`
-      );
-      
-      console.log("Redirecting to score page...");
-
-      // Redirect to the score page with the ID
-      return redirect(`/score/${scoreData.id}`, {
-        headers,
-      });
-    } catch (error) {
-      console.error("Error processing image:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Detailed error:", JSON.stringify(error, null, 2));
-
-      return {
-        success: false,
-        message: "Failed to process image",
-        error: errorMessage,
-        status: 500,
-      };
+      const msg = res.error?.message ?? "";
+      const code = (res.error as { code?: string })?.code;
+      if (code === "23505" || msg.includes("unique") || msg.includes("duplicate")) {
+        continue;
+      }
+      // Slug column not migrated yet — fall through to insert without slug
+      if (
+        code === "42703" ||
+        (msg.includes("slug") && msg.includes("does not exist"))
+      ) {
+        break;
+      }
+      dbError = res.error as Error;
+      break;
     }
+
+    if (!score) {
+      const res = await supabase
+        .from("scores")
+        .insert(insertPayload)
+        .select("id")
+        .single();
+      if (!res.error && res.data) {
+        score = res.data;
+        dbError = null;
+      } else if (res.error && !dbError) {
+        dbError = res.error as Error;
+      }
+    }
+
+    if (dbError) throw dbError;
+    if (!score) throw new Error("Failed to save score");
+
+    // Set the session cookie before redirecting
+    const headers = new Headers();
+    headers.append(
+      "Set-Cookie",
+      `split-g-session=${sessionId}; Path=/; Max-Age=31536000; SameSite=Lax`
+    );
+
+    const path = scorePourPath(score);
+    const dest = competitionId
+      ? `${path}${path.includes("?") ? "&" : "?"}competition=${encodeURIComponent(competitionId)}`
+      : path;
+    return redirect(dest, {
+      headers,
+    });
   } catch (error) {
     console.error("Error processing image:", error);
     const errorMessage =
@@ -254,22 +377,24 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Home() {
+  const { totalSplits } = useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
+  const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [showQRCode, setShowQRCode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const submit = useSubmit();
   const actionData = useActionData<typeof action>();
 
-  // Use type any for the inference engine
-  const [inferEngine, setInferEngine] = useState<any>(null);
+  // Dynamically import and initialize inference engine
+  const [inferEngine, setInferEngine] =
+    useState<RoboflowInferenceEngine | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     async function initInference() {
-      // @ts-ignore - Ignoring type issues with inferencejs library
       const { InferenceEngine } = await import("inferencejs");
       setInferEngine(new InferenceEngine());
     }
@@ -287,11 +412,10 @@ export default function Home() {
     setModelLoading(true);
     inferEngine
       .startWorker(
-        "split-g-label-experiment",
-        "8",
-        "rf_KknWyvJ8ONXATuszsdUEuknA86p2"
+        ROBOFLOW_INFERENCE_MODEL,
+        ROBOFLOW_INFERENCE_VERSION,
+        ROBOFLOW_PUBLISHABLE_KEY
       )
-      // Use a type annotation for the parameter
       .then((id: string) => setModelWorkerId(id));
   }, [inferEngine, modelLoading]);
 
@@ -348,14 +472,15 @@ export default function Home() {
       if (!modelWorkerId || !videoRef.current) return;
 
       try {
-        // @ts-ignore - Ignoring type issues with inferencejs library
         const { CVImage } = await import("inferencejs");
         const img = new CVImage(videoRef.current);
-        const predictions = await inferEngine.infer(modelWorkerId, img);
+        const predictions: InferencePrediction[] = await inferEngine.infer(
+          modelWorkerId,
+          img
+        );
 
-        // Use any type for inferencejs predictions
-        const hasGlass = predictions.some((pred: any) => pred.class === "glass");
-        const hasG = predictions.some((pred: any) => pred.class === "G");
+        const hasGlass = predictions.some((pred: InferencePrediction) => pred.class === "glass");
+        const hasG = predictions.some((pred: InferencePrediction) => pred.class === "G");
 
         if (hasGlass && hasG) {
           setConsecutiveDetections((prev) => prev + 1);
@@ -393,6 +518,9 @@ export default function Home() {
               // Submit form data to action
               const formData = new FormData();
               formData.append("image", base64Image);
+              if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
+                formData.append("competition", competitionIdParam);
+              }
 
               submit(formData, {
                 method: "post",
@@ -437,23 +565,9 @@ export default function Home() {
       setIsUploadProcessing(false);
       setIsSubmitting(false);
 
-      if (!actionData.success) {
-        // Check for specific error types
-        if (actionData.error === "No G detected") {
-          // Show the No G modal for this specific error
-          setShowNoGModal(true);
-        } else if (actionData.status === 400) {
-          // Handle client-side errors with more specific messaging
-          alert(`Please check your image: ${actionData.message}`);
-        } else if (actionData.status === 500) {
-          // Handle server errors
-          console.error('Server error:', actionData.error);
-          alert(`Server error: ${actionData.message}. Please try again.`);
-        } else {
-          // Generic error handler
-          console.error('Action error:', actionData);
-          alert(`Error: ${actionData.message || 'Failed to process image'}`);
-        }
+      // Check if there was an error due to no G detected
+      if (actionData.error === "No G detected") {
+        setShowNoGModal(true);
       }
     }
   }, [actionData]);
@@ -465,104 +579,175 @@ export default function Home() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    try {
-      console.log(`Processing file: ${file.name}, ${file.type}, ${file.size} bytes`);
-      setIsUploadProcessing(true);
-      const reader = new FileReader();
+    setIsUploadProcessing(true);
+    const reader = new FileReader();
 
-      reader.onloadend = () => {
-        try {
-          const base64String = reader.result?.toString();
-          if (!base64String) {
-            throw new Error("Failed to read file as base64");
-          }
-          
-          console.log(`Read file as base64, length: ${base64String.length} chars`);
-          
-          // Remove data URI prefix if present
-          const base64Image = base64String.replace(/^data:image\/\w+;base64,/, "");
-          console.log(`Stripped base64 prefix, new length: ${base64Image.length} chars`);
-          
-          // Save the base64 image for potential retry
-          setCapturedImage(base64Image);
-          
-          // Create form data for submission
-          const formData = new FormData();
-          formData.append("image", base64Image);
-          
-          console.log("Submitting image data to server...");
-          
-          submit(formData, {
-            method: "post",
-            action: "/?index",
-            encType: "multipart/form-data",
-          });
-        } catch (error) {
-          console.error("Error processing loaded file:", error);
-          setIsUploadProcessing(false);
-          alert("Failed to process image. Please try again.");
+    reader.onloadend = () => {
+      const base64Image = reader.result
+        ?.toString()
+        .replace(/^data:image\/\w+;base64,/, "");
+      if (base64Image) {
+        const formData = new FormData();
+        formData.append("image", base64Image);
+        if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
+          formData.append("competition", competitionIdParam);
         }
-      };
-      
-      reader.onerror = (error) => {
-        console.error("FileReader error:", error);
-        setIsUploadProcessing(false);
-        alert("Failed to read image file. Please try again.");
-      };
-      
-      console.log("Starting file read as data URL...");
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Error in file selection:", error);
-      setIsUploadProcessing(false);
-      alert("An error occurred. Please try again.");
-    }
+        submit(formData, {
+          method: "post",
+          action: "/?index",
+          encType: "multipart/form-data",
+        });
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-gradient-to-b from-guinness-black via-[#0a0a0a] to-[#121212] text-guinness-cream">
+    <main className="flex min-h-screen w-full flex-col items-center justify-start bg-guinness-black text-guinness-cream">
+      {/* QR Code Modal */}
+      {showQRCode && (
+        <div
+          className="fixed inset-0 bg-guinness-black/95 flex items-center justify-center z-50"
+          onClick={() => setShowQRCode(false)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <QRCode className="w-full h-full object-contain" />
+            <button
+              onClick={() => setShowQRCode(false)}
+              aria-label="Close QR code modal"
+              title="Close"
+              className="absolute top-4 right-4 text-guinness-gold hover:text-guinness-tan transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FAQ Button — desktop only (mobile: use nav on other routes or /faq URL) */}
+      <a
+        href="/faq"
+        className="fixed top-4 left-4 z-40 hidden items-center gap-1.5 rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-1.5 text-guinness-gold transition-colors hover:bg-guinness-gold/20 md:inline-flex"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <span className="text-sm">FAQ</span>
+      </a>
+
+      {/* QR Code Icon — desktop only */}
+      <button
+        type="button"
+        onClick={() => setShowQRCode(true)}
+        aria-label="Show QR code"
+        title="Show QR code"
+        className="fixed top-4 right-4 z-40 hidden rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-2 text-guinness-gold transition-colors hover:bg-guinness-gold/20 md:block"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 3h6v6H3V3zm12 0h6v6h-6V3zM3 15h6v6H3v-6zm12 0h6v6h-6v-6z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 9h2v2H9V9zm4 0h2v2h-2V9zm0 4h2v2h-2v-2z"
+          />
+        </svg>
+      </button>
+
       {isUploadProcessing && (
-        <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
           <div className="w-24 h-24 border-4 border-guinness-gold/20 border-t-guinness-gold rounded-full animate-spin"></div>
-          <p className="text-guinness-gold text-xl font-medium">
+          <p className="type-section text-xl">
             Processing your image...
           </p>
-          <p className="text-guinness-tan text-sm">
+          <p className="type-meta">
             This will just take a moment
           </p>
         </div>
       )}
 
+      {showNoGModal && (
+        <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
+          <div className="bg-guinness-black/90 backdrop-blur-sm border border-guinness-gold/20 rounded-lg p-8 max-w-md mx-4 text-center">
+            <p className="type-section mb-4">
+              {actionData?.message || "No G detected"}
+            </p>
+            <p className="type-meta mb-6">
+              Please make sure the G pattern is clearly visible in your image
+              and try again.
+            </p>
+            <button
+              onClick={() => setShowNoGModal(false)}
+              className="px-6 py-2 bg-guinness-gold text-guinness-black rounded-lg hover:bg-guinness-tan transition-colors duration-300"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
       {isSubmitting ? (
-        <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
           <div className="w-24 h-24 border-4 border-guinness-gold/20 border-t-guinness-gold rounded-full animate-spin"></div>
-          <p className="text-guinness-gold text-xl font-medium">
+          <p className="type-section text-xl">
             Analyzing your split...
           </p>
-          <p className="text-guinness-tan text-sm">
+          <p className="type-meta">
             This will just take a moment
           </p>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center gap-8 p-4 max-w-2xl mx-auto">
-          <header className="flex flex-col items-center gap-4 md:gap-6 text-center px-2 md:px-4 animate-fade-in">
-            <h1 className="text-4xl md:text-6xl font-bold text-guinness-gold tracking-wide">
-              Split the G
-            </h1>
-            <div className="w-32 md:w-40 h-0.5 bg-gradient-to-r from-transparent via-guinness-gold/80 to-transparent my-1 md:my-2"></div>
-            <p className="text-base md:text-xl text-guinness-tan font-light max-w-[280px] md:max-w-md mx-auto">
-              Put your Guinness splitting technique to the test!
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center gap-5 px-4 pb-6 pt-6 sm:px-5 sm:pb-6 sm:pt-8">
+          <header className="flex flex-col items-center gap-4 px-2 text-center md:gap-5 md:px-4">
+            <SplitTheGLogo />
+            <div className="h-px w-20 bg-guinness-gold/50 md:w-28" aria-hidden />
+            <p className="type-body-muted mx-auto max-w-2xl text-base font-normal leading-relaxed text-guinness-tan/85 md:text-lg">
+              {standardPageDescription}
             </p>
-            <div className="flex flex-wrap justify-center gap-3 md:gap-5 w-full px-2 mt-2">
-              <LeaderboardButton />
-              <SubmissionsButton />
-              <CountryLeaderboardButton />
+            <div className="flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
+              <LeaderboardButton className="min-h-11 w-full justify-center sm:w-auto" />
+              <SubmissionsButton className="w-full justify-center sm:w-auto" />
             </div>
           </header>
 
-          <div className="w-full max-w-md flex flex-col gap-4 transition-all duration-500">
+          <div className="flex w-full max-w-md flex-col gap-4">
             {isCameraActive && (
-              <div className="px-8 py-4 bg-guinness-black/80 backdrop-blur-sm border border-guinness-gold/30 text-guinness-gold rounded-2xl shadow-lg animate-fade-in">
+              <div className="px-8 py-4 bg-guinness-black/90 backdrop-blur-sm border border-guinness-gold/20 text-guinness-gold rounded-lg shadow-lg">
                 {isProcessing ? (
                   <div className="flex items-center justify-center gap-3">
                     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
@@ -581,13 +766,13 @@ export default function Home() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    <span className="font-medium tracking-wide">
+                    <span className="type-label text-guinness-gold">
                       {feedbackMessage}
                     </span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center">
-                    <span className="font-medium tracking-wide">
+                    <span className="type-label text-guinness-gold">
                       {feedbackMessage}
                     </span>
                   </div>
@@ -595,7 +780,7 @@ export default function Home() {
               </div>
             )}
 
-            <div className="aspect-[3/4] bg-guinness-brown/40 rounded-xl overflow-hidden border border-guinness-gold/30 shadow-xl shadow-black/40 relative transition-all duration-300 hover:shadow-guinness-gold/10 hover:border-guinness-gold/40">
+            <div className="aspect-[3/4] w-full overflow-hidden rounded-lg border border-guinness-gold/20 bg-guinness-brown/50 shadow-lg shadow-black/50">
               {isCameraActive ? (
                 <div className="relative h-full w-full">
                   <video
@@ -619,34 +804,31 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="absolute inset-0 bg-gradient-to-b from-guinness-black/20 to-guinness-black/60"></div>
                   <button
                     onClick={() => setIsCameraActive(true)}
-                    className="w-full h-full flex flex-col items-center justify-center gap-4 text-guinness-gold hover:text-guinness-tan transition-colors duration-300 relative z-10 group"
+                    className="w-full h-full flex flex-col items-center justify-center gap-4 text-guinness-gold hover:text-guinness-tan transition-colors duration-300"
                   >
-                    <div className="p-6 rounded-full bg-guinness-gold/10 border border-guinness-gold/30 transition-all duration-300 group-hover:bg-guinness-gold/20 group-hover:scale-105">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-16 md:h-20 w-16 md:w-20"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                    </div>
-                    <span className="text-xl md:text-2xl font-medium">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-16 w-16 md:h-20 md:w-20"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    <span className="text-lg font-medium md:text-xl">
                       Start Analysis
                     </span>
                   </button>
@@ -657,8 +839,7 @@ export default function Home() {
 
           <button
             onClick={() => document.getElementById("file-upload")?.click()}
-            className="w-3/4 mt-4 py-3 px-4 bg-guinness-gold text-guinness-black rounded-lg hover:bg-guinness-tan transition-all duration-300 font-semibold shadow-lg transform hover:scale-105 active:scale-95"
-            aria-label="Upload an image"
+            className="mt-4 w-3/4 rounded-lg bg-guinness-gold px-4 py-2 font-semibold text-guinness-black transition-colors duration-300 hover:bg-guinness-tan"
           >
             Upload an Image
           </button>
@@ -666,120 +847,20 @@ export default function Home() {
             id="file-upload"
             type="file"
             accept="image/*"
+            aria-label="Upload an image"
+            title="Upload an image"
             onChange={handleFileChange}
             className="hidden"
-            aria-label="Upload image file input"
-            title="Choose a file to upload"
           />
 
-          <div className="mt-8 text-guinness-tan text-sm bg-guinness-black/40 p-6 rounded-xl border border-guinness-gold/20 backdrop-blur-sm">
-            <h2 className="text-lg font-bold text-guinness-gold">
-              How to enter the Split the G contest:
-            </h2>
-            <p>Follow the below steps before 11:59pm PST March 17, 2025.</p>
-            <ol className="list-decimal list-inside mt-2 space-y-2">
-              <li>
-                <strong>Receive a score</strong>: Hit the{" "}
-                <strong>Start Analysis</strong> button on the website, aim your
-                camera at the pint glass to capture an image, and let the
-                website generate your score (the closer you are to the middle of
-                the G logo, the better the score).
-              </li>
-              <li>
-                <strong>Submit your score</strong>: Hit the{" "}
-                <strong>Submit score</strong> button to submit your score to the
-                leaderboard, fill out your contact information, and hit the{" "}
-                <strong>Enter the contest</strong> button.
-              </li>
-              <li>
-                <strong>All done!</strong>
-              </li>
-            </ol>
-
-            <h2 className="text-lg font-bold mt-6 text-guinness-gold">Contest Rules:</h2>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>
-                Entry Period: Contest begins January 1, 2025 and ends 11:59pm
-                PST March 17, 2025.
-              </li>
-              <li>Prize: Commemorative item!</li>
-              <li>
-                Winner Selection: The winner will be randomly selected from all
-                eligible entries.
-              </li>
-              <li>Eligibility: Must submit email to enter.</li>
-              <li>
-                Winner Notification: The winner will be notified via the email
-                provided upon submission within 10 business days of the contest
-                end date.
-              </li>
-              <li>
-                No Purchase Necessary: Entering the contest does not require any
-                purchase.
-              </li>
-              <li>
-                Multiple Entries: Multiple entries are allowed, but each entry
-                must be submitted separately.
-              </li>
-              <li>
-                Disqualification: Any attempt to manipulate the contest or
-                submit fraudulent entries will result in disqualification.
-              </li>
-              <li>
-                Privacy: Your email and personal information will be used solely
-                for the purpose of this contest and will not be shared with
-                third parties.
-              </li>
-              <li>
-                Acceptance of Rules: By entering the contest, you agree to abide
-                by these rules and the decisions of the contest organizers.
-              </li>
-            </ul>
+          <div className="type-body-muted mx-auto max-w-[280px] rounded-lg border border-guinness-gold/20 bg-guinness-black/90 px-6 py-3 text-center text-base backdrop-blur-sm md:max-w-md md:text-lg">
+            All Time Total Splits: {totalSplits?.toLocaleString() || "0"}
           </div>
-        </div>
-      )}
 
-      {/* Add the No G Modal */}
-      {showNoGModal && (
-        <div className="fixed inset-0 bg-guinness-black/95 flex items-center justify-center z-50 backdrop-blur-md animate-fade-in">
-          <div className="bg-guinness-black border border-guinness-gold/30 rounded-xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl animate-scale-in">
-            <h3 className="text-2xl font-bold text-guinness-gold mb-4">
-              No G Pattern Found
-            </h3>
-            <p className="text-guinness-tan mb-6">
-              We couldn't detect a clear Guinness G pattern in your image. You can:
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => {
-                  setShowNoGModal(false);
-                  // Get the last uploaded image and submit with bypass
-                  if (capturedImage) {
-                    const formData = new FormData();
-                    formData.append("image", capturedImage);
-                    formData.append("bypass", "true");
-                    submit(formData, {
-                      method: "post",
-                      action: "/?index",
-                      encType: "multipart/form-data",
-                    });
-                  }
-                }}
-                className="px-6 py-3 bg-guinness-gold text-guinness-black rounded-lg hover:bg-guinness-tan transition-all duration-300 font-semibold transform hover:scale-105 active:scale-95"
-              >
-                Continue With Lower Score
-              </button>
-              <button
-                onClick={() => setShowNoGModal(false)}
-                className="px-6 py-3 border border-guinness-gold/50 text-guinness-gold rounded-lg hover:bg-guinness-black/50 transition-all duration-300 font-semibold"
-              >
-                Take Another Photo
-              </button>
-            </div>
-            <div className="mt-4 text-xs text-guinness-tan/70">
-              <p>For the best score, ensure the G pattern is clearly visible and centered in your Guinness.</p>
-            </div>
+          <div className="mt-3 flex justify-center">
+            <BuyCreatorsABeer />
           </div>
+
         </div>
       )}
     </main>

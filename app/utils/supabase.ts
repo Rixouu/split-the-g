@@ -1,14 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Check for environment variables with both prefixes
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let supabaseUrl: string;
+let supabaseAnonKey: string;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+if (typeof window !== 'undefined') {
+  // Client-side
+  supabaseUrl = window.ENV?.SUPABASE_URL || '';
+  supabaseAnonKey = window.ENV?.SUPABASE_ANON_KEY || '';
+} else {
+  // Server-side
+  supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 }
 
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseAnonKey
-);
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Missing Supabase environment variables. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local (Supabase Dashboard → Project Settings → API). Restart the dev server after saving.',
+  );
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);

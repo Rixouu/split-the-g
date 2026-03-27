@@ -4,9 +4,58 @@
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-guinness-black text-guinness-cream font-sans antialiased;
+  color-scheme: dark;
+  scrollbar-color: rgba(197, 160, 89, 0.75) rgba(42, 27, 14, 0.55);
+  scrollbar-width: thin;
+}
 
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
+/* Brand scrollbar (Chrome, Edge, Safari) */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(42, 27, 14, 0.5);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(197, 160, 89, 0.95), rgba(179, 139, 45, 0.9));
+  border: 2px solid rgba(42, 27, 14, 0.65);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(213, 178, 99, 1), rgba(197, 160, 89, 1));
+}
+
+@layer components {
+  .type-display {
+    @apply text-3xl md:text-5xl font-bold tracking-tight text-guinness-gold;
+  }
+
+  .type-section {
+    @apply text-xl md:text-2xl font-semibold text-guinness-gold;
+  }
+
+  .type-card-title {
+    @apply text-lg font-semibold text-guinness-gold;
+  }
+
+  .type-body {
+    @apply text-base text-guinness-cream;
+  }
+
+  .type-body-muted {
+    @apply text-base text-guinness-tan/80;
+  }
+
+  .type-label {
+    @apply text-sm font-medium text-guinness-tan;
+  }
+
+  .type-meta {
+    @apply text-sm text-guinness-tan/70;
   }
 }

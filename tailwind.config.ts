@@ -6,38 +6,20 @@ export default {
     extend: {
       colors: {
         guinness: {
-          black: '#0A0A0A',
+          black: '#0B0B0B',
           cream: '#FDFBF3',
           gold: '#B38B2D',
-          brown: '#2C1810',
+          brown: '#1D180F',
           tan: '#D4B78F'
         }
       },
       fontFamily: {
         sans: [
-          '"Inter"',
+          '"Google Sans"',
           "ui-sans-serif",
           "system-ui",
           "sans-serif",
-          '"Apple Color Emoji"',
-          '"Segoe UI Emoji"',
-          '"Segoe UI Symbol"',
-          '"Noto Color Emoji"',
         ],
-      },
-      animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'scale-in': 'scaleIn 0.3s ease-out',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        scaleIn: {
-          '0%': { transform: 'scale(0.95)', opacity: '0' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
-        },
       },
     },
   },

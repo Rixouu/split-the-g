@@ -5,10 +5,26 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
+  useLocation,
 } from "react-router";
 
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
+import {
+  AppNavigation,
+  shouldShowAppNav,
+} from "~/components/AppNavigation";
+
+declare global {
+  interface Window {
+    ENV: {
+      SUPABASE_URL: string;
+      SUPABASE_ANON_KEY: string;
+      GOOGLE_PLACES_API_KEY: string;
+    };
+  }
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -19,31 +35,82 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap",
   },
+  { rel: "icon", type: "image/svg+xml", href: "/icon0.svg" },
+  { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon1.png" },
+  { rel: "shortcut icon", href: "/favicon.ico" },
+  { rel: "apple-touch-icon", href: "/apple-icon.png" },
+  { rel: "manifest", href: "/manifest.webmanifest" },
   { rel: "stylesheet", href: stylesheet },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export async function loader() {
+  return {
+    SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+    SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    GOOGLE_PLACES_API_KEY: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  };
+}
+
+export default function App() {
+  const env = useLoaderData<typeof loader>();
+  const { pathname } = useLocation();
+  const padForShellNav = shouldShowAppNav(pathname);
+  const mapsKey = env.GOOGLE_PLACES_API_KEY ?? "";
+
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#050608" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Split The G" />
         <Meta />
         <Links />
       </head>
-      <body suppressHydrationWarning>
-        {children}
+      <body>
+        <div
+          id="root"
+          className={
+            padForShellNav
+              ? "min-h-dvh pb-[10rem] pt-0 md:pb-0 md:pt-[3.75rem]"
+              : "min-h-dvh"
+          }
+        >
+          <Outlet />
+        </div>
+        <AppNavigation />
         <ScrollRestoration />
         <Scripts />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(env)}`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); }); }",
+          }}
+        />
+        {/*
+          Google Maps JS: enable "Maps JavaScript API" and "Places API (New)", billing, and
+          HTTP referrer restrictions that include your dev origin (e.g. http://localhost:5173/*)
+          and production URL. InvalidKeyMapError in the console means the key or APIs/restrictions
+          are misconfigured in Google Cloud Console — not an app bug.
+        */}
+        {mapsKey ? (
+          <script
+            async
+            defer
+            src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(mapsKey)}&libraries=places&v=weekly&loading=async`}
+          />
+        ) : null}
       </body>
     </html>
   );
-}
-
-export default function App() {
-  return <Outlet />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
@@ -63,14 +130,31 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
-          <code>{stack}</code>
-        </pre>
-      )}
-    </main>
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#050608" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Split The G" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        <div id="root">
+          <main className="pt-16 p-4 container mx-auto text-guinness-cream">
+            <h1 className="type-display text-3xl">{message}</h1>
+            <p className="type-body-muted mt-2">{details}</p>
+            {stack && (
+              <pre className="w-full p-4 overflow-x-auto">
+                <code>{stack}</code>
+              </pre>
+            )}
+          </main>
+        </div>
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
   );
 }

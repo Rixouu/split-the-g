@@ -5,8 +5,10 @@
 /.react-router/
 /build/
 
-# env file
+# env files
 .env
+.env.local
 
 #vscode config
 .vscode
+.vercel

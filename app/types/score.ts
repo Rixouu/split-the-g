@@ -1,0 +1,21 @@
+export interface Score {
+  id: string;
+  /** Short public segment for /pour/{slug} */
+  slug?: string | null;
+  created_at: string;
+  split_score: number;
+  split_image_url: string;
+  pint_image_url: string;
+  g_closeup_image_url?: string | null;
+  username: string;
+  email?: string;
+  email_opted_out?: boolean;
+  session_id?: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  country_code?: string;
+  bar_name?: string;
+  bar_address?: string;
+  pour_rating?: number;
+}

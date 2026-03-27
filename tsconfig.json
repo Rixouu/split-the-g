@@ -7,7 +7,7 @@
   ],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["node", "vite/client"],
+    "types": ["node", "vite/client", "google.maps"],
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",
@@ -19,6 +19,7 @@
     },
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
