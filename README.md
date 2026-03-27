@@ -1,101 +1,150 @@
 # Split The G
 
-**Split The G** is a social pouring game: rate your pint, share the result, climb leaderboards, and compete with friends. The app pairs a **React Router 7 + Vite** frontend with **Supabase** (Postgres, Auth, Storage) for accounts, scores, competitions, and real-time-style feeds.
+Split The G is a modern social pint game built around one simple obsession: how perfectly you can land the foam line through the Guinness `G`.
 
----
+Players can submit pours, save scores, claim their profile with Google, add friends, compare stats, and join live competitions. The current version of the app was substantially revamped by [Jonathan Rycx](https://github.com/Rixouu), who leads product direction, design refinement, and full-stack implementation across the platform.
 
-## Credits
+## What The App Does
 
-**Lead developer & product revamp:** [Jonathan Rycx](https://github.com/Rixouu) — architecture, UI/UX, Supabase schema, and feature delivery for the current generation of the app.
-
----
+- Score pours and keep a personal history.
+- Claim results to an authenticated profile.
+- Pick a nickname for leaderboards and feeds.
+- Save favorite pubs with Google Places suggestions.
+- Add friends, send email invites, and compare progress.
+- Create public or private competitions with invite flows.
 
 ## Stack
 
-| Layer | Choice |
-|--------|--------|
-| UI | React 19, Tailwind CSS |
-| Routing & SSR | React Router (framework mode) |
-| Build | Vite |
-| Backend / data | Supabase (PostgreSQL, Row Level Security, Auth, Storage) |
-| Maps / places | Google Places (where configured) |
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 19 |
+| App framework | React Router 7 |
+| Build tool | Vite |
+| Styling | Tailwind CSS |
+| Backend | Supabase |
+| Database | PostgreSQL with RLS |
+| Auth | Supabase Auth + Google sign-in |
+| Storage | Supabase Storage |
+| Location search | Google Maps JavaScript API + Places API (New) |
+| Email | Resend |
 
----
+## Project Notes
 
-## Prerequisites
+- This repo runs as an SSR React Router app.
+- The UI is built around a dark Guinness-inspired visual system.
+- Profile, friends, leaderboard sync, and competition flows depend on Supabase migrations being applied in order.
 
-- **Node.js** 20+ (see `.nvmrc` if present)
-- A **Supabase** project with this repo’s migrations applied
-- **Environment variables** (see below)
+## Local Setup
 
----
+### Requirements
 
-## Environment variables
+- Node.js 20+
+- npm
+- A Supabase project
+- A Google Maps browser key if you want Places autocomplete
+- A Resend API key if you want friend invite emails
 
-Create a `.env` in the project root (never commit secrets). Typical keys:
+### Environment variables
 
-| Variable | Purpose |
-|----------|---------|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous (public) key |
+Create `.env.local` with the values your environment needs.
 
-Optional / feature-specific keys (e.g. Google Places) are documented or enforced where used in code.
+Core variables:
 
----
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_GOOGLE_MAPS_API_KEY`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `APP_URL`
 
-## Local development
+### Install and run
 
 ```bash
 npm install
 npm run dev
 ```
 
-The dev server defaults to **http://localhost:5173** (Vite).
+Default local URL:
 
----
+```bash
+http://localhost:5173
+```
 
-## Database & migrations
+## Scripts
 
-Schema changes live under `supabase/migrations/`. Apply them with the [Supabase CLI](https://supabase.com/docs/guides/cli) (`supabase db push` / linked project) or by running migration SQL in the Supabase SQL Editor (in timestamp order).
+```bash
+npm run dev
+npm run lint
+npm run build
+npm run start
+```
 
-### Profile nickname & leaderboard name
+## Database And Migrations
 
-- **`public_profiles.nickname`** — optional display handle; uniqueness is enforced case-insensitively (see `20260328220000_public_profiles_nickname.sql`).
-- **`scores.username`** — what feeds and leaderboards show; after saving a profile, the app syncs this from **nickname or full name**.
+Supabase SQL lives in `supabase/migrations`.
 
-If nicknames do not persist, confirm the nickname migration ran. If the profile saves but the **leaderboard name** does not update, your `scores.email` values may not match the signed-in email **exactly** (casing). Migration **`20260328230000_sync_scores_username_for_jwt.sql`** adds `sync_scores_username_for_jwt(text)`, which updates `scores.username` using a **case-insensitive** match to the JWT email.
+Apply migrations with the Supabase CLI or run them in the Supabase SQL editor in timestamp order.
 
-**Manual repair SQL** (Supabase SQL Editor) if you only want to fix data once:
+Important profile-related migrations:
+
+- `20260328120000_friends_profiles_competition_visibility.sql`
+- `20260328120100_friend_requests_from_email.sql`
+- `20260328220000_public_profiles_nickname.sql`
+- `20260328230000_sync_scores_username_for_jwt.sql`
+
+### Nickname and leaderboard sync
+
+- `public.public_profiles.nickname` stores the optional public nickname.
+- `public.scores.username` is what the app shows in leaderboards and other social surfaces.
+- Saving the profile syncs the leaderboard display name from `nickname` or `display_name`.
+
+If leaderboard names are wrong for existing rows, this one-off SQL will backfill them:
 
 ```sql
--- Example: set username from profile for one user (adjust emails)
 update public.scores s
-set username = coalesce(nullif(trim(p.nickname::text), ''), trim(p.display_name::text))
+set username = coalesce(
+  nullif(trim(p.nickname::text), ''),
+  trim(p.display_name::text)
+)
 from public.public_profiles p
 where p.user_id = '<user-uuid>'
   and s.email is not null
   and lower(trim(s.email::text)) = lower(trim('<their-login-email>'));
 ```
 
----
+## Email Invites
 
-## Build & production
+Friend invite emails are rendered server-side and sent through Resend.
+
+Key files:
+
+- `app/routes/friend-invite-email.tsx`
+- `app/utils/emails/friend-invite.ts`
+
+The email includes:
+
+- branded HTML layout
+- inviter name and email
+- recipient sign-in email
+- CTA back to the profile flow
+
+## Deployment
+
+Build for production with:
 
 ```bash
 npm run build
 npm run start
 ```
 
-Deploy the **server + client** output per your host (e.g. Vercel, Fly.io, Node adapter). Ensure production env vars match your Supabase project.
-
----
+Make sure production environment variables match your deployed Supabase, Google Maps, and Resend configuration.
 
 ## Repository
 
-Upstream for this line of work: **https://github.com/Rixouu/split-the-g**
+Primary repository:
 
----
+- [github.com/Rixouu/split-the-g](https://github.com/Rixouu/split-the-g)
 
 ## License
 
-See the repository’s `LICENSE` file if present; otherwise treat usage as defined by the project owner.
+See `LICENSE` if present. If not, usage remains under the project owner’s terms.

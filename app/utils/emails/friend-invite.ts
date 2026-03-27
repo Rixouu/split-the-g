@@ -68,28 +68,15 @@ export function buildFriendInviteEmail({
     padding: 28px 40px 24px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    justify-content: center;
+    text-align: center;
   }
 
   .logo img {
     height: 34px;
     width: auto;
     display: block;
-  }
-
-  .badge {
-    font-family: 'DM Sans', Arial, sans-serif;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: #c49a3c;
-    background-color: rgba(196,154,60,.1);
-    border: 1px solid rgba(196,154,60,.25);
-    border-radius: 3px;
-    padding: 5px 10px;
-    white-space: nowrap;
+    margin: 0 auto;
   }
 
   .rule {
@@ -167,7 +154,7 @@ export function buildFriendInviteEmail({
   .info-email {
     font-size: 15px;
     font-weight: 500;
-    color: #6b9fd4;
+    color: #f5f0e8 !important;
     text-decoration: none;
     display: block;
     margin-bottom: 10px;
@@ -184,6 +171,7 @@ export function buildFriendInviteEmail({
     border-left: 1px solid #2a2418;
     border-right: 1px solid #2a2418;
     padding: 32px 40px 0;
+    text-align: center;
   }
 
   .cta-btn {
@@ -212,7 +200,7 @@ export function buildFriendInviteEmail({
   }
 
   .meta-line a {
-    color: #6b9fd4;
+    color: #f5f0e8 !important;
     text-decoration: none;
   }
 
@@ -275,7 +263,6 @@ export function buildFriendInviteEmail({
       display: block !important;
     }
 
-    .badge,
     .footer-tagline {
       margin-top: 14px;
       display: inline-block;
@@ -298,7 +285,6 @@ export function buildFriendInviteEmail({
     <div class="logo">
       <img src="${logoUrl}" alt="Split The G" />
     </div>
-    <span class="badge">Friend Invite</span>
   </div>
 
   <div class="rule"></div>
@@ -307,7 +293,7 @@ export function buildFriendInviteEmail({
     <p class="hero-eyebrow">You've been invited</p>
     <h1 class="hero-heading">${safeInviterLabel}<br>wants you on<br>the <span>board.</span></h1>
     <p class="hero-body">
-      You've been invited to join <strong>Split The G</strong> — compete in live leaderboards, save your pours, and connect with friends.
+      You've been invited to join <strong>Split The G</strong>. Chase the perfect pour, climb the live leaderboard, and stir up a little friendly rivalry with your mates.
     </p>
   </div>
 
