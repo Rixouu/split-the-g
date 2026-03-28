@@ -37,5 +37,6 @@ export const SCORES_LEADERBOARD_COLUMNS = `
   username,
   split_score,
   created_at,
-  split_image_url
+  split_image_url,
+  country_code
 `;

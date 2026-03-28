@@ -1,5 +1,9 @@
 import { useProfileOutlet } from "./profile-context";
-import { progressRangeOptions } from "./profile-shared";
+import {
+  progressRangeOptions,
+  segmentedTabGroupChromeClass,
+  segmentedTabTriggerClass,
+} from "./profile-shared";
 
 export default function ProfileProgressPage() {
   const {
@@ -127,17 +131,18 @@ export default function ProfileProgressPage() {
                   Compare your average, best score, and volume against accepted friends.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div
+                className={`flex w-full min-w-0 sm:flex-1 ${segmentedTabGroupChromeClass}`}
+              >
                 {progressRangeOptions.map((option) => (
                   <button
                     key={option.value}
                     type="button"
                     onClick={() => setProgressRange(option.value)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
-                      progressRange === option.value
-                        ? "bg-guinness-gold text-guinness-black"
-                        : "border border-guinness-gold/20 text-guinness-tan/75 hover:text-guinness-cream"
-                    }`}
+                    className={segmentedTabTriggerClass(
+                      progressRange === option.value,
+                      "rowEqual",
+                    )}
                   >
                     {option.label}
                   </button>

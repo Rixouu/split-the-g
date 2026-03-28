@@ -11,7 +11,12 @@ import { supabase } from "~/utils/supabase";
 import { SubmissionsButton } from "~/components/leaderboard/SubmissionsButton";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_LEADERBOARD_COLUMNS } from "~/utils/scoresListColumns";
-import { normalizeEmail } from "~/routes/profile/profile-shared";
+import {
+  normalizeEmail,
+  segmentedTabGroupChromeClass,
+  segmentedTabTriggerClass,
+} from "~/routes/profile/profile-shared";
+import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 
 type LeaderboardEntry = {
   id: string;
@@ -20,6 +25,7 @@ type LeaderboardEntry = {
   split_score: number;
   created_at: string;
   split_image_url: string;
+  country_code?: string | null;
 };
 
 type LeaderboardTab = "global" | "local" | "friends";
@@ -49,13 +55,6 @@ export const loader: LoaderFunction = async () => {
 
   return { entries: (data ?? []) as LeaderboardEntry[] };
 };
-
-const tabButton = (active: boolean) =>
-  `rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors sm:px-4 sm:text-sm ${
-    active
-      ? "bg-guinness-gold text-guinness-black"
-      : "border border-guinness-gold/25 text-guinness-tan/80 hover:border-guinness-gold/40 hover:text-guinness-cream"
-  }`;
 
 function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
   if (entries.length === 0) {
@@ -94,6 +93,15 @@ function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-semibold text-guinness-cream sm:text-2xl">
+                    {flagEmojiFromIso2(entry.country_code) ? (
+                      <span
+                        className="mr-1.5 inline-block shrink-0"
+                        title={entry.country_code?.trim().toUpperCase() ?? undefined}
+                        aria-hidden
+                      >
+                        {flagEmojiFromIso2(entry.country_code)}
+                      </span>
+                    ) : null}
                     {entry.username}
                   </p>
                   <p className="type-meta text-guinness-tan/70">
@@ -283,7 +291,7 @@ export default function Leaderboard() {
         </PageHeader>
 
         <div
-          className="mb-6 flex flex-wrap gap-2 border-b border-[#322914] pb-4"
+          className={`mb-6 flex ${segmentedTabGroupChromeClass}`}
           role="tablist"
           aria-label="Leaderboard scope"
         >
@@ -298,8 +306,10 @@ export default function Leaderboard() {
               key={id}
               type="button"
               role="tab"
+              id={`leaderboard-tab-${id}`}
+              aria-controls="leaderboard-panel"
               aria-selected={tab === id}
-              className={tabButton(tab === id)}
+              className={segmentedTabTriggerClass(tab === id, "rowEqual")}
               onClick={() => setTab(id)}
             >
               {label}
@@ -307,17 +317,23 @@ export default function Leaderboard() {
           ))}
         </div>
 
-        {hint ? (
-          <p className="type-meta mb-4 rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 px-3 py-2 text-guinness-tan/85">
-            {hint}
-          </p>
-        ) : null}
+        <div
+          id="leaderboard-panel"
+          role="tabpanel"
+          aria-labelledby={`leaderboard-tab-${tab}`}
+        >
+          {hint ? (
+            <p className="type-meta mb-4 rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 px-3 py-2 text-guinness-tan/85">
+              {hint}
+            </p>
+          ) : null}
 
-        {loading ? (
-          <p className="type-meta text-guinness-tan/70">Loading…</p>
-        ) : (
-          <LeaderboardList entries={entries} />
-        )}
+          {loading ? (
+            <p className="type-meta text-guinness-tan/70">Loading…</p>
+          ) : (
+            <LeaderboardList entries={entries} />
+          )}
+        </div>
 
         <div className="mt-8 flex justify-center">
           <Link to="/" viewTransition className={pageHeaderActionButtonClass}>

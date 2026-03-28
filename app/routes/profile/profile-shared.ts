@@ -69,6 +69,35 @@ export const progressRangeOptions: { value: ProgressRange; label: string }[] = [
   { value: "all", label: "All" },
 ];
 
+/**
+ * Shared chrome for segmented tabs (add `flex` or `grid` on the element).
+ * Matches list/card treatment — no forced uppercase on labels.
+ */
+export const segmentedTabGroupChromeClass =
+  "w-full gap-1 rounded-xl border border-[#322914] bg-guinness-brown/25 p-1 sm:p-1.5";
+
+export type SegmentedTabTriggerLayout = "rowEqual" | "gridCell";
+
+/**
+ * @param layout rowEqual — flex row with equal-width segments (leaderboard scope, time range).
+ *               gridCell — fills a grid cell (profile section nav).
+ */
+export function segmentedTabTriggerClass(
+  active: boolean,
+  layout: SegmentedTabTriggerLayout = "rowEqual",
+): string {
+  const shell =
+    layout === "rowEqual"
+      ? "flex min-h-11 flex-1 basis-0 min-w-0 items-center justify-center"
+      : "flex min-h-11 w-full min-w-0 items-center justify-center";
+  const base =
+    "rounded-lg px-1.5 py-2 text-center text-sm font-semibold leading-tight tracking-normal transition-colors sm:px-2.5";
+  const state = active
+    ? "bg-guinness-gold text-guinness-black shadow-sm"
+    : "text-guinness-tan/75 hover:bg-guinness-black/30 hover:text-guinness-cream";
+  return `${shell} ${base} ${state}`;
+}
+
 export function favoriteMapsUrl(f: FavoriteRow): string {
   const q = [f.bar_name, f.bar_address].filter(Boolean).join(" ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;

@@ -26,6 +26,8 @@ import {
   escapeIlikePattern,
   emailDisplayName,
   normalizeEmail,
+  segmentedTabGroupChromeClass,
+  segmentedTabTriggerClass,
   progressRangeOptions,
   progressRangeStart,
   type ComparisonScoreRow,
@@ -934,7 +936,7 @@ export default function ProfileLayout() {
               }}
             >
               <nav
-                className="grid w-full grid-cols-2 gap-2 lg:grid-cols-4"
+                className={`grid w-full grid-cols-2 lg:grid-cols-4 ${segmentedTabGroupChromeClass}`}
                 aria-label="Profile sections"
               >
                 {profileNavItems.map(({ to, label }) => (
@@ -944,11 +946,7 @@ export default function ProfileLayout() {
                     prefetch="intent"
                     viewTransition
                     className={({ isActive }) =>
-                      `flex min-h-11 items-center justify-center rounded-xl px-2 text-center text-sm font-semibold transition-colors sm:px-4 ${
-                        isActive
-                          ? "bg-guinness-gold text-guinness-black"
-                          : "border border-guinness-gold/20 bg-guinness-black/35 text-guinness-tan/80 hover:text-guinness-cream"
-                      }`
+                      segmentedTabTriggerClass(isActive, "gridCell")
                     }
                   >
                     {label}

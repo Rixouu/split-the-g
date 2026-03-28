@@ -1,4 +1,11 @@
-import { data, Link, useFetcher, useLoaderData, useRevalidator } from "react-router";
+import {
+  data,
+  Link,
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+  useRevalidator,
+} from "react-router";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
   useCallback,
@@ -34,6 +41,21 @@ const PUB_DIRECTORY_ADMIN_EMAIL = "admin.rixou@gmail.com";
 function isPubDirectoryAdmin(email: string | null | undefined): boolean {
   const e = email?.trim().toLowerCase();
   return Boolean(e && e === PUB_DIRECTORY_ADMIN_EMAIL.toLowerCase());
+}
+
+/** Accept pasted `/pubs/...` URL or encoded key; returns normalized bar_key. */
+function normalizeBarKeyInput(raw: string): string {
+  let s = raw.trim();
+  try {
+    s = decodeURIComponent(s.replace(/\+/g, " "));
+  } catch {
+    /* keep s */
+  }
+  const pubsIdx = s.indexOf("/pubs/");
+  if (pubsIdx >= 0) {
+    s = s.slice(pubsIdx + 6).split(/[?#]/)[0] ?? "";
+  }
+  return s.trim().toLowerCase();
 }
 
 /** Brand stroke for pub surfaces (dark brown — no light/white borders). */
@@ -373,6 +395,7 @@ export default function PubDetail() {
     wallError,
   } = useLoaderData<typeof loader>();
   const revalidator = useRevalidator();
+  const navigate = useNavigate();
   const importFetcher = useFetcher<ImportGoogleActionData>();
   const lastImportHandledKey = useRef<string | null>(null);
 
@@ -402,6 +425,15 @@ export default function PubDetail() {
   const [directoryGooglePlaceId, setDirectoryGooglePlaceId] = useState(
     placeDetails?.google_place_id ?? "",
   );
+  /** Written to every pour (scores) for this pub; import pre-fills from Google. */
+  const [canonicalBarName, setCanonicalBarName] = useState(bar.display_name);
+  const [canonicalBarAddress, setCanonicalBarAddress] = useState(
+    bar.sample_address ?? "",
+  );
+  const [mergeTargetBarKey, setMergeTargetBarKey] = useState("");
+  const [mergeBusy, setMergeBusy] = useState(false);
+  /** Collapsed by default — admin-only merge tool. */
+  const [mergeSectionOpen, setMergeSectionOpen] = useState(false);
   const [directoryBusy, setDirectoryBusy] = useState(false);
 
   const [pubTab, setPubTab] = useState<"promos" | "competitions" | "wall">(
@@ -419,11 +451,14 @@ export default function PubDetail() {
       if (d.weekdayLines?.length) setOpeningHours(d.weekdayLines.join("\n"));
       if (d.mapsUrl) setMapsPlaceUrl(d.mapsUrl);
       if (d.placeId) setDirectoryGooglePlaceId(d.placeId);
+      if (d.name?.trim()) setCanonicalBarName(d.name.trim());
+      if (d.formattedAddress?.trim())
+        setCanonicalBarAddress(d.formattedAddress.trim());
       setToastOk(true);
       const bits = [d.name, d.formattedAddress].filter(Boolean).join(" — ");
       const hoursMsg = d.weekdayLines?.length
-        ? "Review fields and save."
-        : "Google did not return opening-hour lines for this listing (some venues omit them in the API). Place ID and Maps link were updated if available — add hours manually if needed, then save.";
+        ? "Review pub name / address below, then Save pub details to update pour records."
+        : "Google did not return opening-hour lines for this listing (some venues omit them in the API). Name, address, Place ID, and Maps link were filled where available — add hours manually if needed, then save.";
       setToast(bits ? `Imported: ${bits}. ${hoursMsg}` : `Imported from Google. ${hoursMsg}`);
     } else {
       setToastOk(false);
@@ -438,6 +473,11 @@ export default function PubDetail() {
     setMapsPlaceUrl(placeDetails?.maps_place_url ?? "");
     setDirectoryGooglePlaceId(placeDetails?.google_place_id ?? "");
   }, [placeDetails]);
+
+  useEffect(() => {
+    setCanonicalBarName(bar.display_name);
+    setCanonicalBarAddress(bar.sample_address ?? "");
+  }, [bar.display_name, bar.sample_address, barKey]);
 
   const canEditPubDirectory = useMemo(
     () => isPubDirectoryAdmin(userEmail),
@@ -538,13 +578,48 @@ export default function PubDetail() {
     }
     setDirectoryBusy(true);
     try {
+      const nameTrim = canonicalBarName.trim();
+      if (!nameTrim) {
+        setToastOk(false);
+        setToast("Pub name on pours is required.");
+        return;
+      }
+      const addrTrim = canonicalBarAddress.trim();
+      const placeTrim = directoryGooglePlaceId.trim();
+
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        "admin_apply_pub_canonical_on_scores",
+        {
+          p_current_bar_key: barKey,
+          p_bar_name: nameTrim,
+          p_bar_address: addrTrim || null,
+          p_google_place_id: placeTrim || null,
+        },
+      );
+
+      if (rpcError) {
+        setToastOk(false);
+        const msg = `${rpcError.message ?? ""} ${rpcError.code ?? ""}`.toLowerCase();
+        setToast(
+          rpcError.code === "42883" || msg.includes("admin_apply_pub_canonical")
+            ? "Run migration 20260328310000_admin_pub_canonical_merge (admin_apply_pub_canonical_on_scores)."
+            : (rpcError.message ?? "Could not update pour records."),
+        );
+        return;
+      }
+
+      const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+      const newBarKey = String(
+        (rpcRow as { new_bar_key?: string } | null)?.new_bar_key ?? barKey,
+      ).trim();
+
       const payload = {
-        bar_key: barKey,
+        bar_key: newBarKey,
         opening_hours: openingHours.trim() || null,
         guinness_info: guinnessInfo.trim() || null,
         alcohol_promotions: promotions.trim() || null,
         maps_place_url: mapsPlaceUrl.trim() || null,
-        google_place_id: directoryGooglePlaceId.trim() || null,
+        google_place_id: placeTrim || null,
         updated_by: auth.user.id,
         updated_at: new Date().toISOString(),
       };
@@ -559,9 +634,62 @@ export default function PubDetail() {
       }
       setToastOk(true);
       setToast("Pub details saved. Thanks for helping the community.");
+      if (newBarKey !== barKey) {
+        navigate(`/pubs/${encodeURIComponent(newBarKey)}`, { replace: true });
+      }
       revalidator.revalidate();
     } finally {
       setDirectoryBusy(false);
+    }
+  }
+
+  async function mergeIntoTargetPub() {
+    setToast(null);
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      setToastOk(false);
+      setToast("Sign in to merge pubs.");
+      return;
+    }
+    if (!isPubDirectoryAdmin(auth.user.email)) {
+      setToastOk(false);
+      setToast("Only the site admin can merge pubs.");
+      return;
+    }
+    const tgt = normalizeBarKeyInput(mergeTargetBarKey);
+    if (!tgt) {
+      setToastOk(false);
+      setToast("Paste the target pub’s bar key (from its URL after /pubs/).");
+      return;
+    }
+    if (tgt === barKey) {
+      setToastOk(false);
+      setToast("Choose a different pub to merge into.");
+      return;
+    }
+    setMergeBusy(true);
+    try {
+      const { error } = await supabase.rpc("admin_merge_pub_into_target", {
+        p_source_bar_key: barKey,
+        p_target_bar_key: tgt,
+      });
+      if (error) {
+        setToastOk(false);
+        const msg = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
+        setToast(
+          error.code === "42883" || msg.includes("admin_merge_pub_into_target")
+            ? "Run migration 20260328310000_admin_pub_canonical_merge (admin_merge_pub_into_target)."
+            : (error.message ?? "Merge failed."),
+        );
+        return;
+      }
+      setToastOk(true);
+      setToast("Merged into target pub. Redirecting…");
+      setMergeTargetBarKey("");
+      navigate(`/pubs/${encodeURIComponent(tgt)}`, { replace: true });
+      revalidator.revalidate();
+    } finally {
+      setMergeBusy(false);
     }
   }
 
@@ -881,11 +1009,58 @@ export default function PubDetail() {
                       Update pub details
                     </h3>
                     <p className="type-meta mb-6 text-guinness-tan/65">
-                      Admin only. The left column shows Google listing hours when a Place
-                      is linked; import fills Place ID, map link, and hours.
+                      Admin only. Import fills Google fields and the pour name/address
+                      below — saving updates every score tagged with this pub and moves
+                      directory data if the normalized name changes.
                     </p>
 
                     <div className="space-y-8">
+                      <div
+                        className={`grid gap-5 rounded-xl border ${pubStroke} bg-guinness-black/20 p-4 sm:grid-cols-2 sm:gap-6 sm:p-5`}
+                      >
+                        <div className="space-y-2 sm:min-w-0">
+                          <label
+                            htmlFor="pub-admin-canonical-name"
+                            className="type-meta block text-guinness-tan/80"
+                          >
+                            Pub name on pours
+                          </label>
+                          <p className="type-meta text-guinness-tan/45">
+                            Must match one another on every pour for this listing.
+                            Import sets this from Google; edit if needed before save.
+                          </p>
+                          <input
+                            id="pub-admin-canonical-name"
+                            type="text"
+                            value={canonicalBarName}
+                            onChange={(e) => setCanonicalBarName(e.target.value)}
+                            className={fieldInputClass}
+                            autoComplete="off"
+                          />
+                        </div>
+                        <div className="space-y-2 sm:min-w-0">
+                          <label
+                            htmlFor="pub-admin-canonical-address"
+                            className="type-meta block text-guinness-tan/80"
+                          >
+                            Address on pours
+                          </label>
+                          <p className="type-meta text-guinness-tan/45">
+                            Shown on the pub card and map search. Leave empty to keep
+                            existing addresses on each pour unchanged.
+                          </p>
+                          <input
+                            id="pub-admin-canonical-address"
+                            type="text"
+                            value={canonicalBarAddress}
+                            onChange={(e) => setCanonicalBarAddress(e.target.value)}
+                            className={fieldInputClass}
+                            placeholder="From Google import or type manually"
+                            autoComplete="street-address"
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
                         <label
                           htmlFor="pub-admin-opening-hours"
@@ -953,7 +1128,8 @@ export default function PubDetail() {
                           </p>
                           <p className="type-meta mt-1 text-guinness-tan/50">
                             Link the business profile for hours on the left. Classic
-                            Places API + server key required for import.
+                            Places API + server key required for import. Name and address
+                            are applied to pour records when you save.
                           </p>
                         </div>
 
@@ -1009,11 +1185,97 @@ export default function PubDetail() {
                               : "Import from Google Maps"}
                           </button>
                           <p className="type-meta max-w-xl text-guinness-tan/50 sm:text-right">
-                            Uses Place ID field, custom URL, or pub name. Then{" "}
-                            <span className="text-guinness-tan/70">Save pub details</span>
-                            .
+                            Uses Place ID field, custom URL, or pub name. Fills pour
+                            name/address fields — then{" "}
+                            <span className="text-guinness-tan/70">Save pub details</span>.
                           </p>
                         </div>
+                      </div>
+
+                      <div
+                        className={`overflow-hidden rounded-xl border border-amber-500/25 bg-amber-500/[0.06]`}
+                      >
+                        <button
+                          type="button"
+                          id="pub-admin-merge-disclosure"
+                          className="flex w-full min-h-11 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-guinness-black/20 sm:min-h-[3rem] sm:px-5 sm:py-3.5"
+                          aria-expanded={mergeSectionOpen}
+                          aria-controls="pub-admin-merge-panel"
+                          onClick={() => setMergeSectionOpen((o) => !o)}
+                        >
+                          <span className="min-w-0">
+                            <span className="type-label block text-amber-100/95">
+                              Merge duplicate pub
+                            </span>
+                            <span className="type-meta mt-0.5 block text-guinness-tan/50">
+                              Admin only — expand to combine with another listing
+                            </span>
+                          </span>
+                          <svg
+                            className={`h-5 w-5 shrink-0 text-amber-200/75 transition-transform duration-200 ${
+                              mergeSectionOpen ? "rotate-180" : ""
+                            }`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                          >
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </button>
+                        {mergeSectionOpen ? (
+                          <div
+                            id="pub-admin-merge-panel"
+                            role="region"
+                            aria-labelledby="pub-admin-merge-disclosure"
+                            className={`space-y-4 border-t border-amber-500/20 px-4 pb-4 pt-3 sm:px-5 sm:pb-5`}
+                          >
+                            <p className="type-meta text-guinness-tan/55">
+                              Use when this page is a manual duplicate of another listing
+                              (e.g. “The Old English Pub” vs the full Google name). All
+                              pours here are re-tagged to match the target pub; this
+                              listing disappears from All pubs.
+                            </p>
+                            <div className="space-y-2">
+                              <label
+                                htmlFor="pub-admin-merge-target"
+                                className="type-meta block text-guinness-tan/80"
+                              >
+                                Target bar key (from URL)
+                              </label>
+                              <input
+                                id="pub-admin-merge-target"
+                                type="text"
+                                value={mergeTargetBarKey}
+                                onChange={(e) =>
+                                  setMergeTargetBarKey(e.target.value)
+                                }
+                                className={fieldInputClass}
+                                placeholder="e.g. the old english bangkok british pub & restaurant"
+                                autoComplete="off"
+                                spellCheck={false}
+                              />
+                              <p className="type-meta text-guinness-tan/45">
+                                Open the canonical pub, copy the segment after{" "}
+                                <code className="rounded bg-guinness-black/50 px-1 text-guinness-gold/90">
+                                  /pubs/
+                                </code>{" "}
+                                (decoded, usually lowercase).
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={mergeBusy || directoryBusy}
+                              onClick={() => void mergeIntoTargetPub()}
+                              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-500/40 bg-guinness-black/40 px-4 py-2.5 text-sm font-semibold text-amber-100/95 transition-colors hover:border-amber-400/55 hover:bg-guinness-brown/40 disabled:opacity-50"
+                            >
+                              {mergeBusy ? "Merging…" : "Merge into target pub"}
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
 
