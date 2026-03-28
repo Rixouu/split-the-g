@@ -27,6 +27,7 @@ import {
   PubWallTab,
   type PubWallRow,
 } from "~/components/pub/PubWallTab";
+import { competitionDetailPath } from "~/utils/competitionPath";
 import { supabase } from "~/utils/supabase";
 import {
   fetchPlaceDetailsForDirectoryImport,
@@ -96,6 +97,7 @@ type LinkedCompetition = {
   title: string;
   starts_at: string;
   ends_at: string;
+  path_segment?: string | null;
 };
 
 function mapsSearchUrl(b: BarStat): string {
@@ -207,7 +209,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const nowIso = new Date().toISOString();
   const { data: comps, error: compErr } = await supabase
     .from("competitions")
-    .select("id, title, starts_at, ends_at")
+    .select("id, title, starts_at, ends_at, path_segment")
     .eq("linked_bar_key", barKey)
     .gt("ends_at", nowIso)
     .order("ends_at", { ascending: true });
@@ -1322,7 +1324,7 @@ export default function PubDetail() {
                       {linkedCompetitions.map((c) => (
                         <li key={c.id}>
                           <Link
-                            to={`/competitions/${c.id}`}
+                            to={competitionDetailPath(c)}
                             viewTransition
                             className={`block rounded-xl border ${pubStroke} bg-guinness-black/25 px-3 py-2.5 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 sm:px-4 sm:py-3`}
                           >

@@ -12,6 +12,7 @@ export default function ProfileFriendsPage() {
     outgoingRequests,
     busy,
     respondRequest,
+    cancelOutgoingFriendRequest,
     removeFriendship,
     allTimeFriendStatsByEmail,
     inputClass,
@@ -204,13 +205,28 @@ export default function ProfileFriendsPage() {
         >
           <h2 className="type-card-title">Pending sent</h2>
           {outgoingRequests.length > 0 ? (
-            <ul className="mt-4 space-y-2 text-sm text-guinness-tan/75">
+            <ul className="mt-4 space-y-3">
               {outgoingRequests.map((r) => (
                 <li
                   key={r.id}
-                  className="rounded-lg border border-guinness-gold/10 bg-guinness-black/25 px-3 py-2"
+                  className="flex flex-col gap-3 rounded-xl border border-guinness-gold/10 bg-guinness-black/30 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  {String(r.to_email)}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-guinness-cream">
+                      {String(r.to_email)}
+                    </p>
+                    <p className="type-meta mt-1 text-guinness-tan/65">
+                      Sent {new Date(r.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void cancelOutgoingFriendRequest(r)}
+                    className="shrink-0 rounded-lg border border-guinness-gold/25 px-3 py-2 text-xs font-semibold text-guinness-tan hover:bg-guinness-brown/45"
+                  >
+                    Cancel invite
+                  </button>
                 </li>
               ))}
             </ul>

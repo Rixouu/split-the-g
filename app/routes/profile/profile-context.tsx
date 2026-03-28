@@ -46,6 +46,7 @@ export type ProfileOutletContextValue = {
     row: FriendRequestRow,
     status: "accepted" | "declined",
   ) => Promise<void>;
+  cancelOutgoingFriendRequest: (row: FriendRequestRow) => Promise<void>;
   removeFriendship: (f: UserFriendRow) => Promise<void>;
   allTimeFriendStatsByEmail: Record<string, FriendLeaderboardEntry>;
   inputClass: string;

@@ -742,6 +742,29 @@ export default function ProfileLayout() {
     }
   }
 
+  async function cancelOutgoingFriendRequest(row: FriendRequestRow) {
+    if (!user) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase
+        .from("friend_requests")
+        .delete()
+        .eq("id", row.id)
+        .eq("from_user_id", user.id)
+        .eq("status", "pending");
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+      const socialRows = await loadSocial(user);
+      await loadFriendComparison(user, socialRows);
+      setMessage("Invite cancelled.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function removeFriendship(f: UserFriendRow) {
     if (!user) return;
     const other =
@@ -931,6 +954,7 @@ export default function ProfileLayout() {
                 addFavorite,
                 removeFavorite,
                 respondRequest,
+                cancelOutgoingFriendRequest,
                 removeFriendship,
                 allTimeFriendStatsByEmail,
                 inputClass,

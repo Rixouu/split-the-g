@@ -106,9 +106,9 @@ export default function App() {
           }}
         />
         {/*
-          Maps JS loads on /profile and /pour/* via GoogleMapsScript (see google-maps-routes).
+          Maps JS loads on /profile, /pour/*, and /competitions via GoogleMapsScript (see google-maps-routes).
           Pub detail pages use the Maps Embed API in an iframe (same VITE_GOOGLE_MAPS_API_KEY);
-          enable "Maps Embed API" on that key. Places + JS API for pour/profile autocomplete.
+          enable "Maps Embed API" on that key. Places + JS API for pour/profile/competition autocomplete.
         */}
         {mapsKey ? (
           <GoogleMapsScript apiKey={mapsKey} active={mapsScriptActive} />

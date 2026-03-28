@@ -18,6 +18,9 @@ import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedNotice } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
+import { CompetitionDateTimeRangeField } from "~/components/competitions/CompetitionDateTimeRangeField";
+import { CompetitionLocationField } from "~/components/competitions/CompetitionLocationField";
+import { competitionDetailPath } from "~/utils/competitionPath";
 import { supabase } from "~/utils/supabase";
 
 export type CompetitionRow = {
@@ -35,6 +38,8 @@ export type CompetitionRow = {
   location_name?: string | null;
   location_address?: string | null;
   linked_bar_key?: string | null;
+  /** Pretty URL segment for `/competitions/:segment` (set by DB trigger). */
+  path_segment?: string | null;
 };
 
 type WinRuleChoice = "highest_score" | "closest_to_target" | "most_submissions";
@@ -641,7 +646,9 @@ export default function Competitions() {
           inviterEmail: u.user.email,
           inviterName,
           toEmail: raw,
-          invitePath: `/competitions/${compId}`,
+          invitePath: competitionDetailPath(
+            comp ?? { id: compId, path_segment: null },
+          ),
           competitionTitle: comp?.title ?? null,
         }),
       });
@@ -734,203 +741,171 @@ export default function Competitions() {
         ) : null}
 
         {editing ? (
-          <section className="mb-10 rounded-2xl border border-guinness-gold/35 bg-guinness-brown/50 p-5 sm:p-6">
-            <h2 className="type-card-title mb-4">Edit competition</h2>
-            <form onSubmit={(ev) => void handleUpdate(ev)} className="space-y-4">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={editPublic}
-                  onChange={(e) => setEditPublic(e.target.checked)}
-                  className="rounded border-guinness-gold/40"
-                />
-                <span className="text-sm text-guinness-tan/85">
-                  Public (anyone can join)
-                </span>
-              </label>
-              <div>
-                <label htmlFor="edit-win-rule" className="type-label mb-1 block">
-                  Win rule
-                </label>
-                <select
-                  id="edit-win-rule"
-                  value={editWinRule}
-                  onChange={(e) =>
-                    setEditWinRule(e.target.value as WinRuleChoice)
-                  }
-                  className={fieldClass}
-                >
-                  <option value="highest_score">Highest split score</option>
-                  <option value="closest_to_target">Closest to target score</option>
-                  <option value="most_submissions">Most submissions</option>
-                </select>
-              </div>
-              {editWinRule === "closest_to_target" ? (
-                <div>
-                  <label htmlFor="edit-target" className="type-label mb-1 block">
-                    Target score (0–5)
+          <section className="mb-10 rounded-2xl border border-guinness-gold/35 bg-guinness-brown/50 p-5 sm:p-6 lg:p-8">
+            <h2 className="type-card-title mb-6">Edit competition</h2>
+            <form onSubmit={(ev) => void handleUpdate(ev)}>
+              <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+                <div className="space-y-4">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editPublic}
+                      onChange={(e) => setEditPublic(e.target.checked)}
+                      className="rounded border-guinness-gold/40"
+                    />
+                    <span className="text-sm text-guinness-tan/85">
+                      Public (anyone can join)
+                    </span>
                   </label>
-                  <input
-                    id="edit-target"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    max={5}
-                    value={editTargetScore}
-                    onChange={(e) => setEditTargetScore(e.target.value)}
-                    className={fieldClass}
+                  <div>
+                    <label htmlFor="edit-win-rule" className="type-label mb-1 block">
+                      Win rule
+                    </label>
+                    <select
+                      id="edit-win-rule"
+                      value={editWinRule}
+                      onChange={(e) =>
+                        setEditWinRule(e.target.value as WinRuleChoice)
+                      }
+                      className={fieldClass}
+                    >
+                      <option value="highest_score">Highest split score</option>
+                      <option value="closest_to_target">Closest to target score</option>
+                      <option value="most_submissions">Most submissions</option>
+                    </select>
+                  </div>
+                  {editWinRule === "closest_to_target" ? (
+                    <div>
+                      <label htmlFor="edit-target" className="type-label mb-1 block">
+                        Target score (0–5)
+                      </label>
+                      <input
+                        id="edit-target"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={5}
+                        value={editTargetScore}
+                        onChange={(e) => setEditTargetScore(e.target.value)}
+                        className={fieldClass}
+                      />
+                    </div>
+                  ) : null}
+                  <div>
+                    <label htmlFor="edit-title" className="type-label mb-1 block">
+                      Name
+                    </label>
+                    <input
+                      id="edit-title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className={fieldClass}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <CompetitionLocationField
+                    key={editing.id}
+                    fieldClass={fieldClass}
+                    locationName={editLocationName}
+                    locationAddress={editLocationAddress}
+                    onLocationNameChange={setEditLocationName}
+                    onLocationAddressChange={setEditLocationAddress}
                   />
+                  <div>
+                    <label
+                      htmlFor="edit-linked-pub"
+                      className="type-label mb-1 block"
+                    >
+                      Pub for listings (optional)
+                    </label>
+                    <select
+                      id="edit-linked-pub"
+                      value={editLinkedBarKey}
+                      onChange={(e) => setEditLinkedBarKey(e.target.value)}
+                      className={fieldClass}
+                    >
+                      <option value="">— Not linked —</option>
+                      {barLinkOptions.map((o) => (
+                        <option key={o.bar_key} value={o.bar_key}>
+                          {o.display_name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="type-meta mt-1 text-guinness-tan/60">
+                      Shows this competition on that pub&apos;s detail page while
+                      it&apos;s active.
+                    </p>
+                  </div>
                 </div>
-              ) : null}
-              <div>
-                <label htmlFor="edit-title" className="type-label mb-1 block">
-                  Name
-                </label>
-                <input
-                  id="edit-title"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className={fieldClass}
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="edit-location-name"
-                  className="type-label mb-1 block"
-                >
-                  Location (optional)
-                </label>
-                <input
-                  id="edit-location-name"
-                  value={editLocationName}
-                  onChange={(e) => setEditLocationName(e.target.value)}
-                  className={fieldClass}
-                  placeholder="Venue or area"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="edit-location-address"
-                  className="type-label mb-1 block"
-                >
-                  Address / details (optional)
-                </label>
-                <input
-                  id="edit-location-address"
-                  value={editLocationAddress}
-                  onChange={(e) => setEditLocationAddress(e.target.value)}
-                  className={fieldClass}
-                  placeholder="Street, neighborhood, notes"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="edit-linked-pub"
-                  className="type-label mb-1 block"
-                >
-                  Pub for listings (optional)
-                </label>
-                <select
-                  id="edit-linked-pub"
-                  value={editLinkedBarKey}
-                  onChange={(e) => setEditLinkedBarKey(e.target.value)}
-                  className={fieldClass}
-                >
-                  <option value="">— Not linked —</option>
-                  {barLinkOptions.map((o) => (
-                    <option key={o.bar_key} value={o.bar_key}>
-                      {o.display_name}
-                    </option>
-                  ))}
-                </select>
-                <p className="type-meta mt-1 text-guinness-tan/60">
-                  Shows this competition on that pub&apos;s detail page while
-                  it&apos;s active.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="edit-max" className="type-label mb-1 block">
-                    Max people
-                  </label>
-                  <input
-                    id="edit-max"
-                    type="number"
-                    min={2}
-                    max={500}
-                    value={editMax}
-                    onChange={(e) =>
-                      setEditMax(Number.parseInt(e.target.value, 10) || 2)
-                    }
-                    className={fieldClass}
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="edit-max" className="type-label mb-1 block">
+                        Max people
+                      </label>
+                      <input
+                        id="edit-max"
+                        type="number"
+                        min={2}
+                        max={500}
+                        value={editMax}
+                        onChange={(e) =>
+                          setEditMax(Number.parseInt(e.target.value, 10) || 2)
+                        }
+                        className={fieldClass}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="edit-glasses" className="type-label mb-1 block">
+                        Glasses / person
+                      </label>
+                      <input
+                        id="edit-glasses"
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={editGlasses}
+                        onChange={(e) =>
+                          setEditGlasses(Number.parseInt(e.target.value, 10) || 1)
+                        }
+                        className={fieldClass}
+                      />
+                    </div>
+                  </div>
+                  <CompetitionDateTimeRangeField
+                    startLocal={editStart}
+                    endLocal={editEnd}
+                    onChange={(s, e) => {
+                      setEditStart(s);
+                      setEditEnd(e);
+                    }}
+                    inputClass={fieldClass}
                   />
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={editBusy}
+                      className="rounded-lg bg-guinness-gold px-4 py-2.5 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50"
+                    >
+                      {editBusy ? "Saving…" : "Save changes"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="rounded-lg border border-guinness-gold/30 px-4 py-2.5 text-sm font-medium text-guinness-gold hover:bg-guinness-brown/50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="edit-glasses" className="type-label mb-1 block">
-                    Glasses / person
-                  </label>
-                  <input
-                    id="edit-glasses"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={editGlasses}
-                    onChange={(e) =>
-                      setEditGlasses(Number.parseInt(e.target.value, 10) || 1)
-                    }
-                    className={fieldClass}
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="edit-start" className="type-label mb-1 block">
-                  Starts
-                </label>
-                <input
-                  id="edit-start"
-                  type="datetime-local"
-                  value={editStart}
-                  onChange={(e) => setEditStart(e.target.value)}
-                  className={fieldClass}
-                />
-              </div>
-              <div>
-                <label htmlFor="edit-end" className="type-label mb-1 block">
-                  Ends
-                </label>
-                <input
-                  id="edit-end"
-                  type="datetime-local"
-                  value={editEnd}
-                  onChange={(e) => setEditEnd(e.target.value)}
-                  className={fieldClass}
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="submit"
-                  disabled={editBusy}
-                  className="rounded-lg bg-guinness-gold px-4 py-2.5 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50"
-                >
-                  {editBusy ? "Saving…" : "Save changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="rounded-lg border border-guinness-gold/30 px-4 py-2.5 text-sm font-medium text-guinness-gold hover:bg-guinness-brown/50"
-                >
-                  Cancel
-                </button>
               </div>
             </form>
           </section>
         ) : null}
 
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] xl:items-start">
-          <section className="rounded-2xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 shadow-[0_18px_40px_rgba(0,0,0,0.18)] xl:sticky xl:top-24">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start xl:gap-10">
+          <section className="rounded-2xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 shadow-[0_18px_40px_rgba(0,0,0,0.18)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
             <div className="mb-4 flex items-center justify-between gap-2">
               <h2 className="type-card-title">New competition</h2>
               <button
@@ -1004,38 +979,13 @@ export default function Competitions() {
                   autoComplete="off"
                 />
               </div>
-              <div>
-                <label
-                  htmlFor="comp-location-name"
-                  className="type-label mb-1 block"
-                >
-                  Location (optional)
-                </label>
-                <input
-                  id="comp-location-name"
-                  value={createLocationName}
-                  onChange={(e) => setCreateLocationName(e.target.value)}
-                  className={fieldClass}
-                  placeholder="Venue or area"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="comp-location-address"
-                  className="type-label mb-1 block"
-                >
-                  Address / details (optional)
-                </label>
-                <input
-                  id="comp-location-address"
-                  value={createLocationAddress}
-                  onChange={(e) => setCreateLocationAddress(e.target.value)}
-                  className={fieldClass}
-                  placeholder="Street, neighborhood, notes"
-                  autoComplete="off"
-                />
-              </div>
+              <CompetitionLocationField
+                fieldClass={fieldClass}
+                locationName={createLocationName}
+                locationAddress={createLocationAddress}
+                onLocationNameChange={setCreateLocationName}
+                onLocationAddressChange={setCreateLocationAddress}
+              />
               <div>
                 <label
                   htmlFor="comp-linked-pub"
@@ -1096,30 +1046,15 @@ export default function Competitions() {
                   />
                 </div>
               </div>
-              <div>
-                <label htmlFor="comp-start" className="type-label mb-1 block">
-                  Starts
-                </label>
-                <input
-                  id="comp-start"
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={(e) => setStartsAt(e.target.value)}
-                  className={fieldClass}
-                />
-              </div>
-              <div>
-                <label htmlFor="comp-end" className="type-label mb-1 block">
-                  Ends
-                </label>
-                <input
-                  id="comp-end"
-                  type="datetime-local"
-                  value={endsAt}
-                  onChange={(e) => setEndsAt(e.target.value)}
-                  className={fieldClass}
-                />
-              </div>
+              <CompetitionDateTimeRangeField
+                startLocal={startsAt}
+                endLocal={endsAt}
+                onChange={(s, e) => {
+                  setStartsAt(s);
+                  setEndsAt(e);
+                }}
+                inputClass={fieldClass}
+              />
               <p className="type-meta text-guinness-tan/65">
                 Private: only you, participants, and invited emails see the
                 competition. Add friends from Profile after they accept your
@@ -1204,7 +1139,7 @@ export default function Competitions() {
 
                           <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[20rem] sm:flex-row sm:flex-wrap sm:justify-end">
                             <Link
-                              to={`/competitions/${c.id}`}
+                              to={competitionDetailPath(c)}
                               className={`${pageHeaderActionButtonClass} w-full justify-center text-xs sm:w-auto sm:min-w-[5.5rem] sm:text-sm`}
                             >
                               View

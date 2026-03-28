@@ -1,5 +1,12 @@
-import { Link, useLoaderData, useParams, useRevalidator } from "react-router";
+import {
+  Link,
+  redirect,
+  useLoaderData,
+  useParams,
+  useRevalidator,
+} from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
+import { format } from "date-fns";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   PageHeader,
@@ -14,7 +21,9 @@ import {
 } from "~/components/branded/feedback-variant";
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
+import { isCompetitionUuidParam } from "~/utils/competitionPath";
 import { pubDetailPath } from "~/utils/pubPath";
+import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import type { CompetitionRow } from "~/routes/competitions";
 
 type WinRule = CompetitionRow["win_rule"];
@@ -30,11 +39,13 @@ type ScoreSnippet = {
   split_score: number;
   created_at: string;
   email?: string | null;
+  country_code?: string | null;
 };
 
 type ParticipantProfilePick = {
   nickname?: string | null;
   display_name?: string | null;
+  country_code?: string | null;
 };
 
 type CompetitionScoreJoin = {
@@ -84,6 +95,7 @@ type PourEntry = {
   at: number;
   scoreId: string;
   slug: string | null;
+  countryCode: string | null;
 };
 
 type RankedRow = {
@@ -93,6 +105,7 @@ type RankedRow = {
   metric: string;
   detail: string;
   pourPath: string;
+  countryCode: string | null;
 };
 
 function pickRepresentativePour(pours: PourEntry[]): PourEntry {
@@ -129,11 +142,13 @@ function buildLeaderboard(
     const username = scoreRow.username?.trim() || "Player";
     const value = Number(scoreRow.split_score);
     const at = new Date(scoreRow.created_at).getTime();
+    const cc = scoreRow.country_code?.trim().toUpperCase() ?? null;
     const pour: PourEntry = {
       value,
       at,
       scoreId: row.score_id,
       slug: scoreRow.slug ?? null,
+      countryCode: cc && /^[A-Z]{2}$/.test(cc) ? cc : null,
     };
     if (!prev) {
       map.set(uid, {
@@ -164,6 +179,7 @@ function buildLeaderboard(
             id: linkPour.scoreId,
             slug: linkPour.slug,
           }),
+          countryCode: linkPour.countryCode,
         };
       })
       .sort((x, y) =>
@@ -180,6 +196,7 @@ function buildLeaderboard(
         metric: r.metric,
         detail: r.detail,
         pourPath: r.pourPath,
+        countryCode: r.countryCode,
       }));
   }
 
@@ -215,6 +232,7 @@ function buildLeaderboard(
             id: linkPour.scoreId,
             slug: linkPour.slug,
           }),
+          countryCode: linkPour.countryCode,
         };
       })
       .sort((x, y) =>
@@ -231,6 +249,7 @@ function buildLeaderboard(
         metric: r.metric,
         detail: r.detail,
         pourPath: r.pourPath,
+        countryCode: r.countryCode,
       }));
   }
 
@@ -249,6 +268,7 @@ function buildLeaderboard(
           id: linkPour.scoreId,
           slug: linkPour.slug,
         }),
+        countryCode: linkPour.countryCode,
       };
     })
     .sort((x, y) =>
@@ -263,24 +283,50 @@ function buildLeaderboard(
       metric: r.metric,
       detail: r.detail,
       pourPath: r.pourPath,
+      countryCode: r.countryCode,
     }));
 }
 
-export async function loader({ params }: LoaderFunctionArgs) {
-  const id = params.competitionId?.trim();
-  if (!id) {
+export async function loader({ params, request }: LoaderFunctionArgs) {
+  const raw = (params.competitionId ?? "").trim();
+  if (!raw) {
     throw new Response("Not found", { status: 404 });
   }
-  const { data, error } = await supabase
-    .from("competitions")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+
+  const query = isCompetitionUuidParam(raw)
+    ? supabase.from("competitions").select("*").eq("id", raw)
+    : supabase.from("competitions").select("*").ilike("path_segment", raw);
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    return {
+      competitionId: "",
+      competition: null as CompetitionRow | null,
+      loadError: error.message,
+    };
+  }
+
+  const row = (data ?? null) as CompetitionRow | null;
+  if (!row) {
+    throw new Response("Not found", { status: 404 });
+  }
+
+  const url = new URL(request.url);
+  const expectedTail = row.path_segment?.trim() || row.id;
+  const currentTail = decodeURIComponent(
+    url.pathname.replace(/^\/competitions\//i, "").replace(/\/+$/, ""),
+  );
+  if (currentTail !== expectedTail) {
+    throw redirect(
+      `/competitions/${encodeURIComponent(expectedTail)}${url.search}`,
+    );
+  }
 
   return {
-    competitionId: id,
-    competition: (data ?? null) as CompetitionRow | null,
-    loadError: error?.message ?? null,
+    competitionId: row.id,
+    competition: row,
+    loadError: null as string | null,
   };
 }
 
@@ -297,14 +343,7 @@ export default function CompetitionDetail() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [scoresJoined, setScoresJoined] = useState<CompetitionScoreJoin[]>([]);
-  const [myScores, setMyScores] = useState<
-    { id: string; split_score: number; created_at: string; bar_name: string | null }[]
-  >([]);
-  const [submittedScoreIds, setSubmittedScoreIds] = useState<Set<string>>(
-    new Set(),
-  );
   const [message, setMessage] = useState<string | null>(null);
-  const [submitBusy, setSubmitBusy] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [participantUserIds, setParticipantUserIds] = useState<string[]>([]);
   const [participantProfiles, setParticipantProfiles] = useState<
@@ -315,11 +354,26 @@ export default function CompetitionDetail() {
     () => new Set(),
   );
   const [friendInviteBusy, setFriendInviteBusy] = useState<string | null>(null);
+  const [joinedBannerExpanded, setJoinedBannerExpanded] = useState(true);
+  const [rightColTab, setRightColTab] = useState<"leaderboard" | "participants">(
+    "leaderboard",
+  );
+  /** Mobile: summary card starts collapsed so the leaderboard is reachable without scrolling. */
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(`comp:joined-banner:${competitionId}`);
+      setJoinedBannerExpanded(v !== "0");
+    } catch {
+      setJoinedBannerExpanded(true);
+    }
+  }, [competitionId]);
 
   const refreshAll = useCallback(async () => {
     const id = competitionId;
@@ -353,14 +407,16 @@ export default function CompetitionDetail() {
     if (partIds.length > 0) {
       const { data: profs } = await supabase
         .from("public_profiles")
-        .select("user_id, nickname, display_name")
+        .select("user_id, nickname, display_name, country_code")
         .in("user_id", partIds);
       const map: Record<string, ParticipantProfilePick> = {};
       for (const p of profs ?? []) {
         const u = p.user_id as string;
+        const ccRaw = p.country_code != null ? String(p.country_code).trim() : "";
         map[u] = {
           nickname: p.nickname as string | null | undefined,
           display_name: p.display_name as string | null | undefined,
+          country_code: ccRaw || null,
         };
       }
       setParticipantProfiles(map);
@@ -412,25 +468,12 @@ export default function CompetitionDetail() {
     const { data: csRows } = await supabase
       .from("competition_scores")
       .select(
-        "id, user_id, score_id, created_at, scores (id, slug, username, split_score, created_at, email)",
+        "id, user_id, score_id, created_at, scores (id, slug, username, split_score, created_at, email, country_code)",
       )
       .eq("competition_id", id);
 
     const list = (csRows ?? []) as CompetitionScoreJoin[];
     setScoresJoined(list);
-    setSubmittedScoreIds(new Set(list.map((r) => r.score_id)));
-
-    if (em) {
-      const { data: mine } = await supabase
-        .from("scores")
-        .select("id, split_score, created_at, bar_name")
-        .eq("email", em)
-        .order("created_at", { ascending: false })
-        .limit(40);
-      setMyScores((mine ?? []) as typeof myScores);
-    } else {
-      setMyScores([]);
-    }
   }, [competitionId]);
 
   useEffect(() => {
@@ -678,28 +721,6 @@ export default function CompetitionDetail() {
     }
   }
 
-  async function submitScore(scoreId: string) {
-    setMessage(null);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) {
-      setMessage("Sign in to submit.");
-      return;
-    }
-    setSubmitBusy(scoreId);
-    const { error } = await supabase.from("competition_scores").insert({
-      competition_id: competitionId,
-      score_id: scoreId,
-      user_id: u.user.id,
-    });
-    setSubmitBusy(null);
-    if (error) setMessage(error.message);
-    else {
-      revalidator.revalidate();
-      void refreshAll();
-      setMessage("Pour submitted to this competition.");
-    }
-  }
-
   if (!params.competitionId) {
     return null;
   }
@@ -737,10 +758,6 @@ export default function CompetitionDetail() {
     timePhase?.phase === "live" &&
     userId;
 
-  const availableToSubmit = myScores.filter(
-    (s) => !submittedScoreIds.has(s.id),
-  );
-
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
@@ -756,314 +773,500 @@ export default function CompetitionDetail() {
 
         {joined ? (
           <div
-            className="mb-5 flex flex-wrap items-start gap-3 rounded-xl border border-emerald-500/35 bg-emerald-500/[0.08] px-4 py-3 sm:items-center sm:gap-4"
+            className="mb-5 rounded-lg border border-[#312814] bg-guinness-black/30"
             role="status"
             aria-label="You are a participant in this competition"
           >
-            <span
-              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-300 sm:mt-0"
-              aria-hidden
+            <button
+              type="button"
+              aria-expanded={joinedBannerExpanded}
+              onClick={() => {
+                setJoinedBannerExpanded((prev) => {
+                  const next = !prev;
+                  try {
+                    localStorage.setItem(
+                      `comp:joined-banner:${competitionId}`,
+                      next ? "1" : "0",
+                    );
+                  } catch {
+                    /* ignore */
+                  }
+                  return next;
+                });
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-guinness-brown/20 sm:gap-3 sm:px-4 sm:py-3"
             >
-              ✓
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-guinness-cream">
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-400/90"
+                aria-hidden
+              >
+                ✓
+              </span>
+              <span className="min-w-0 flex-1 font-medium text-guinness-cream/95">
                 You&apos;re in this competition
-              </p>
-              <p className="type-meta mt-1 text-guinness-tan/80">
-                Your pours count toward this board while the window is live. We&apos;ll
-                notify you when someone else submits a pour.
-              </p>
-            </div>
+              </span>
+              <span
+                className={`shrink-0 text-xs text-guinness-tan/50 transition-transform duration-200 ${
+                  joinedBannerExpanded ? "rotate-180" : ""
+                }`}
+                aria-hidden
+              >
+                ⌄
+              </span>
+            </button>
+            {joinedBannerExpanded ? (
+              <div className="border-t border-[#312814] px-3 pb-3 pt-0 sm:px-4 sm:pb-3.5">
+                <p className="type-meta mt-4 pl-10 text-guinness-tan/75 sm:pl-11">
+                  Log each pour with{" "}
+                  <span className="text-guinness-cream/90">New pour for comp</span> while the
+                  window is live — older scores can&apos;t be attached afterward. We&apos;ll
+                  notify you when someone else submits.
+                </p>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
-        <section className="mb-8" aria-labelledby="comp-overview-heading">
-          <h2 id="comp-overview-heading" className="type-card-title mb-3">
-            Overview
+        <nav
+          className="sticky top-2 z-20 mb-2 flex flex-wrap gap-2 rounded-xl border border-guinness-gold/15 bg-guinness-black/90 px-3 py-2.5 shadow-lg shadow-black/40 backdrop-blur-md lg:hidden"
+          aria-label="Jump to section"
+        >
+          <a
+            href="#comp-summary-section"
+            onClick={(e) => {
+              e.preventDefault();
+              setMobileSummaryOpen(true);
+              window.requestAnimationFrame(() => {
+                document
+                  .getElementById("comp-summary-section")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }}
+            className="rounded-lg bg-guinness-brown/50 px-3 py-1.5 text-xs font-semibold text-guinness-tan transition-colors hover:bg-guinness-brown/70"
+          >
+            Summary
+          </a>
+          <a
+            href="#comp-leaderboard-panel"
+            className="rounded-lg bg-guinness-gold/20 px-3 py-1.5 text-xs font-semibold text-guinness-gold transition-colors hover:bg-guinness-gold/30"
+          >
+            Leaderboard
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setRightColTab("participants");
+              window.requestAnimationFrame(() => {
+                document
+                  .getElementById("comp-leaderboard-panel")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }}
+            className="rounded-lg bg-guinness-brown/50 px-3 py-1.5 text-xs font-semibold text-guinness-tan transition-colors hover:bg-guinness-brown/70"
+          >
+            Who&apos;s in
+          </button>
+        </nav>
+
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start lg:gap-10 xl:gap-10">
+        <section
+          id="comp-summary-section"
+          className="order-1 scroll-mt-28 lg:col-start-1 lg:row-start-1"
+          aria-labelledby="comp-overview-heading"
+        >
+          <h2
+            id="comp-overview-heading"
+            className="type-card-title mb-3 hidden lg:block"
+          >
+            Summary
           </h2>
-          <div className="rounded-2xl border border-guinness-gold/15 bg-guinness-brown/25 p-4 sm:p-5">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-guinness-gold/10 pb-3 text-sm text-guinness-tan/80">
-              <span className="font-semibold text-guinness-gold">
+          <button
+            type="button"
+            aria-expanded={mobileSummaryOpen}
+            aria-controls="comp-summary-body"
+            onClick={() => setMobileSummaryOpen((o) => !o)}
+            className="mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[#312814] bg-guinness-brown/25 px-3 py-2.5 text-left transition-colors hover:bg-guinness-brown/35 lg:hidden"
+          >
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-guinness-gold">Summary</p>
+              <p className="type-meta mt-0.5 truncate text-guinness-tan/70">
+                {timePhase?.phase === "before"
+                  ? `Upcoming · starts in ${timePhase ? formatDuration(timePhase.ms) : "—"}`
+                  : timePhase?.phase === "live"
+                    ? `Live · ends in ${timePhase ? formatDuration(timePhase.ms) : "—"}`
+                    : "Ended"}
+                <span className="text-guinness-tan/45"> · </span>
+                {participantUserIds.length}/{competition.max_participants} in
+              </p>
+            </div>
+            <span
+              className={`shrink-0 text-guinness-tan/50 transition-transform duration-200 ${
+                mobileSummaryOpen ? "rotate-180" : ""
+              }`}
+              aria-hidden
+            >
+              ⌄
+            </span>
+          </button>
+          <div
+            id="comp-summary-body"
+            className={`rounded-2xl border border-guinness-gold/15 bg-guinness-brown/25 p-4 sm:p-5 ${
+              mobileSummaryOpen ? "max-lg:block" : "max-lg:hidden"
+            } lg:block`}
+          >
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-guinness-gold/10 pb-4">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                  timePhase?.phase === "live"
+                    ? "bg-emerald-500/20 text-emerald-200"
+                    : timePhase?.phase === "before"
+                      ? "bg-guinness-gold/15 text-guinness-gold"
+                      : "bg-guinness-black/50 text-guinness-tan/75"
+                }`}
+              >
+                {timePhase?.phase === "before"
+                  ? "Upcoming"
+                  : timePhase?.phase === "live"
+                    ? "Live"
+                    : "Ended"}
+              </span>
+              <span className="text-guinness-tan/40" aria-hidden>
+                ·
+              </span>
+              <span className="text-sm text-guinness-tan/80">
+                {isPrivate ? "Private" : "Public"}
+              </span>
+              <span className="text-guinness-tan/40" aria-hidden>
+                ·
+              </span>
+              <span className="text-sm font-medium text-guinness-gold">
                 {winRuleLabel(competition.win_rule)}
                 {competition.win_rule === "closest_to_target" &&
                 competition.target_score != null
                   ? ` · target ${Number(competition.target_score).toFixed(2)}`
                   : ""}
               </span>
-              <span className="text-guinness-tan/50" aria-hidden>
-                ·
-              </span>
-              <span>{isPrivate ? "Private" : "Public"}</span>
             </div>
-            {competition.linked_bar_key?.trim() ? (
-              <p className="type-meta mt-2 text-guinness-tan/75">
-                Linked pub:{" "}
-                <Link
-                  to={pubDetailPath(competition.linked_bar_key.trim())}
-                  viewTransition
-                  className="font-medium text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:decoration-guinness-gold"
-                >
-                  Open pub page
-                </Link>
-              </p>
-            ) : null}
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
-                <dt className="type-meta text-guinness-tan/65">Status</dt>
-                <dd className="mt-1 text-lg font-semibold text-guinness-gold">
-                  {timePhase?.phase === "before"
-                    ? "Not started"
-                    : timePhase?.phase === "live"
-                      ? "Live"
-                      : "Ended"}
-                </dd>
-              </div>
-              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
-                <dt className="type-meta text-guinness-tan/65">
+
+            <div className="mt-4 flex flex-col gap-5">
+              <div className="rounded-xl border border-[#312814] bg-[#312814]/40 px-4 py-4">
+                <p className="type-meta text-guinness-tan/55">
                   {timePhase?.phase === "before"
                     ? "Starts in"
                     : timePhase?.phase === "live"
                       ? "Ends in"
-                      : "Finished"}
-                </dt>
-                <dd className="mt-1 text-lg font-semibold tabular-nums text-guinness-cream">
+                      : "Window"}
+                </p>
+                <p className="mt-2 text-2xl font-semibold tabular-nums leading-tight text-guinness-cream sm:text-[1.65rem]">
                   {timePhase?.phase === "after"
                     ? "—"
                     : timePhase
                       ? formatDuration(timePhase.ms)
                       : "—"}
-                </dd>
+                </p>
               </div>
-              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3 sm:col-span-2 lg:col-span-1">
-                <dt className="type-meta text-guinness-tan/65">Window</dt>
-                <dd className="mt-1 text-xs leading-relaxed text-guinness-tan/85">
-                  {new Date(competition.starts_at).toLocaleString()} →{" "}
-                  {new Date(competition.ends_at).toLocaleString()}
-                </dd>
+              <div>
+                <p className="type-meta text-guinness-tan/55">Schedule</p>
+                <p className="mt-2 text-sm leading-relaxed text-guinness-cream">
+                  {format(new Date(competition.starts_at), "EEE MMM d, h:mm a")}
+                  <span className="text-guinness-tan/45"> → </span>
+                  {format(new Date(competition.ends_at), "EEE MMM d, h:mm a")}
+                </p>
               </div>
-              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3 sm:col-span-2 lg:col-span-1">
-                <dt className="type-meta text-guinness-tan/65">Participants</dt>
-                <dd className="mt-1">
-                  <p className="text-lg font-semibold tabular-nums text-guinness-cream">
-                    {participantUserIds.length} / {competition.max_participants}{" "}
-                    joined
+              <div className="flex flex-col gap-4 rounded-xl border border-[#312814] bg-[#312814]/25 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+                <div>
+                  <p className="type-meta text-guinness-tan/55">Roster</p>
+                  <p className="mt-2 text-xl font-semibold tabular-nums text-guinness-cream">
+                    {participantUserIds.length}/{competition.max_participants}
                   </p>
-                  <p className="type-meta mt-1 text-guinness-tan/60">
-                    Up to {competition.max_participants} people ·{" "}
-                    {competition.glasses_per_person} glass
-                    {competition.glasses_per_person === 1 ? "" : "es"} each
+                </div>
+                <div className="sm:min-w-[8rem] sm:text-right">
+                  <p className="type-meta text-guinness-tan/55">Pour limit</p>
+                  <p className="mt-2 text-base font-medium text-guinness-tan/90">
+                    {competition.glasses_per_person} pour
+                    {competition.glasses_per_person === 1 ? "" : "s"} each
                   </p>
-                </dd>
+                </div>
               </div>
-            </dl>
-            <div className="mt-4 rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
-              <p className="type-meta text-guinness-tan/65">Location</p>
-              <div className="mt-1 text-sm leading-relaxed text-guinness-cream">
+            </div>
+
+            {competition.linked_bar_key?.trim() ||
+            competition.location_name?.trim() ||
+            competition.location_address?.trim() ? (
+              <div className="mt-4 space-y-2 border-t border-guinness-gold/10 pt-4 text-sm leading-relaxed">
+                {competition.linked_bar_key?.trim() ? (
+                  <p className="text-guinness-tan/85">
+                    <span className="text-guinness-tan/50">Directory · </span>
+                    <Link
+                      to={pubDetailPath(competition.linked_bar_key.trim())}
+                      viewTransition
+                      className="font-medium text-guinness-gold underline decoration-guinness-gold/35 underline-offset-2 hover:decoration-guinness-gold"
+                    >
+                      Open pub page
+                    </Link>
+                  </p>
+                ) : null}
                 {competition.location_name?.trim() ||
                 competition.location_address?.trim() ? (
-                  <>
+                  <p className="text-guinness-cream">
+                    <span className="text-guinness-tan/50">Venue · </span>
                     {competition.location_name?.trim() ? (
-                      <span className="font-semibold text-guinness-gold">
+                      <span className="font-medium text-guinness-gold">
                         {competition.location_name.trim()}
                       </span>
                     ) : null}
                     {competition.location_name?.trim() &&
                     competition.location_address?.trim() ? (
-                      <span className="mt-1 block text-guinness-tan/85">
-                        {competition.location_address.trim()}
+                      <span className="text-guinness-tan/75">
+                        {" "}
+                        — {competition.location_address.trim()}
                       </span>
-                    ) : competition.location_address?.trim() ? (
+                    ) : competition.location_address?.trim() &&
+                      !competition.location_name?.trim() ? (
                       <span>{competition.location_address.trim()}</span>
                     ) : null}
-                  </>
-                ) : (
-                  <span className="text-guinness-tan/55">Not specified</span>
-                )}
+                  </p>
+                ) : null}
               </div>
+            ) : null}
+
+            <div
+              className="mt-6 flex flex-col gap-5 border-t border-[#312814] pt-6"
+              aria-label="Competition actions"
+            >
+              {!userId ? (
+                <p className="type-meta text-guinness-tan/70">
+                  Sign in (Profile) to join or pour for this competition.
+                </p>
+              ) : joined ? (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3">
+                    {canSubmit ? (
+                      <Link
+                        to={`/?competition=${encodeURIComponent(competitionId)}`}
+                        viewTransition
+                        className={`${pageHeaderActionButtonClass} w-full`}
+                      >
+                        New pour for comp
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void handleLeave()}
+                      className="w-full rounded-lg border border-[#312814] bg-transparent px-4 py-2.5 text-sm font-medium text-guinness-tan/90 transition-colors hover:bg-[#312814]/30"
+                    >
+                      Leave competition
+                    </button>
+                  </div>
+                  {canSubmit ? (
+                    <details className="type-meta rounded-lg border border-[#312814] bg-guinness-black/20 px-3 py-2.5 text-guinness-tan/60">
+                      <summary className="cursor-pointer select-none text-sm font-medium text-guinness-tan/75 hover:text-guinness-tan">
+                        How pours count
+                      </summary>
+                      <p className="mt-3 border-t border-[#312814] pt-3 text-guinness-tan/55">
+                        Only new pours you log from the pour screen with this competition
+                        selected count — you can&apos;t attach older pours after joining.
+                      </p>
+                    </details>
+                  ) : null}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleJoin()}
+                  className={`${pageHeaderActionButtonClass} w-full`}
+                >
+                  Join competition
+                </button>
+              )}
             </div>
           </div>
         </section>
 
         <section
-          className="mb-8"
-          aria-label="Competition actions"
+          id="comp-leaderboard-panel"
+          className="order-2 scroll-mt-28 lg:col-start-2 lg:row-start-1 lg:max-h-[min(72vh,calc(100vh-5.5rem))] lg:min-w-0 lg:overflow-y-auto lg:self-start lg:pt-0 xl:max-h-[calc(100vh-6rem)]"
+          aria-label="Competition leaderboard and roster"
         >
-        <div className="flex w-full flex-wrap items-center justify-center gap-2">
-          {!userId ? (
-            <p className="type-meta text-guinness-tan/70">
-              Sign in (Profile) to join or submit pours.
-            </p>
-          ) : joined ? (
-            <>
-              <button
-                type="button"
-                onClick={() => void handleLeave()}
-                className="rounded-lg border border-guinness-gold/30 px-4 py-2 text-sm font-medium text-guinness-tan hover:bg-guinness-brown/50"
-              >
-                Leave competition
-              </button>
-              {canSubmit ? (
-                <Link
-                  to={`/?competition=${encodeURIComponent(competitionId)}`}
-                  viewTransition
-                  className={pageHeaderActionButtonClass}
-                >
-                  New pour for comp
-                </Link>
-              ) : null}
-            </>
-          ) : (
+          <div
+            className="mb-4 flex gap-1 rounded-xl border border-[#312814] bg-guinness-black/20 p-1"
+            role="tablist"
+            aria-label="Leaderboard and roster"
+          >
             <button
               type="button"
-              onClick={() => void handleJoin()}
-              className={pageHeaderActionButtonClass}
+              role="tab"
+              aria-selected={rightColTab === "leaderboard"}
+              id="tab-comp-leaderboard"
+              aria-controls="panel-comp-leaderboard"
+              onClick={() => setRightColTab("leaderboard")}
+              className={`min-h-[2.5rem] flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                rightColTab === "leaderboard"
+                  ? "bg-guinness-gold/25 text-guinness-gold shadow-sm shadow-black/20"
+                  : "text-guinness-tan/70 hover:bg-guinness-brown/40 hover:text-guinness-tan"
+              }`}
             >
-              Join competition
+              Leaderboard
             </button>
-          )}
-        </div>
-        </section>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={rightColTab === "participants"}
+              id="tab-comp-participants"
+              aria-controls="panel-comp-participants"
+              onClick={() => setRightColTab("participants")}
+              className={`min-h-[2.5rem] flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                rightColTab === "participants"
+                  ? "bg-guinness-gold/25 text-guinness-gold shadow-sm shadow-black/20"
+                  : "text-guinness-tan/70 hover:bg-guinness-brown/40 hover:text-guinness-tan"
+              }`}
+            >
+              Who&apos;s in
+            </button>
+          </div>
 
-        <section
-          className="mb-8"
-          aria-labelledby="comp-participants-heading"
-        >
-          <h2 id="comp-participants-heading" className="type-card-title mb-1">
-            Who&apos;s in
-          </h2>
-          <p className="type-meta mb-4 text-guinness-tan/70">
-            {userId
-              ? "People who joined this competition. Add friends when you see their pour email on the board."
-              : "Sign in to see friend actions. Participant count is always visible above."}
-          </p>
-          {sortedParticipantUserIds.length === 0 ? (
-            <p className="type-meta text-guinness-tan/60">
-              No participants yet — be the first to join.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {sortedParticipantUserIds.map((pid) => (
-                <li
-                  key={pid}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-guinness-gold/12 bg-guinness-brown/20 px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-guinness-cream">
-                      {participantLabel(pid)}
-                      {userId && pid === userId ? (
-                        <span className="type-meta ml-2 font-normal text-guinness-tan/55">
-                          (you)
-                        </span>
-                      ) : null}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center justify-end">
-                    {friendActionForPeer(pid)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {joined && userEmail && timePhase?.phase === "live" ? (
-          <section className="mb-10 rounded-2xl border border-guinness-gold/20 bg-guinness-brown/30 p-5">
-            <h2 className="type-card-title mb-3">Submit an existing score</h2>
-            <p className="type-meta mb-4 text-guinness-tan/75">
-              Only scores claimed to your email can be submitted. Each score
-              can only be used once in this competition.
-            </p>
-            {availableToSubmit.length === 0 ? (
-              <p className="type-meta text-guinness-tan/60">
-                No eligible scores left — pour a new one with the button above.
-              </p>
+          <div
+            id="panel-comp-leaderboard"
+            role="tabpanel"
+            aria-labelledby="tab-comp-leaderboard"
+            hidden={rightColTab !== "leaderboard"}
+          >
+            {ranked.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#312814] bg-guinness-black/20 px-4 py-8 text-center">
+                <p className="type-meta text-guinness-tan/55">
+                  Waiting for the first pour.
+                </p>
+                <p className="type-meta mt-2 text-guinness-tan/45">
+                  Scores show up when someone uses{" "}
+                  <span className="text-guinness-tan/65">New pour for comp</span> during the
+                  live window.
+                </p>
+              </div>
             ) : (
               <ul className="space-y-2">
-                {availableToSubmit.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-guinness-gold/15 bg-guinness-black/35 px-3 py-2"
-                  >
-                    <div>
-                      <span className="font-semibold text-guinness-gold tabular-nums">
-                        {s.split_score.toFixed(2)}
-                      </span>
-                      <span className="type-meta ml-2 text-guinness-tan/70">
-                        {new Date(s.created_at).toLocaleDateString()}
-                        {s.bar_name ? ` · ${s.bar_name}` : ""}
-                      </span>
+                {ranked.map((r) => (
+                  <li key={r.userId}>
+                    <div className="flex flex-wrap items-stretch gap-0 rounded-xl border border-guinness-gold/15 bg-guinness-brown/35 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/50">
+                      <Link
+                        to={r.pourPath}
+                        viewTransition
+                        className="flex min-w-0 flex-1 flex-wrap items-center gap-3 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-guinness-gold"
+                      >
+                        <span className="w-8 shrink-0 text-lg font-bold text-guinness-gold">
+                          #{r.rank}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-guinness-cream">
+                            {flagEmojiFromIso2(
+                              r.countryCode ?? participantProfiles[r.userId]?.country_code,
+                            ) ? (
+                              <span
+                                className="mr-1 inline-block shrink-0"
+                                title={
+                                  (
+                                    r.countryCode ??
+                                    participantProfiles[r.userId]?.country_code
+                                  )
+                                    ?.trim()
+                                    .toUpperCase() ?? undefined
+                                }
+                                aria-hidden
+                              >
+                                {flagEmojiFromIso2(
+                                  r.countryCode ??
+                                    participantProfiles[r.userId]?.country_code,
+                                )}
+                              </span>
+                            ) : null}
+                            {r.username}
+                          </p>
+                          <p className="type-meta text-guinness-tan/65">{r.detail}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 sm:hidden">
+                          <p className="text-sm font-semibold text-guinness-gold">
+                            {r.metric}
+                          </p>
+                          <span className="text-guinness-tan/45 text-xs" aria-hidden>
+                            →
+                          </span>
+                        </div>
+                      </Link>
+                      <div className="flex min-w-[9rem] shrink-0 flex-col items-stretch justify-center gap-2 border-t border-guinness-gold/10 px-4 py-3 sm:border-l sm:border-t-0 sm:py-3">
+                        <div className="hidden items-center justify-end gap-2 text-right sm:flex">
+                          <p className="text-sm font-semibold text-guinness-gold">
+                            {r.metric}
+                          </p>
+                          <span className="text-guinness-tan/45 text-xs" aria-hidden>
+                            →
+                          </span>
+                        </div>
+                        <div className="flex justify-end sm:justify-end">
+                          {friendActionForPeer(r.userId)}
+                        </div>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      disabled={submitBusy === s.id}
-                      onClick={() => void submitScore(s.id)}
-                      className="rounded-lg bg-guinness-gold px-3 py-1.5 text-xs font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50"
-                    >
-                      {submitBusy === s.id ? "…" : "Submit"}
-                    </button>
                   </li>
                 ))}
               </ul>
             )}
-          </section>
-        ) : null}
+          </div>
 
-        <section aria-labelledby="comp-leaderboard-heading">
-          <h2 id="comp-leaderboard-heading" className="type-card-title mb-4">
-            Leaderboard
-          </h2>
-          {ranked.length === 0 ? (
-            <p className="type-meta text-guinness-tan/65">
-              No submissions yet. Join and pour!
+          <div
+            id="panel-comp-participants"
+            role="tabpanel"
+            aria-labelledby="tab-comp-participants"
+            hidden={rightColTab !== "participants"}
+          >
+            <h3 className="sr-only">Who&apos;s in</h3>
+            <p className="type-meta mb-4 text-guinness-tan/70">
+              {userId
+                ? "Everyone who joined. After someone pours in this comp, you can add them as a friend if their email appears on their pour."
+                : "Sign in to see friend actions. Participant count is in the summary."}
             </p>
-          ) : (
-            <ul className="space-y-2">
-              {ranked.map((r) => (
-                <li key={r.userId}>
-                  <div className="flex flex-wrap items-stretch gap-0 rounded-xl border border-guinness-gold/15 bg-guinness-brown/35 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/50">
-                    <Link
-                      to={r.pourPath}
-                      viewTransition
-                      className="flex min-w-0 flex-1 flex-wrap items-center gap-3 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-guinness-gold"
-                    >
-                      <span className="w-8 shrink-0 text-lg font-bold text-guinness-gold">
-                        #{r.rank}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-guinness-cream">
-                          {r.username}
-                        </p>
-                        <p className="type-meta text-guinness-tan/65">{r.detail}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1 sm:hidden">
-                        <p className="text-sm font-semibold text-guinness-gold">
-                          {r.metric}
-                        </p>
-                        <span className="text-guinness-tan/45 text-xs" aria-hidden>
-                          →
-                        </span>
-                      </div>
-                    </Link>
-                    <div className="flex min-w-[9rem] shrink-0 flex-col items-stretch justify-center gap-2 border-t border-guinness-gold/10 px-4 py-3 sm:border-l sm:border-t-0 sm:py-3">
-                      <div className="hidden items-center justify-end gap-2 text-right sm:flex">
-                        <p className="text-sm font-semibold text-guinness-gold">
-                          {r.metric}
-                        </p>
-                        <span className="text-guinness-tan/45 text-xs" aria-hidden>
-                          →
-                        </span>
-                      </div>
-                      <div className="flex justify-end sm:justify-end">
-                        {friendActionForPeer(r.userId)}
-                      </div>
+            {sortedParticipantUserIds.length === 0 ? (
+              <p className="type-meta text-guinness-tan/60">
+                No participants yet — be the first to join.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {sortedParticipantUserIds.map((pid) => (
+                  <li
+                    key={pid}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-guinness-gold/12 bg-guinness-brown/20 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-guinness-cream">
+                        {flagEmojiFromIso2(participantProfiles[pid]?.country_code) ? (
+                          <span
+                            className="mr-1 inline-block shrink-0"
+                            title={
+                              participantProfiles[pid]?.country_code
+                                ?.trim()
+                                .toUpperCase() ?? undefined
+                            }
+                            aria-hidden
+                          >
+                            {flagEmojiFromIso2(participantProfiles[pid]?.country_code)}
+                          </span>
+                        ) : null}
+                        {participantLabel(pid)}
+                        {userId && pid === userId ? (
+                          <span className="type-meta ml-2 font-normal text-guinness-tan/55">
+                            (you)
+                          </span>
+                        ) : null}
+                      </p>
                     </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                    <div className="flex shrink-0 items-center justify-end">
+                      {friendActionForPeer(pid)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
+        </div>
       </div>
 
       <BrandedToast
