@@ -718,19 +718,29 @@ export default function ProfileLayout() {
       if (status === "accepted") {
         const accepterEmail = user.email ?? null;
         const requesterEmail = row.from_email ?? null;
-        const { error: e1 } = await supabase.from("user_friends").insert({
-          user_id: row.from_user_id,
-          friend_user_id: user.id,
-          peer_email: accepterEmail,
-        });
-        const { error: e2 } = await supabase.from("user_friends").insert({
-          user_id: user.id,
-          friend_user_id: row.from_user_id,
-          peer_email: requesterEmail,
-        });
-        if (e1 || e2) {
-          setMessage(e1?.message || e2?.message || "Could not save friendship.");
-          return;
+        const pair = [
+          {
+            user_id: row.from_user_id,
+            friend_user_id: user.id,
+            peer_email: accepterEmail,
+          },
+          {
+            user_id: user.id,
+            friend_user_id: row.from_user_id,
+            peer_email: requesterEmail,
+          },
+        ] as const;
+        for (const rowFriend of pair) {
+          const { error: insErr } = await supabase
+            .from("user_friends")
+            .upsert(rowFriend, {
+              onConflict: "user_id,friend_user_id",
+              ignoreDuplicates: true,
+            });
+          if (insErr) {
+            setMessage(insErr.message);
+            return;
+          }
         }
         setMessage("Friend request accepted. You’re now friends.");
       } else {
