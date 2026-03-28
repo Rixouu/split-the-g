@@ -1,5 +1,4 @@
 import { Link, useLoaderData, useRevalidator } from "react-router";
-import type { LoaderFunctionArgs } from "react-router";
 import {
   useEffect,
   useLayoutEffect,
@@ -29,110 +28,26 @@ import {
   type CompetitionScoreJoin,
 } from "~/utils/competitionLeaderboard";
 import { supabase } from "~/utils/supabase";
+import type { loader as competitionsLoader } from "./competitions.loader";
+import {
+  COMPETITION_ROW_SELECT,
+  competitionFieldClass,
+  competitionOutlineButtonClass,
+  isPrivateCompetition,
+  toDatetimeLocalValue,
+  type BarLinkOption,
+  type CompetitionRow,
+  type FriendPick,
+  type InviteRow,
+  type WinRuleChoice,
+  winRuleLabel,
+} from "./competitions.shared";
 
-export type CompetitionRow = {
-  id: string;
-  title: string;
-  created_by: string;
-  max_participants: number;
-  glasses_per_person: number;
-  starts_at: string;
-  ends_at: string;
-  win_rule: string;
-  target_score?: number | null;
-  created_at: string;
-  visibility?: string | null;
-  location_name?: string | null;
-  location_address?: string | null;
-  linked_bar_key?: string | null;
-  /** Pretty URL segment for `/competitions/:segment` (set by DB trigger). */
-  path_segment?: string | null;
-};
-
-type WinRuleChoice = "highest_score" | "closest_to_target" | "most_submissions";
-
-function winRuleLabel(rule: string): string {
-  switch (rule) {
-    case "closest_to_target":
-      return "Closest to target";
-    case "most_submissions":
-      return "Most submissions";
-    default:
-      return "Highest score";
-  }
-}
-
-type FriendPick = {
-  friend_user_id: string;
-  peer_email: string | null;
-};
-
-type InviteRow = {
-  id: string;
-  invited_email: string;
-};
-
-type BarLinkOption = {
-  bar_key: string;
-  display_name: string;
-};
-
-function toDatetimeLocalValue(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function isPrivate(c: CompetitionRow): boolean {
-  return (c.visibility ?? "public") === "private";
-}
-
-export async function loader(_args: LoaderFunctionArgs) {
-  const competitionSelect =
-    "id, title, created_by, max_participants, glasses_per_person, starts_at, ends_at, win_rule, target_score, created_at, visibility, location_name, location_address, linked_bar_key, path_segment";
-  const { data, error } = await supabase
-    .from("competitions")
-    .select(competitionSelect)
-    .order("created_at", { ascending: false })
-    .limit(40);
-
-  if (error) {
-    return {
-      competitions: [] as CompetitionRow[],
-      listError: error.message,
-      participantCounts: {} as Record<string, number>,
-    };
-  }
-
-  const competitions = (data ?? []) as CompetitionRow[];
-  const ids = competitions.map((c) => c.id);
-  const participantCounts: Record<string, number> = {};
-
-  if (ids.length > 0) {
-    const { data: parts } = await supabase
-      .from("competition_participants")
-      .select("competition_id")
-      .in("competition_id", ids);
-
-    for (const row of parts ?? []) {
-      const id = row.competition_id as string;
-      participantCounts[id] = (participantCounts[id] ?? 0) + 1;
-    }
-  }
-
-  return {
-    competitions,
-    listError: null as string | null,
-    participantCounts,
-  };
-}
-
-const outlineBtn =
-  "rounded-lg border border-guinness-gold/30 px-3 py-1.5 text-xs font-semibold text-guinness-gold hover:bg-guinness-brown/50 disabled:opacity-40";
+export { loader } from "./competitions.loader";
 
 export default function Competitions() {
   const { competitions, listError, participantCounts: loaderCounts } =
-    useLoaderData<typeof loader>();
+    useLoaderData<typeof competitionsLoader>();
   const revalidator = useRevalidator();
   const [title, setTitle] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(8);
@@ -303,9 +218,7 @@ export default function Competitions() {
       }
       const { data: comps } = await supabase
         .from("competitions")
-        .select(
-          "id, title, created_by, max_participants, glasses_per_person, starts_at, ends_at, win_rule, target_score, created_at, visibility, location_name, location_address, linked_bar_key, path_segment",
-        )
+        .select(COMPETITION_ROW_SELECT)
         .in("id", joinedCompIds);
       if (cancelled) return;
       setClientComps((comps ?? []) as CompetitionRow[]);
@@ -422,7 +335,7 @@ export default function Competitions() {
     setEditGlasses(c.glasses_per_person);
     setEditStart(toDatetimeLocalValue(c.starts_at));
     setEditEnd(toDatetimeLocalValue(c.ends_at));
-    setEditPublic(!isPrivate(c));
+    setEditPublic(!isPrivateCompetition(c));
     const wr = (c.win_rule ?? "highest_score") as WinRuleChoice;
     setEditWinRule(
       wr === "closest_to_target" || wr === "most_submissions"
@@ -770,8 +683,9 @@ export default function Competitions() {
     }
   }
 
-  const fieldClass =
-    "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
+  const fieldClass = competitionFieldClass;
+  const outlineBtn = competitionOutlineButtonClass;
+  const isPrivate = isPrivateCompetition;
 
   const toastOpen = Boolean(formError || uiToast);
   const toastMessage = uiToast?.text ?? formError ?? "";

@@ -1,13 +1,12 @@
 import {
   data,
   Link,
-  redirect,
   useFetcher,
   useLoaderData,
   useNavigate,
   useRevalidator,
 } from "react-router";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs } from "react-router";
 import {
   lazy,
   Suspense,
@@ -25,251 +24,36 @@ import {
   pageShellClass,
 } from "~/components/PageHeader";
 import { PubGoogleMapEmbed } from "~/components/pub/PubGoogleMapEmbed";
-import type { PubWallRow } from "~/components/pub/PubWallTab";
 import { competitionDetailPath } from "~/utils/competitionPath";
 import { supabase } from "~/utils/supabase";
 import {
   fetchPlaceDetailsForDirectoryImport,
-  fetchPlaceOpeningHoursWeekdayLines,
   resolveGoogleMapsKeyForServer,
   resolvePlaceIdForPubImport,
 } from "~/utils/googlePlaceDetails";
-import type { BarStat } from "~/routes/pubs";
 import {
-  barKeyToPubPathSegment,
-  decodePubUrlSegment,
-  isPrettyPubPathSegment,
   pubDetailPath,
   resolveBarKeyFromPubPathSegment,
 } from "~/utils/pubPath";
+import type { loader as pubDetailLoader } from "./pubs.$barKey.loader";
+import {
+  PUB_WALL_PAGE_LIMIT,
+  isPubDirectoryAdmin,
+  mapsSearchUrl,
+  normalizeBarKeyInput,
+  pubDivider,
+  pubPanel,
+  pubPanelShell,
+  pubPanelMuted,
+  pubStroke,
+} from "./pubs.$barKey.shared";
 
-/** Only this account may edit pub directory fields (hours, promos, map URL). */
-const PUB_DIRECTORY_ADMIN_EMAIL = "admin.rixou@gmail.com";
-
-function isPubDirectoryAdmin(email: string | null | undefined): boolean {
-  const e = email?.trim().toLowerCase();
-  return Boolean(e && e === PUB_DIRECTORY_ADMIN_EMAIL.toLowerCase());
-}
-
-/** Accept pasted `/pubs/...` URL or encoded key; returns normalized bar_key. */
-function normalizeBarKeyInput(raw: string): string {
-  let s = raw.trim();
-  try {
-    s = decodeURIComponent(s.replace(/\+/g, " "));
-  } catch {
-    /* keep s */
-  }
-  const pubsIdx = s.indexOf("/pubs/");
-  if (pubsIdx >= 0) {
-    s = s.slice(pubsIdx + 6).split(/[?#]/)[0] ?? "";
-  }
-  return s.trim().toLowerCase();
-}
-
-/** Brand stroke for pub surfaces (dark brown — no light/white borders). */
-const pubStroke = "border-[#322914]";
-/** Panel shell without inset top highlight (avoids a faux “divider” above first content). */
-const pubPanelShell = `rounded-2xl border ${pubStroke} bg-guinness-brown/25 p-4 sm:p-5`;
-const pubPanel = `${pubPanelShell} shadow-[inset_0_1px_0_rgba(212,175,55,0.05)]`;
-const pubPanelMuted = `rounded-xl border ${pubStroke} bg-guinness-black/30 px-3 py-3 sm:px-4 sm:py-3.5`;
-const pubDivider = `border-t ${pubStroke}`;
-
-type PubExtraRow = {
-  distinct_drinkers: number;
-  total_pint_spend: number;
-  my_pint_spend: number;
-};
-
-type PubPlaceRow = {
-  bar_key: string;
-  opening_hours: string | null;
-  guinness_info: string | null;
-  alcohol_promotions: string | null;
-  maps_place_url: string | null;
-  google_place_id: string | null;
-  updated_at: string;
-  updated_by: string | null;
-};
-
-type LinkedCompetition = {
-  id: string;
-  title: string;
-  starts_at: string;
-  ends_at: string;
-  path_segment?: string | null;
-};
-
-const PUB_WALL_PAGE_LIMIT = 120;
+export { loader } from "./pubs.$barKey.loader";
 const PubWallTab = lazy(async () => {
   const mod = await import("~/components/pub/PubWallTab");
   return { default: mod.PubWallTab };
 });
 
-function mapsSearchUrl(b: BarStat): string {
-  const q = [b.display_name, b.sample_address].filter(Boolean).join(" ");
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-}
-
-function numFromDb(v: unknown): number {
-  if (v == null) return 0;
-  const n = typeof v === "number" ? v : Number.parseFloat(String(v));
-  return Number.isFinite(n) ? n : 0;
-}
-
-export async function loader({ params }: LoaderFunctionArgs) {
-  const raw = params.barKey?.trim();
-  if (!raw) {
-    throw new Response("Not found", { status: 404 });
-  }
-
-  const barKey = await resolveBarKeyFromPubPathSegment(supabase, raw);
-  if (!barKey) {
-    throw new Response("Not found", { status: 404 });
-  }
-
-  const prettySeg = barKeyToPubPathSegment(barKey);
-  if (isPrettyPubPathSegment(prettySeg)) {
-    const incoming = decodePubUrlSegment(raw).trim().toLowerCase();
-    if (incoming !== prettySeg) {
-      return redirect(pubDetailPath(barKey), { status: 301 });
-    }
-  }
-
-  const statProjection =
-    "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
-  let statQuery = await supabase
-    .from("bar_pub_stats_mv")
-    .select(
-      statProjection,
-    )
-    .eq("bar_key", barKey)
-    .maybeSingle();
-  if (statQuery.error) {
-    statQuery = await supabase
-      .from("bar_pub_stats")
-      .select(statProjection)
-      .eq("bar_key", barKey)
-      .maybeSingle();
-  }
-  const { data: stat, error: statError } = statQuery;
-
-  if (statError || !stat) {
-    throw new Response("Not found", { status: 404 });
-  }
-
-  const bar = stat as BarStat;
-
-  const nowIso = new Date().toISOString();
-  const [wallRes, extraRes, placeRes, compRes] = await Promise.all([
-    supabase.rpc("pub_wall_scores", {
-      p_bar_key: barKey,
-      p_limit: PUB_WALL_PAGE_LIMIT,
-    }),
-    supabase.rpc("pub_extra_stats_for_bar", { p_bar_key: barKey }),
-    supabase
-      .from("pub_place_details")
-      .select(
-        "bar_key, opening_hours, guinness_info, alcohol_promotions, maps_place_url, google_place_id, updated_at, updated_by",
-      )
-      .eq("bar_key", barKey)
-      .maybeSingle(),
-    supabase
-      .from("competitions")
-      .select("id, title, starts_at, ends_at, path_segment")
-      .eq("linked_bar_key", barKey)
-      .gt("ends_at", nowIso)
-      .order("ends_at", { ascending: true }),
-  ]);
-
-  let wallPours: PubWallRow[] = [];
-  let wallError: string | null = null;
-  if (wallRes.error) {
-    const msg = `${wallRes.error.message ?? ""} ${wallRes.error.code ?? ""}`.toLowerCase();
-    if (
-      wallRes.error.code === "42883" ||
-      msg.includes("pub_wall_scores") ||
-      msg.includes("function")
-    ) {
-      wallError =
-        "Wall requires migration 20260328300000_pub_wall_scores_rpc (run Supabase migrations).";
-    } else {
-      wallError = wallRes.error.message ?? "Could not load wall.";
-    }
-  } else {
-    wallPours = (wallRes.data ?? []) as PubWallRow[];
-  }
-
-  const { data: extraRows, error: extraError } = extraRes;
-
-  if (extraError) {
-    return {
-      barKey,
-      bar,
-      extra: {
-        distinct_drinkers: 0,
-        total_pint_spend: 0,
-        my_pint_spend: 0,
-      } satisfies PubExtraRow,
-      extraError: extraError.message,
-      placeDetails: null as PubPlaceRow | null,
-      linkedCompetitions: [] as LinkedCompetition[],
-      googleOpeningHoursLines: null as string[] | null,
-      wallPours,
-      wallError,
-    };
-  }
-
-  const rawExtra = (extraRows ?? [])[0] as
-    | {
-        distinct_drinkers?: unknown;
-        total_pint_spend?: unknown;
-        my_pint_spend?: unknown;
-      }
-    | undefined;
-
-  const extra: PubExtraRow = {
-    distinct_drinkers: Math.round(numFromDb(rawExtra?.distinct_drinkers)),
-    total_pint_spend: numFromDb(rawExtra?.total_pint_spend),
-    my_pint_spend: numFromDb(rawExtra?.my_pint_spend),
-  };
-
-  const { data: placeRow, error: placeErr } = placeRes;
-  const { data: comps, error: compErr } = compRes;
-
-  const placeDetailsTyped = !placeErr
-    ? ((placeRow ?? null) as PubPlaceRow | null)
-    : null;
-
-  const resolvedPlaceId =
-    placeDetailsTyped?.google_place_id?.trim() ||
-    bar.google_place_id?.trim() ||
-    null;
-
-  let googleOpeningHoursLines: string[] | null = null;
-  if (resolvedPlaceId) {
-    const mapsKey = resolveGoogleMapsKeyForServer();
-    if (mapsKey) {
-      googleOpeningHoursLines = await Promise.race([
-        fetchPlaceOpeningHoursWeekdayLines(resolvedPlaceId, mapsKey),
-        new Promise<null>((resolve) => {
-          setTimeout(() => resolve(null), 1500);
-        }),
-      ]);
-    }
-  }
-
-  return {
-    barKey,
-    bar,
-    extra,
-    extraError: null as string | null,
-    placeDetails: placeDetailsTyped,
-    linkedCompetitions: !compErr ? ((comps ?? []) as LinkedCompetition[]) : [],
-    googleOpeningHoursLines,
-    wallPours,
-    wallError,
-  };
-}
 
 type ImportGoogleActionData =
   | {
@@ -515,7 +299,7 @@ export default function PubDetail() {
     googleOpeningHoursLines,
     wallPours,
     wallError,
-  } = useLoaderData<typeof loader>();
+  } = useLoaderData<typeof pubDetailLoader>();
   const revalidator = useRevalidator();
   const navigate = useNavigate();
   const importFetcher = useFetcher<ImportGoogleActionData>();

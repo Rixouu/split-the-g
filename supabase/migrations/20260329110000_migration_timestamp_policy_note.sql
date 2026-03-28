@@ -1,0 +1,12 @@
+-- Forward-only migration policy note.
+-- Historical duplicate timestamps exist and are intentionally left unchanged:
+--   20260328220000_competition_scores_realtime.sql
+--   20260328220000_public_profiles_nickname.sql
+--
+-- Policy going forward:
+--   1) Never rename already-committed migration files.
+--   2) Every new migration must use a unique UTC timestamp prefix.
+--   3) For follow-up fixes, add a new forward migration.
+--
+-- No-op statement so this file is explicit in migration history.
+select 1;

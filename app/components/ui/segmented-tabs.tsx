@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { NavLink } from "react-router";
-import { segmentedTabGroupChromeClass } from "~/routes/profile/profile-shared";
+import { segmentedTabGroupChromeClass } from "./segmented-tabs-shared";
 
 export type SegmentedTabItem = {
   value: string;

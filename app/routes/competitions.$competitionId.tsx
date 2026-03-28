@@ -1,10 +1,8 @@
 import {
   Link,
-  redirect,
   useLoaderData,
   useParams,
 } from "react-router";
-import type { LoaderFunctionArgs } from "react-router";
 import { format } from "date-fns";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
@@ -19,178 +17,34 @@ import {
   toastAutoCloseForVariant,
 } from "~/components/branded/feedback-variant";
 import { supabase } from "~/utils/supabase";
-import { isCompetitionUuidParam } from "~/utils/competitionPath";
 import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
-import type { CompetitionRow } from "~/routes/competitions";
 import {
   buildLeaderboard,
   COMPETITION_SCORE_LIMIT,
   COMPETITION_SCORES_SELECT,
   unwrapScore,
   type CompetitionScoreJoin,
-  type RankedRow,
 } from "~/utils/competitionLeaderboard";
+import type { CompetitionRow } from "./competitions.shared";
+import type { loader as competitionDetailLoader } from "./competitions.$competitionId.loader";
+import {
+  CrownIcon,
+  CompetitionLeaderboardScoreAside,
+  competitionLeaderboardSecondaryMeta,
+  formatDuration,
+  normalizeEmail,
+  type ParticipantProfilePick,
+  type WinRule,
+  winRuleLabel,
+} from "./competitions.$competitionId.shared";
 
-type WinRule = CompetitionRow["win_rule"];
-
-function normalizeEmail(value: string): string {
-  return value.trim().toLowerCase();
-}
-
-type ParticipantProfilePick = {
-  nickname?: string | null;
-  display_name?: string | null;
-  country_code?: string | null;
-};
-
-function winRuleLabel(rule: string): string {
-  switch (rule) {
-    case "closest_to_target":
-      return "Closest to target";
-    case "most_submissions":
-      return "Most submissions";
-    case "highest_score":
-    default:
-      return "Highest score";
-  }
-}
-
-function formatDuration(ms: number): string {
-  if (ms <= 0) return "0s";
-  const sec = Math.floor(ms / 1000);
-  const d = Math.floor(sec / 86400);
-  const h = Math.floor((sec % 86400) / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d}d`);
-  if (h > 0) parts.push(`${h}h`);
-  if (m > 0) parts.push(`${m}m`);
-  if (s > 0 || parts.length === 0) parts.push(`${s}s`);
-  return parts.join(" ");
-}
-
-function competitionLeaderboardSecondaryMeta(
-  r: RankedRow,
-  winRule: WinRule,
-): string | null {
-  if (winRule === "closest_to_target") return r.metric;
-  if (winRule === "most_submissions") return r.detail;
-  return null;
-}
-
-function CompetitionLeaderboardScoreAside({
-  row,
-  winRule,
-}: {
-  row: RankedRow;
-  winRule: WinRule;
-}) {
-  if (winRule === "highest_score") {
-    const m = row.metric.match(/^(\d+\.\d{2})\s*\/\s*5$/);
-    const num = m ? m[1] : row.metric.replace(/\s*\/\s*5.*$/, "").trim() || "—";
-    return (
-      <div className="shrink-0 text-right">
-        <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
-          {num}
-        </p>
-        <p className="type-meta whitespace-nowrap text-guinness-tan/60">out of 5.0</p>
-      </div>
-    );
-  }
-  if (winRule === "closest_to_target") {
-    const m = row.detail.match(/Score\s+(\d+\.\d{2})\s*\/\s*5/);
-    const num = m ? m[1] : "—";
-    return (
-      <div className="shrink-0 text-right">
-        <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
-          {num}
-        </p>
-        <p className="type-meta whitespace-nowrap text-guinness-tan/60">out of 5.0</p>
-      </div>
-    );
-  }
-  const countMatch = row.metric.match(/^(\d+)\s+pour/);
-  const count = countMatch ? countMatch[1] : row.metric;
-  return (
-    <div className="shrink-0 text-right">
-      <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
-        {count}
-      </p>
-      <p className="type-meta whitespace-nowrap text-guinness-tan/60">pours</p>
-    </div>
-  );
-}
-
-function CrownIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <path d="M5 16L3 7l5.5 3L12 4l3.5 6L21 7l-2 9H5zm1 2h12v2H6v-2z" />
-    </svg>
-  );
-}
-
-export async function loader({ params, request }: LoaderFunctionArgs) {
-  const raw = (params.competitionId ?? "").trim();
-  if (!raw) {
-    throw new Response("Not found", { status: 404 });
-  }
-
-  const competitionSelect =
-    "id, title, created_by, max_participants, glasses_per_person, starts_at, ends_at, win_rule, target_score, created_at, visibility, location_name, location_address, linked_bar_key, path_segment";
-  const query = isCompetitionUuidParam(raw)
-    ? supabase.from("competitions").select(competitionSelect).eq("id", raw)
-    : supabase
-        .from("competitions")
-        .select(competitionSelect)
-        .ilike("path_segment", raw);
-
-  const { data, error } = await query.maybeSingle();
-
-  if (error) {
-    return {
-      competitionId: "",
-      competition: null as CompetitionRow | null,
-      loadError: error.message,
-    };
-  }
-
-  const row = (data ?? null) as CompetitionRow | null;
-  if (!row) {
-    throw new Response("Not found", { status: 404 });
-  }
-
-  const url = new URL(request.url);
-  const expectedTail = row.path_segment?.trim() || row.id;
-  const currentTail = decodeURIComponent(
-    url.pathname.replace(/^\/competitions\//i, "").replace(/\/+$/, ""),
-  );
-  if (currentTail !== expectedTail) {
-    throw redirect(
-      `/competitions/${encodeURIComponent(expectedTail)}${url.search}`,
-    );
-  }
-
-  return {
-    competitionId: row.id,
-    competition: row,
-    loadError: null as string | null,
-  };
-}
+export { loader } from "./competitions.$competitionId.loader";
 
 export default function CompetitionDetail() {
   const { competitionId, competition: loaderComp, loadError } =
-    useLoaderData<typeof loader>();
+    useLoaderData<typeof competitionDetailLoader>();
   const params = useParams();
 
   const [competition, setCompetition] = useState<CompetitionRow | null>(
