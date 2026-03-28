@@ -132,7 +132,7 @@ function CompetitionLiveBadge({
 }
 
 const mobItem =
-  "relative flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl px-0.5 py-1 text-[9px] font-bold uppercase leading-tight tracking-wide outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:text-[10px]";
+  "relative flex min-h-[3.5rem] min-w-0 flex-1 flex-col items-center justify-center gap-1.5 overflow-visible rounded-xl px-0.5 py-1 text-[9px] font-bold uppercase leading-tight tracking-wide outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:min-h-[3.65rem] sm:gap-2 sm:text-[10px]";
 const mobActive =
   "text-guinness-gold bg-guinness-gold/[0.08] shadow-inner ring-1 ring-guinness-gold/35 ring-inset";
 const mobIdle = "text-guinness-tan/55 hover:text-guinness-cream active:scale-[0.98]";
@@ -358,7 +358,7 @@ export function AppNavigation() {
                         : "Wall"
                   }
                   className={({ isActive }) =>
-                    `flex min-h-[2.75rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1 text-[8px] font-semibold uppercase leading-tight tracking-wide transition-colors sm:px-1 sm:text-[9px] ${isActive ? "bg-guinness-gold/20 text-guinness-gold" : "text-guinness-tan/50 hover:text-guinness-tan"}`
+                    `flex min-h-[2.85rem] min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl px-0.5 py-1 text-[8px] font-semibold uppercase leading-tight tracking-wide transition-colors sm:min-h-[3rem] sm:gap-2 sm:px-1 sm:text-[9px] ${isActive ? "bg-guinness-gold/20 text-guinness-gold" : "text-guinness-tan/50 hover:text-guinness-tan"}`
                   }
                 >
                   {secondaryDockIcon(to, "h-[1.125rem] w-[1.125rem] shrink-0")}

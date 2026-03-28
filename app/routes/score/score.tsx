@@ -29,6 +29,7 @@ import {
   rememberPathBeforeGoogleOAuth,
 } from "~/utils/post-oauth-return";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
+import { pubDetailPath } from "~/utils/pubPath";
 
 const COMPETITION_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -114,6 +115,18 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   // Check if the user owns this score
   const isOwner = sessionId === score.session_id;
 
+  /** When the venue name matches a pub in the directory (`bar_pub_stats`). */
+  let pubPageBarKey: string | null = null;
+  const barKeyLookup = (score.bar_name as string | null | undefined)?.trim().toLowerCase();
+  if (barKeyLookup) {
+    const { data: pubStat } = await supabase
+      .from("bar_pub_stats")
+      .select("bar_key")
+      .eq("bar_key", barKeyLookup)
+      .maybeSingle();
+    if (pubStat?.bar_key) pubPageBarKey = String(pubStat.bar_key);
+  }
+
   return {
     score,
     allTimeRank,
@@ -121,6 +134,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     totalSplits,
     weeklyTotalSplits,
     isOwner,
+    pubPageBarKey,
   };
 }
 
@@ -132,6 +146,7 @@ export default function Score() {
     totalSplits,
     weeklyTotalSplits,
     isOwner,
+    pubPageBarKey,
   } = useLoaderData<{
     score: Score;
     allTimeRank: number;
@@ -139,6 +154,7 @@ export default function Score() {
     totalSplits: number;
     weeklyTotalSplits: number;
     isOwner: boolean;
+    pubPageBarKey: string | null;
   }>();
   const revalidator = useRevalidator();
   const location = useLocation();
@@ -474,19 +490,9 @@ export default function Score() {
     }
   };
 
-  const formatLocation = (s: Score) => {
-    const venue = s.bar_name?.trim();
-    if (venue) {
-      const addr = s.bar_address?.trim();
-      return addr ? `${venue} · ${addr}` : venue;
-    }
-    const parts: string[] = [];
-    if (s.city) parts.push(s.city);
-    if (s.region) parts.push(s.region);
-    if (s.country) parts.push(s.country);
-    if (parts.length > 0) return parts.join(", ");
-    return "Unknown location";
-  };
+  const geoFallbackLine = [score.city, score.region, score.country]
+    .filter((p): p is string => Boolean(p?.trim()))
+    .join(", ");
 
   const hasSavedRating =
     (score.bar_name?.trim() ?? "") !== "" && score.pour_rating != null;
@@ -551,31 +557,81 @@ export default function Score() {
         ) : null}
 
         {/* Score Card */}
-        <div className="mt-6 sm:mt-8 text-center">
-          <div className="mt-4 inline-block w-full max-w-lg bg-guinness-gold/10 rounded-lg border border-guinness-gold/20 p-6 sm:p-8 backdrop-blur-sm">
-            <div className="flex flex-col items-center">
-              <div className="text-xl md:text-2xl font-semibold text-guinness-cream mb-2">
-                {displayUsername}
+        <div className="mt-6 sm:mt-8">
+          <div className="mx-auto w-full max-w-lg rounded-2xl border border-[#312814] bg-guinness-brown/30 px-5 py-6 sm:px-7 sm:py-7">
+            <p className="text-center text-lg font-semibold text-guinness-cream sm:text-xl md:text-left">
+              {displayUsername}
+            </p>
+
+            <div className="mt-6 flex flex-col items-center gap-6 border-t border-[#312814] pt-6 md:flex-row md:items-start md:justify-between md:gap-8">
+              <div className="text-center md:text-left">
+                <p className="text-5xl font-bold tabular-nums leading-none text-guinness-gold sm:text-6xl">
+                  {score.split_score.toFixed(2)}
+                </p>
+                <p className="type-meta mt-2 text-guinness-tan/65">out of 5.0</p>
               </div>
-              <div className="type-meta mb-4">{formatLocation(score)}</div>
-              <div className="type-body-muted mb-4 flex flex-col gap-1">
+              <div className="grid w-full max-w-[16rem] grid-cols-2 gap-4 text-center md:max-w-none md:grid-cols-1 md:text-right">
                 <div>
-                  All-time: #{allTimeRank} of {totalSplits}
+                  <p className="type-meta text-guinness-tan/55">All-time</p>
+                  <p className="mt-0.5 text-sm font-semibold text-guinness-gold sm:text-base">
+                    #{allTimeRank}
+                    <span className="font-normal text-guinness-tan/65">
+                      {" "}
+                      / {totalSplits}
+                    </span>
+                  </p>
                 </div>
                 <div>
-                  This week: #{weeklyRank} of {weeklyTotalSplits}
+                  <p className="type-meta text-guinness-tan/55">This week</p>
+                  <p className="mt-0.5 text-sm font-semibold text-guinness-gold sm:text-base">
+                    #{weeklyRank}
+                    <span className="font-normal text-guinness-tan/65">
+                      {" "}
+                      / {weeklyTotalSplits}
+                    </span>
+                  </p>
                 </div>
-              </div>
-              <div className="text-6xl md:text-7xl font-bold text-guinness-gold mb-2 tabular-nums">
-                {score.split_score.toFixed(2)}
-              </div>
-              <div className="text-xl md:text-2xl type-body-muted mb-3">
-                out of 5.0
-              </div>
-              <div className="text-lg md:text-xl text-guinness-cream/90 mt-2 max-w-md text-center">
-                {getScoreMessage(score.split_score)}
               </div>
             </div>
+
+            <div className="mt-6 border-t border-[#312814] pt-5">
+              {score.bar_name?.trim() ? (
+                <div className="text-center md:text-left">
+                  <p className="type-meta mb-2 text-guinness-tan/55">Venue</p>
+                  {pubPageBarKey ? (
+                    <Link
+                      to={pubDetailPath(pubPageBarKey)}
+                      viewTransition
+                      className="inline-block text-base font-medium text-guinness-gold underline decoration-guinness-gold/35 underline-offset-2 transition-colors hover:text-guinness-tan hover:decoration-guinness-gold/60 sm:text-lg"
+                    >
+                      {score.bar_name.trim()}
+                    </Link>
+                  ) : (
+                    <p className="text-base font-medium text-guinness-cream sm:text-lg">
+                      {score.bar_name.trim()}
+                    </p>
+                  )}
+                  {score.bar_address?.trim() ? (
+                    <p className="type-meta mx-auto mt-2 max-w-md text-guinness-tan/70 leading-relaxed md:mx-0">
+                      {score.bar_address.trim()}
+                    </p>
+                  ) : null}
+                </div>
+              ) : geoFallbackLine ? (
+                <div className="text-center md:text-left">
+                  <p className="type-meta mb-1.5 text-guinness-tan/55">Location</p>
+                  <p className="text-sm text-guinness-tan/80">{geoFallbackLine}</p>
+                </div>
+              ) : (
+                <p className="type-meta text-center text-guinness-tan/60 md:text-left">
+                  No venue saved for this pour.
+                </p>
+              )}
+            </div>
+
+            <p className="mt-6 border-t border-[#312814] pt-5 text-center text-base leading-snug text-guinness-cream/90 md:text-left md:text-lg">
+              {getScoreMessage(score.split_score)}
+            </p>
           </div>
         </div>
 
