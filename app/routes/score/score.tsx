@@ -635,48 +635,71 @@ export default function Score() {
           </div>
         </div>
 
-        {/* Image comparison — early on mobile */}
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 md:max-w-4xl md:mx-auto">
-          <div className="rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-3 sm:p-4">
-            <h2 className="type-card-title mb-2">Your Split G</h2>
-            <p className="type-meta mb-3 text-guinness-tan/70">
-              Close-up on the G from your pour
-            </p>
-            <div className="aspect-square overflow-hidden rounded-lg bg-guinness-black">
-              {closeupUrl ? (
-                <img
-                  src={closeupUrl}
-                  alt="G logo close-up from your split"
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-guinness-tan">
-                  No image available
+        {/* Image comparison — close-up vs annotated frame */}
+        <section
+          className="mt-8 md:mt-10"
+          aria-label="Pour close-up and annotated photo"
+        >
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:mx-auto md:max-w-4xl md:grid-cols-2 lg:gap-5">
+            <article className="flex flex-col rounded-2xl border border-[#312814] bg-guinness-brown/30 p-4 shadow-[inset_0_1px_0_rgba(212,175,55,0.05)] sm:p-5">
+              <header className="mb-4 border-b border-[#312814] pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="type-card-title text-base sm:text-lg">
+                    Your Split G
+                  </h3>
+                  <span className="shrink-0 rounded-md border border-[#312814] bg-guinness-black/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-guinness-tan/70 sm:text-[11px]">
+                    Close-up
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
+                <p className="type-meta mt-2 text-guinness-tan/65">
+                  Zoomed on the logo and foam line
+                </p>
+              </header>
+              <div className="aspect-square overflow-hidden rounded-xl border border-[#312814] bg-guinness-black/55">
+                {closeupUrl ? (
+                  <img
+                    src={closeupUrl}
+                    alt="G logo close-up from your split"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-4 type-meta text-guinness-tan/55">
+                    No image available
+                  </div>
+                )}
+              </div>
+            </article>
 
-          <div className="rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-3 sm:p-4">
-            <h2 className="type-card-title mb-2">Original pour</h2>
-            <p className="type-meta mb-3 text-guinness-tan/70">
-              Full frame with analysis overlay
-            </p>
-            <div className="aspect-square overflow-hidden rounded-lg bg-guinness-black">
-              {annotatedUrl ? (
-                <img
-                  src={annotatedUrl}
-                  alt="Annotated pour analysis"
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-guinness-tan">
-                  No image available
+            <article className="flex flex-col rounded-2xl border border-[#312814] bg-guinness-brown/30 p-4 shadow-[inset_0_1px_0_rgba(212,175,55,0.05)] sm:p-5">
+              <header className="mb-4 border-b border-[#312814] pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="type-card-title text-base sm:text-lg">
+                    Original pour
+                  </h3>
+                  <span className="shrink-0 rounded-md border border-[#312814] bg-guinness-black/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-guinness-tan/70 sm:text-[11px]">
+                    Full frame
+                  </span>
                 </div>
-              )}
-            </div>
+                <p className="type-meta mt-2 text-guinness-tan/65">
+                  Model boxes and labels on your photo
+                </p>
+              </header>
+              <div className="aspect-square overflow-hidden rounded-xl border border-[#312814] bg-guinness-black/55">
+                {annotatedUrl ? (
+                  <img
+                    src={annotatedUrl}
+                    alt="Annotated pour analysis"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-4 type-meta text-guinness-tan/55">
+                    No image available
+                  </div>
+                )}
+              </div>
+            </article>
           </div>
-        </div>
+        </section>
 
         {isOwner && (
           <div className="mx-auto mt-8 max-w-lg rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-5">
@@ -861,34 +884,38 @@ export default function Score() {
           </div>
         )}
 
-        {/* Add Buy Creators a Beer button here - just after the images */}
-        <div className="flex justify-center mt-6 mb-8">
-          <div className="text-center">
-            <p className="type-body-muted mb-3">Enjoying Split the G?</p>
-            <BuyCreatorsABeer />
+        {/* Actions + support — single panel */}
+        <section
+          className="mx-auto mt-8 w-full max-w-xl rounded-2xl border border-[#312814] bg-guinness-brown/25 px-4 py-4 sm:px-5 sm:py-5 md:max-w-3xl"
+          aria-label="Share, pour again, and leaderboard"
+        >
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+            <button
+              onClick={handleShare}
+              type="button"
+              className="flex min-h-11 w-full items-center justify-center rounded-lg border border-[#312814] bg-guinness-black/20 px-4 py-2.5 text-sm font-semibold text-guinness-tan/90 transition-colors hover:bg-[#312814]/40 hover:text-guinness-cream sm:min-h-12 sm:text-base"
+            >
+              {shareSuccess ? "Copied" : "Share score"}
+            </button>
+
+            <Link
+              to="/"
+              viewTransition
+              className="flex min-h-11 w-full items-center justify-center rounded-lg bg-guinness-gold px-4 py-2.5 text-center text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan sm:min-h-12 sm:text-base"
+            >
+              Try again
+            </Link>
+
+            <LeaderboardButton className="flex min-h-11 w-full items-center justify-center px-4 py-2.5 text-sm sm:min-h-12 sm:text-base" />
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="mt-10 flex w-full max-w-xl flex-col items-stretch gap-3 sm:mx-auto md:max-w-none md:flex-row md:justify-center md:gap-4">
-          <button
-            onClick={handleShare}
-            type="button"
-            className="min-h-12 w-full rounded-lg bg-guinness-gold/20 px-6 py-3 text-base font-semibold text-guinness-gold transition-colors hover:bg-guinness-gold/30 active:bg-guinness-gold/40 md:w-56 md:shrink-0"
-          >
-            {shareSuccess ? "Copied" : "Share score"}
-          </button>
-
-          <Link
-            to="/"
-            viewTransition
-            className="flex min-h-12 w-full items-center justify-center rounded-lg bg-guinness-gold px-6 py-3 text-center text-base font-semibold text-guinness-black transition-colors hover:bg-guinness-tan active:bg-guinness-tan/90 md:w-56 md:shrink-0"
-          >
-            Try again
-          </Link>
-
-          <LeaderboardButton className="min-h-12 w-full px-6 py-3 text-base font-semibold md:w-56 md:shrink-0" />
-        </div>
+          <div className="mt-4 flex flex-col items-center justify-center gap-1 border-t border-[#312814] pt-4 text-center sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1">
+            <span className="type-meta text-guinness-tan/55">
+              Enjoying Split the G?
+            </span>
+            <BuyCreatorsABeer variant="compact" />
+          </div>
+        </section>
       </div>
 
       <BrandedToast
