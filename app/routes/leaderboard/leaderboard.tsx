@@ -11,11 +11,8 @@ import { supabase } from "~/utils/supabase";
 import { SubmissionsButton } from "~/components/leaderboard/SubmissionsButton";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_LEADERBOARD_COLUMNS } from "~/utils/scoresListColumns";
-import {
-  normalizeEmail,
-  segmentedTabGroupChromeClass,
-  segmentedTabTriggerClass,
-} from "~/routes/profile/profile-shared";
+import { SegmentedTabs } from "~/components/ui/segmented-tabs";
+import { normalizeEmail } from "~/routes/profile/profile-shared";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 
 type LeaderboardEntry = {
@@ -305,32 +302,21 @@ export default function Leaderboard() {
           <SubmissionsButton />
         </PageHeader>
 
-        <div
-          className={`mb-6 flex ${segmentedTabGroupChromeClass}`}
-          role="tablist"
+        <SegmentedTabs
+          className="mb-6"
+          layoutClassName="flex w-full"
+          value={tab}
+          onValueChange={(v) => setTab(v as LeaderboardTab)}
+          items={[
+            { value: "global", label: "Global" },
+            { value: "local", label: "Local" },
+            { value: "friends", label: "Friends" },
+          ]}
           aria-label="Leaderboard scope"
-        >
-          {(
-            [
-              ["global", "Global"],
-              ["local", "Local"],
-              ["friends", "Friends"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              id={`leaderboard-tab-${id}`}
-              aria-controls="leaderboard-panel"
-              aria-selected={tab === id}
-              className={segmentedTabTriggerClass(tab === id, "rowEqual")}
-              onClick={() => setTab(id)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          role="tablist"
+          tabIdPrefix="leaderboard-tab"
+          panelId="leaderboard-panel"
+        />
 
         <div
           id="leaderboard-panel"

@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { Link, Outlet, useLocation } from "react-router";
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -21,13 +21,15 @@ import {
 } from "~/utils/post-oauth-return";
 import { ProfilePageProvider } from "./profile-context";
 import {
+  SegmentedTabsNav,
+  resolveProfileSectionTab,
+} from "~/components/ui/segmented-tabs";
+import {
   barKey,
   buildFriendLeaderboard,
   escapeIlikePattern,
   emailDisplayName,
   normalizeEmail,
-  segmentedTabGroupChromeClass,
-  segmentedTabTriggerClass,
   progressRangeOptions,
   progressRangeStart,
   type ComparisonScoreRow,
@@ -81,6 +83,26 @@ export default function ProfileLayout() {
   const [countryCode, setCountryCode] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const countryOptions = useMemo(() => getCountryOptions(), []);
+
+  const profileNavLinkItems = useMemo(
+    () =>
+      profileNavItems.map(({ to, label }) => ({
+        value: to,
+        to,
+        label,
+      })),
+    [],
+  );
+
+  const profileSectionPaths = useMemo(
+    () => profileNavItems.map((i) => i.to),
+    [],
+  );
+
+  const profileActiveSection = useMemo(
+    () => resolveProfileSectionTab(location.pathname, profileSectionPaths),
+    [location.pathname, profileSectionPaths],
+  );
   const [progressRange, setProgressRange] = useState<ProgressRange>("30d");
   const [comparisonScores, setComparisonScores] = useState<ComparisonScoreRow[]>([]);
   const [comparisonLabels, setComparisonLabels] = useState<Record<string, string>>({});
@@ -981,24 +1003,12 @@ export default function ProfileLayout() {
                 inputClass,
               }}
             >
-              <nav
-                className={`grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 ${segmentedTabGroupChromeClass}`}
+              <SegmentedTabsNav
+                items={profileNavLinkItems}
+                activeValue={profileActiveSection}
+                layoutClassName="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
                 aria-label="Profile sections"
-              >
-                {profileNavItems.map(({ to, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    prefetch="intent"
-                    viewTransition
-                    className={({ isActive }) =>
-                      segmentedTabTriggerClass(isActive, "gridCell")
-                    }
-                  >
-                    {label}
-                  </NavLink>
-                ))}
-              </nav>
+              />
               <div className="mt-6">
                 <Outlet />
               </div>

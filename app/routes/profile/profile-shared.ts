@@ -72,6 +72,9 @@ export const progressRangeOptions: { value: ProgressRange; label: string }[] = [
 /**
  * Shared chrome for segmented tabs (add `flex` or `grid` on the element).
  * Matches list/card treatment — no forced uppercase on labels.
+ *
+ * For animated sliding selection (Compete, Ranks, Profile), use
+ * `app/components/ui/segmented-tabs.tsx` (SegmentedTabs / SegmentedTabsNav).
  */
 export const segmentedTabGroupChromeClass =
   "w-full gap-1 rounded-xl border border-[#322914] bg-guinness-brown/25 p-1 sm:p-1.5";
@@ -79,6 +82,8 @@ export const segmentedTabGroupChromeClass =
 export type SegmentedTabTriggerLayout = "rowEqual" | "gridCell";
 
 /**
+ * Static trigger styles (no sliding indicator). Prefer SegmentedTabs for new UI.
+ *
  * @param layout rowEqual — flex row with equal-width segments (leaderboard scope, time range).
  *               gridCell — fills a grid cell (profile section nav).
  */

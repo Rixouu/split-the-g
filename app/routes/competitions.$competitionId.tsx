@@ -24,6 +24,7 @@ import { scorePourPathFromFields } from "~/utils/scorePath";
 import { isCompetitionUuidParam } from "~/utils/competitionPath";
 import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
+import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import type { CompetitionRow } from "~/routes/competitions";
 
 type WinRule = CompetitionRow["win_rule"];
@@ -40,6 +41,7 @@ type ScoreSnippet = {
   created_at: string;
   email?: string | null;
   country_code?: string | null;
+  split_image_url?: string | null;
 };
 
 type ParticipantProfilePick = {
@@ -96,6 +98,8 @@ type PourEntry = {
   scoreId: string;
   slug: string | null;
   countryCode: string | null;
+  createdAt: string;
+  splitImageUrl: string | null;
 };
 
 type RankedRow = {
@@ -106,7 +110,61 @@ type RankedRow = {
   detail: string;
   pourPath: string;
   countryCode: string | null;
+  representativeCreatedAt: string;
+  splitImageUrl: string | null;
 };
+
+function competitionLeaderboardSecondaryMeta(
+  r: RankedRow,
+  winRule: WinRule,
+): string | null {
+  if (winRule === "closest_to_target") return r.metric;
+  if (winRule === "most_submissions") return r.detail;
+  return null;
+}
+
+function CompetitionLeaderboardScoreAside({
+  row,
+  winRule,
+}: {
+  row: RankedRow;
+  winRule: WinRule;
+}) {
+  if (winRule === "highest_score") {
+    const m = row.metric.match(/^(\d+\.\d{2})\s*\/\s*5$/);
+    const num = m ? m[1] : row.metric.replace(/\s*\/\s*5.*$/, "").trim() || "—";
+    return (
+      <div className="shrink-0 text-right">
+        <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
+          {num}
+        </p>
+        <p className="type-meta whitespace-nowrap text-guinness-tan/60">out of 5.0</p>
+      </div>
+    );
+  }
+  if (winRule === "closest_to_target") {
+    const m = row.detail.match(/Score\s+(\d+\.\d{2})\s*\/\s*5/);
+    const num = m ? m[1] : "—";
+    return (
+      <div className="shrink-0 text-right">
+        <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
+          {num}
+        </p>
+        <p className="type-meta whitespace-nowrap text-guinness-tan/60">out of 5.0</p>
+      </div>
+    );
+  }
+  const countMatch = row.metric.match(/^(\d+)\s+pour/);
+  const count = countMatch ? countMatch[1] : row.metric;
+  return (
+    <div className="shrink-0 text-right">
+      <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
+        {count}
+      </p>
+      <p className="type-meta whitespace-nowrap text-guinness-tan/60">pours</p>
+    </div>
+  );
+}
 
 function pickRepresentativePour(pours: PourEntry[]): PourEntry {
   let best = pours[0];
@@ -149,6 +207,8 @@ function buildLeaderboard(
       scoreId: row.score_id,
       slug: scoreRow.slug ?? null,
       countryCode: cc && /^[A-Z]{2}$/.test(cc) ? cc : null,
+      createdAt: scoreRow.created_at,
+      splitImageUrl: scoreRow.split_image_url?.trim() || null,
     };
     if (!prev) {
       map.set(uid, {
@@ -180,6 +240,8 @@ function buildLeaderboard(
             slug: linkPour.slug,
           }),
           countryCode: linkPour.countryCode,
+          representativeCreatedAt: linkPour.createdAt,
+          splitImageUrl: linkPour.splitImageUrl,
         };
       })
       .sort((x, y) =>
@@ -197,6 +259,8 @@ function buildLeaderboard(
         detail: r.detail,
         pourPath: r.pourPath,
         countryCode: r.countryCode,
+        representativeCreatedAt: r.representativeCreatedAt,
+        splitImageUrl: r.splitImageUrl,
       }));
   }
 
@@ -233,6 +297,8 @@ function buildLeaderboard(
             slug: linkPour.slug,
           }),
           countryCode: linkPour.countryCode,
+          representativeCreatedAt: linkPour.createdAt,
+          splitImageUrl: linkPour.splitImageUrl,
         };
       })
       .sort((x, y) =>
@@ -250,6 +316,8 @@ function buildLeaderboard(
         detail: r.detail,
         pourPath: r.pourPath,
         countryCode: r.countryCode,
+        representativeCreatedAt: r.representativeCreatedAt,
+        splitImageUrl: r.splitImageUrl,
       }));
   }
 
@@ -269,6 +337,8 @@ function buildLeaderboard(
           slug: linkPour.slug,
         }),
         countryCode: linkPour.countryCode,
+        representativeCreatedAt: linkPour.createdAt,
+        splitImageUrl: linkPour.splitImageUrl,
       };
     })
     .sort((x, y) =>
@@ -284,6 +354,8 @@ function buildLeaderboard(
       detail: r.detail,
       pourPath: r.pourPath,
       countryCode: r.countryCode,
+      representativeCreatedAt: r.representativeCreatedAt,
+      splitImageUrl: r.splitImageUrl,
     }));
 }
 
@@ -468,7 +540,7 @@ export default function CompetitionDetail() {
     const { data: csRows } = await supabase
       .from("competition_scores")
       .select(
-        "id, user_id, score_id, created_at, scores (id, slug, username, split_score, created_at, email, country_code)",
+        "id, user_id, score_id, created_at, scores (id, slug, username, split_score, created_at, email, country_code, split_image_url)",
       )
       .eq("competition_id", id);
 
@@ -827,46 +899,42 @@ export default function CompetitionDetail() {
           </div>
         ) : null}
 
-        <nav
-          className="sticky top-2 z-20 mb-2 flex flex-wrap gap-2 rounded-xl border border-guinness-gold/15 bg-guinness-black/90 px-3 py-2.5 shadow-lg shadow-black/40 backdrop-blur-md lg:hidden"
+        <SegmentedTabs
+          className="sticky top-2 z-20 mb-2 w-full shadow-lg shadow-black/40 backdrop-blur-md lg:hidden"
+          layoutClassName="flex w-full"
+          variant="rowEqual"
           aria-label="Jump to section"
-        >
-          <a
-            href="#comp-summary-section"
-            onClick={(e) => {
-              e.preventDefault();
+          value={
+            mobileSummaryOpen
+              ? "summary"
+              : rightColTab === "leaderboard"
+                ? "leaderboard"
+                : "participants"
+          }
+          onValueChange={(v) => {
+            if (v === "summary") {
               setMobileSummaryOpen(true);
               window.requestAnimationFrame(() => {
                 document
                   .getElementById("comp-summary-section")
                   ?.scrollIntoView({ behavior: "smooth", block: "start" });
               });
-            }}
-            className="rounded-lg bg-guinness-brown/50 px-3 py-1.5 text-xs font-semibold text-guinness-tan transition-colors hover:bg-guinness-brown/70"
-          >
-            Summary
-          </a>
-          <a
-            href="#comp-leaderboard-panel"
-            className="rounded-lg bg-guinness-gold/20 px-3 py-1.5 text-xs font-semibold text-guinness-gold transition-colors hover:bg-guinness-gold/30"
-          >
-            Leaderboard
-          </a>
-          <button
-            type="button"
-            onClick={() => {
-              setRightColTab("participants");
-              window.requestAnimationFrame(() => {
-                document
-                  .getElementById("comp-leaderboard-panel")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
-            }}
-            className="rounded-lg bg-guinness-brown/50 px-3 py-1.5 text-xs font-semibold text-guinness-tan transition-colors hover:bg-guinness-brown/70"
-          >
-            Who&apos;s in
-          </button>
-        </nav>
+              return;
+            }
+            setMobileSummaryOpen(false);
+            setRightColTab(v === "leaderboard" ? "leaderboard" : "participants");
+            window.requestAnimationFrame(() => {
+              document
+                .getElementById("comp-leaderboard-panel")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+          }}
+          items={[
+            { value: "summary", label: "Summary" },
+            { value: "leaderboard", label: "Leaderboard" },
+            { value: "participants", label: "Who's in" },
+          ]}
+        />
 
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start lg:gap-10 xl:gap-10">
         <section
@@ -1088,42 +1156,30 @@ export default function CompetitionDetail() {
           className="order-2 scroll-mt-28 lg:col-start-2 lg:row-start-1 lg:max-h-[min(72vh,calc(100vh-5.5rem))] lg:min-w-0 lg:overflow-y-auto lg:self-start lg:pt-0 xl:max-h-[calc(100vh-6rem)]"
           aria-label="Competition leaderboard and roster"
         >
-          <div
-            className="mb-4 flex gap-1 rounded-xl border border-[#312814] bg-guinness-black/20 p-1"
+          <SegmentedTabs
+            className="mb-4 hidden w-full lg:mb-6 lg:flex"
+            layoutClassName="flex w-full"
+            variant="rowEqual"
             role="tablist"
             aria-label="Leaderboard and roster"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={rightColTab === "leaderboard"}
-              id="tab-comp-leaderboard"
-              aria-controls="panel-comp-leaderboard"
-              onClick={() => setRightColTab("leaderboard")}
-              className={`min-h-[2.5rem] flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                rightColTab === "leaderboard"
-                  ? "bg-guinness-gold/25 text-guinness-gold shadow-sm shadow-black/20"
-                  : "text-guinness-tan/70 hover:bg-guinness-brown/40 hover:text-guinness-tan"
-              }`}
-            >
-              Leaderboard
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={rightColTab === "participants"}
-              id="tab-comp-participants"
-              aria-controls="panel-comp-participants"
-              onClick={() => setRightColTab("participants")}
-              className={`min-h-[2.5rem] flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                rightColTab === "participants"
-                  ? "bg-guinness-gold/25 text-guinness-gold shadow-sm shadow-black/20"
-                  : "text-guinness-tan/70 hover:bg-guinness-brown/40 hover:text-guinness-tan"
-              }`}
-            >
-              Who&apos;s in
-            </button>
-          </div>
+            tabIdPrefix="tab-comp"
+            value={rightColTab}
+            onValueChange={(v) =>
+              setRightColTab(v === "participants" ? "participants" : "leaderboard")
+            }
+            items={[
+              {
+                value: "leaderboard",
+                label: "Leaderboard",
+                panelId: "panel-comp-leaderboard",
+              },
+              {
+                value: "participants",
+                label: "Who's in",
+                panelId: "panel-comp-participants",
+              },
+            ]}
+          />
 
           <div
             id="panel-comp-leaderboard"
@@ -1132,81 +1188,80 @@ export default function CompetitionDetail() {
             hidden={rightColTab !== "leaderboard"}
           >
             {ranked.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#312814] bg-guinness-black/20 px-4 py-8 text-center">
-                <p className="type-meta text-guinness-tan/55">
-                  Waiting for the first pour.
-                </p>
-                <p className="type-meta mt-2 text-guinness-tan/45">
-                  Scores show up when someone uses{" "}
-                  <span className="text-guinness-tan/65">New pour for comp</span> during the
-                  live window.
-                </p>
-              </div>
+              <p className="type-meta rounded-2xl border border-[#322914] bg-guinness-brown/30 p-8 text-center text-guinness-tan/70">
+                Waiting for the first pour. Scores appear when someone uses{" "}
+                <span className="text-guinness-tan/85">New pour for comp</span> during the live
+                window.
+              </p>
             ) : (
-              <ul className="space-y-2">
-                {ranked.map((r) => (
-                  <li key={r.userId}>
-                    <div className="flex flex-wrap items-stretch gap-0 rounded-xl border border-guinness-gold/15 bg-guinness-brown/35 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/50">
-                      <Link
-                        to={r.pourPath}
-                        viewTransition
-                        className="flex min-w-0 flex-1 flex-wrap items-center gap-3 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-guinness-gold"
-                      >
-                        <span className="w-8 shrink-0 text-lg font-bold text-guinness-gold">
-                          #{r.rank}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold text-guinness-cream">
-                            {flagEmojiFromIso2(
-                              r.countryCode ?? participantProfiles[r.userId]?.country_code,
-                            ) ? (
-                              <span
-                                className="mr-1 inline-block shrink-0"
-                                title={
-                                  (
-                                    r.countryCode ??
-                                    participantProfiles[r.userId]?.country_code
-                                  )
-                                    ?.trim()
-                                    .toUpperCase() ?? undefined
-                                }
-                                aria-hidden
-                              >
-                                {flagEmojiFromIso2(
-                                  r.countryCode ??
-                                    participantProfiles[r.userId]?.country_code,
-                                )}
-                              </span>
+              <ul className="w-full">
+                {ranked.map((r) => {
+                  const friendSlot = friendActionForPeer(r.userId);
+                  const cc =
+                    r.countryCode ?? participantProfiles[r.userId]?.country_code;
+                  const winRule = competition.win_rule as WinRule;
+                  const secondary = competitionLeaderboardSecondaryMeta(r, winRule);
+                  return (
+                    <li key={r.userId} className="mb-4 last:mb-0">
+                      <div className="flex flex-col overflow-hidden rounded-2xl border border-[#322914] bg-guinness-brown/35 transition-colors hover:border-guinness-gold/30 hover:bg-guinness-brown/50 sm:flex-row sm:items-stretch">
+                        <Link
+                          to={r.pourPath}
+                          prefetch="intent"
+                          viewTransition
+                          className="flex min-w-0 flex-1 items-center gap-3 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold sm:gap-5 sm:p-5"
+                        >
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-guinness-gold/12 text-xl font-bold text-guinness-gold sm:h-14 sm:w-14 sm:text-2xl">
+                            #{r.rank}
+                          </div>
+                          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-guinness-black/50 sm:h-20 sm:w-20">
+                            {r.splitImageUrl ? (
+                              <img
+                                src={r.splitImageUrl}
+                                alt={`Split by ${r.username}`}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
                             ) : null}
-                            {r.username}
-                          </p>
-                          <p className="type-meta text-guinness-tan/65">{r.detail}</p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1 sm:hidden">
-                          <p className="text-sm font-semibold text-guinness-gold">
-                            {r.metric}
-                          </p>
-                          <span className="text-guinness-tan/45 text-xs" aria-hidden>
-                            →
-                          </span>
-                        </div>
-                      </Link>
-                      <div className="flex min-w-[9rem] shrink-0 flex-col items-stretch justify-center gap-2 border-t border-guinness-gold/10 px-4 py-3 sm:border-l sm:border-t-0 sm:py-3">
-                        <div className="hidden items-center justify-end gap-2 text-right sm:flex">
-                          <p className="text-sm font-semibold text-guinness-gold">
-                            {r.metric}
-                          </p>
-                          <span className="text-guinness-tan/45 text-xs" aria-hidden>
-                            →
-                          </span>
-                        </div>
-                        <div className="flex justify-end sm:justify-end">
-                          {friendActionForPeer(r.userId)}
-                        </div>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-lg font-semibold text-guinness-cream sm:text-2xl">
+                                  {flagEmojiFromIso2(cc) ? (
+                                    <span
+                                      className="mr-1.5 inline-block shrink-0"
+                                      title={cc?.trim().toUpperCase() ?? undefined}
+                                      aria-hidden
+                                    >
+                                      {flagEmojiFromIso2(cc)}
+                                    </span>
+                                  ) : null}
+                                  {r.username}
+                                </p>
+                                <p className="type-meta text-guinness-tan/70">
+                                  {new Date(
+                                    r.representativeCreatedAt,
+                                  ).toLocaleDateString()}
+                                </p>
+                                {secondary ? (
+                                  <p className="type-meta mt-0.5 text-guinness-tan/60">
+                                    {secondary}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <CompetitionLeaderboardScoreAside row={r} winRule={winRule} />
+                            </div>
+                          </div>
+                        </Link>
+                        {friendSlot ? (
+                          <div className="flex min-w-0 shrink-0 flex-col justify-center border-t border-[#322914] px-4 py-3 sm:max-w-[12rem] sm:border-l sm:border-t-0 sm:px-4">
+                            {friendSlot}
+                          </div>
+                        ) : null}
                       </div>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -1232,7 +1287,7 @@ export default function CompetitionDetail() {
                 {sortedParticipantUserIds.map((pid) => (
                   <li
                     key={pid}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-guinness-gold/12 bg-guinness-brown/20 px-4 py-3"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#201B10] bg-guinness-brown/20 px-4 py-3"
                   >
                     <div className="min-w-0">
                       <p className="font-semibold text-guinness-cream">

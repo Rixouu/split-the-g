@@ -1,9 +1,6 @@
+import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { useProfileOutlet } from "./profile-context";
-import {
-  progressRangeOptions,
-  segmentedTabGroupChromeClass,
-  segmentedTabTriggerClass,
-} from "./profile-shared";
+import { progressRangeOptions, type ProgressRange } from "./profile-shared";
 
 export default function ProfileProgressPage() {
   const {
@@ -117,23 +114,16 @@ export default function ProfileProgressPage() {
                   Compare your average, best score, and volume against accepted friends.
                 </p>
               </div>
-              <div
-                className={`flex w-full min-w-0 sm:flex-1 ${segmentedTabGroupChromeClass}`}
-              >
-                {progressRangeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setProgressRange(option.value)}
-                    className={segmentedTabTriggerClass(
-                      progressRange === option.value,
-                      "rowEqual",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedTabs
+                value={progressRange}
+                onValueChange={(v) => setProgressRange(v as ProgressRange)}
+                items={progressRangeOptions.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                layoutClassName="flex w-full min-w-0 sm:flex-1"
+                aria-label="Time range"
+              />
             </div>
 
             {friendProgressLeaderboard.length > 0 ? (
