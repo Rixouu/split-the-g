@@ -1,6 +1,7 @@
 import {
   data,
   Link,
+  redirect,
   useFetcher,
   useLoaderData,
   useNavigate,
@@ -34,6 +35,13 @@ import {
   resolvePlaceIdForPubImport,
 } from "~/utils/googlePlaceDetails";
 import type { BarStat } from "~/routes/pubs";
+import {
+  barKeyToPubPathSegment,
+  decodePubUrlSegment,
+  isPrettyPubPathSegment,
+  pubDetailPath,
+  resolveBarKeyFromPubPathSegment,
+} from "~/utils/pubPath";
 
 /** Only this account may edit pub directory fields (hours, promos, map URL). */
 const PUB_DIRECTORY_ADMIN_EMAIL = "admin.rixou@gmail.com";
@@ -106,7 +114,19 @@ export async function loader({ params }: LoaderFunctionArgs) {
   if (!raw) {
     throw new Response("Not found", { status: 404 });
   }
-  const barKey = decodeURIComponent(raw).trim().toLowerCase();
+
+  const barKey = await resolveBarKeyFromPubPathSegment(supabase, raw);
+  if (!barKey) {
+    throw new Response("Not found", { status: 404 });
+  }
+
+  const prettySeg = barKeyToPubPathSegment(barKey);
+  if (isPrettyPubPathSegment(prettySeg)) {
+    const incoming = decodePubUrlSegment(raw).trim().toLowerCase();
+    if (incoming !== prettySeg) {
+      return redirect(pubDetailPath(barKey), { status: 301 });
+    }
+  }
 
   const { data: stat, error: statError } = await supabase
     .from("bar_pub_stats")
@@ -635,7 +655,7 @@ export default function PubDetail() {
       setToastOk(true);
       setToast("Pub details saved. Thanks for helping the community.");
       if (newBarKey !== barKey) {
-        navigate(`/pubs/${encodeURIComponent(newBarKey)}`, { replace: true });
+        navigate(pubDetailPath(newBarKey), { replace: true });
       }
       revalidator.revalidate();
     } finally {
@@ -656,10 +676,16 @@ export default function PubDetail() {
       setToast("Only the site admin can merge pubs.");
       return;
     }
-    const tgt = normalizeBarKeyInput(mergeTargetBarKey);
-    if (!tgt) {
+    const pasted = normalizeBarKeyInput(mergeTargetBarKey);
+    if (!pasted) {
       setToastOk(false);
       setToast("Paste the target pub’s bar key (from its URL after /pubs/).");
+      return;
+    }
+    const tgt = await resolveBarKeyFromPubPathSegment(supabase, pasted);
+    if (!tgt) {
+      setToastOk(false);
+      setToast("Could not find that pub — check the URL segment after /pubs/.");
       return;
     }
     if (tgt === barKey) {
@@ -686,7 +712,7 @@ export default function PubDetail() {
       setToastOk(true);
       setToast("Merged into target pub. Redirecting…");
       setMergeTargetBarKey("");
-      navigate(`/pubs/${encodeURIComponent(tgt)}`, { replace: true });
+      navigate(pubDetailPath(tgt), { replace: true });
       revalidator.revalidate();
     } finally {
       setMergeBusy(false);
@@ -1241,16 +1267,16 @@ export default function PubDetail() {
                                   setMergeTargetBarKey(e.target.value)
                                 }
                                 className={fieldInputClass}
-                                placeholder="e.g. the old english bangkok british pub & restaurant"
+                                placeholder="e.g. the-old-english-bangkok-british-pub-and-restaurant"
                                 autoComplete="off"
                                 spellCheck={false}
                               />
                               <p className="type-meta text-guinness-tan/45">
-                                Open the canonical pub, copy the segment after{" "}
+                                Open the canonical pub and copy the path after{" "}
                                 <code className="rounded bg-guinness-black/50 px-1 text-guinness-gold/90">
                                   /pubs/
                                 </code>{" "}
-                                (decoded, usually lowercase).
+                                (hyphen slug or legacy name — both work).
                               </p>
                             </div>
                             <button

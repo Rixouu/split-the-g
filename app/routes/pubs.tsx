@@ -15,6 +15,7 @@ import {
   pubsPageDescription,
 } from "~/components/PageHeader";
 import { supabase } from "~/utils/supabase";
+import { pubDetailPath } from "~/utils/pubPath";
 
 export type BarStat = {
   bar_key: string;
@@ -451,7 +452,7 @@ export default function Pubs() {
               const isFav = Boolean(favIdByBarKey[b.bar_key]);
               const busy = favBusyKey === b.bar_key;
 
-              const detailTo = `/pubs/${encodeURIComponent(b.bar_key)}`;
+              const detailTo = pubDetailPath(b.bar_key);
               const pourLabel =
                 b.submission_count === 1 ? "1 pour" : `${b.submission_count} pours`;
 

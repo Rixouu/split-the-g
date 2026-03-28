@@ -14,6 +14,7 @@ import {
 } from "~/components/branded/feedback-variant";
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
+import { pubDetailPath } from "~/utils/pubPath";
 import type { CompetitionRow } from "~/routes/competitions";
 
 type WinRule = CompetitionRow["win_rule"];
@@ -799,7 +800,7 @@ export default function CompetitionDetail() {
               <p className="type-meta mt-2 text-guinness-tan/75">
                 Linked pub:{" "}
                 <Link
-                  to={`/pubs/${encodeURIComponent(competition.linked_bar_key.trim())}`}
+                  to={pubDetailPath(competition.linked_bar_key.trim())}
                   viewTransition
                   className="font-medium text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:decoration-guinness-gold"
                 >

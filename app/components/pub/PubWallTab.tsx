@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
+import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 
 export type PubWallRow = {
@@ -42,11 +44,8 @@ function endOfLocalDay(ymd: string): number {
   return new Date(y, m - 1, d, 23, 59, 59, 999).getTime();
 }
 
-/** No fixed min-width — avoids grid overflow and date picker clipping in narrow columns. */
-const filterSelectClass =
-  "box-border w-full min-w-0 max-w-full min-h-11 rounded-lg border border-[#322914] bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none";
-
-const filterDateClass = `${filterSelectClass} pr-2 [color-scheme:dark]`;
+const selectFieldClass =
+  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none sm:min-w-[10.5rem]";
 
 interface PubWallTabProps {
   items: PubWallRow[];
@@ -58,6 +57,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
   const [minScore, setMinScore] = useState<string>("0");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [countryFilter, setCountryFilter] = useState<string>("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -71,17 +71,37 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  const wallCountrySelectOptions = useMemo(() => {
+    const codes = new Set<string>();
+    for (const s of items) {
+      const c = s.country_code?.trim().toUpperCase();
+      if (c && /^[A-Z]{2}$/.test(c)) codes.add(c);
+    }
+    const nameByCode = new Map(
+      getCountryOptions().map((o) => [o.code.toUpperCase(), o.name] as const),
+    );
+    return [...codes].sort().map((code) => ({
+      code,
+      name: nameByCode.get(code) ?? code,
+    }));
+  }, [items]);
+
   const filtered = useMemo(() => {
     const min = Number.parseFloat(minScore);
     const minOk = Number.isFinite(min) ? min : 0;
     const fromTs = dateFrom ? startOfLocalDay(dateFrom) : null;
     const toTs = dateTo ? endOfLocalDay(dateTo) : null;
+    const countryWant = countryFilter.trim().toUpperCase();
 
     let list = items.filter((s) => {
       if (s.split_score < minOk) return false;
       const t = new Date(s.created_at).getTime();
       if (fromTs != null && Number.isFinite(fromTs) && t < fromTs) return false;
       if (toTs != null && Number.isFinite(toTs) && t > toTs) return false;
+      if (countryWant) {
+        const got = s.country_code?.trim().toUpperCase() ?? "";
+        if (got !== countryWant) return false;
+      }
       return true;
     });
 
@@ -107,11 +127,11 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
         );
     }
     return sorted;
-  }, [items, sort, minScore, dateFrom, dateTo]);
+  }, [items, sort, minScore, dateFrom, dateTo, countryFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [filtered.length, sort, minScore, dateFrom, dateTo]);
+  }, [filtered.length, sort, minScore, dateFrom, dateTo, countryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
@@ -157,12 +177,12 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
           </div>
         </div>
         <div
-          className={`grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 ${filtersOpen ? "" : "hidden md:grid"}`}
+          className={`grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 ${filtersOpen ? "" : "hidden md:grid"}`}
         >
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className="type-meta text-guinness-tan/80">Sort by</span>
             <select
-              className={filterSelectClass}
+              className={selectFieldClass}
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
               aria-label="Sort pours"
@@ -176,7 +196,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className="type-meta text-guinness-tan/80">Minimum score</span>
             <select
-              className={filterSelectClass}
+              className={selectFieldClass}
               value={minScore}
               onChange={(e) => setMinScore(e.target.value)}
               aria-label="Minimum split score"
@@ -189,33 +209,54 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
               <option value="4.5">4.5+</option>
             </select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="type-meta text-guinness-tan/80">From date</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className={filterDateClass}
-              aria-label="Filter from date"
+          <div className="min-w-0">
+            <WallDateRangeField
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onChange={(from, to) => {
+                setDateFrom(from);
+                setDateTo(to);
+              }}
             />
-          </label>
+          </div>
           <label className="flex min-w-0 flex-col gap-1.5">
-            <span className="type-meta text-guinness-tan/80">To date</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className={filterDateClass}
-              aria-label="Filter to date"
-            />
+            <span className="type-meta text-guinness-tan/80">Country</span>
+            <select
+              className={selectFieldClass}
+              value={countryFilter}
+              onChange={(e) => setCountryFilter(e.target.value)}
+              aria-label="Filter by country"
+            >
+              <option value="">Any country</option>
+              {wallCountrySelectOptions.map(({ code, name }) => (
+                <option key={code} value={code}>
+                  {flagEmojiFromIso2(code)} {name}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
       </div>
 
       {pageSlice.length === 0 ? (
-        <p className="type-meta text-guinness-tan/70">
-          No pours match these filters.
-        </p>
+        <div className="rounded-lg border border-guinness-gold/15 bg-guinness-brown/25 py-10 text-center">
+          <p className="type-meta text-guinness-tan/80">
+            No pours match these filters.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setMinScore("0");
+              setDateFrom("");
+              setDateTo("");
+              setCountryFilter("");
+              setSort("newest");
+            }}
+            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-guinness-gold px-5 py-2 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan"
+          >
+            Reset filters
+          </button>
+        </div>
       ) : (
         <ul className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(11.5rem,1fr))] sm:gap-4">
           {pageSlice.map((row) => (
@@ -243,6 +284,17 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
                 <div className="space-y-1 p-2.5 sm:p-3">
                   <div className="flex items-start justify-between gap-1">
                     <span className="line-clamp-2 text-xs font-semibold text-guinness-cream sm:text-sm">
+                      {flagEmojiFromIso2(row.country_code) ? (
+                        <span
+                          className="mr-1 inline-block shrink-0"
+                          title={
+                            row.country_code?.trim().toUpperCase() ?? undefined
+                          }
+                          aria-hidden
+                        >
+                          {flagEmojiFromIso2(row.country_code)}
+                        </span>
+                      ) : null}
                       {row.username}
                     </span>
                     <span className="shrink-0 tabular-nums text-sm font-semibold text-guinness-gold">
