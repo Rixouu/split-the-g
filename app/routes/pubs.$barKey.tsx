@@ -1,9 +1,10 @@
-import { Link, useLoaderData, useRevalidator } from "react-router";
-import type { LoaderFunctionArgs } from "react-router";
+import { data, Link, useFetcher, useLoaderData, useRevalidator } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -15,6 +16,12 @@ import {
 } from "~/components/PageHeader";
 import { PubGoogleMapEmbed } from "~/components/pub/PubGoogleMapEmbed";
 import { supabase } from "~/utils/supabase";
+import {
+  fetchPlaceDetailsForDirectoryImport,
+  fetchPlaceOpeningHoursWeekdayLines,
+  resolveGoogleMapsKeyForServer,
+  resolvePlaceIdForPubImport,
+} from "~/utils/googlePlaceDetails";
 import type { BarStat } from "~/routes/pubs";
 
 /** Only this account may edit pub directory fields (hours, promos, map URL). */
@@ -43,6 +50,7 @@ type PubPlaceRow = {
   guinness_info: string | null;
   alcohol_promotions: string | null;
   maps_place_url: string | null;
+  google_place_id: string | null;
   updated_at: string;
   updated_by: string | null;
 };
@@ -101,6 +109,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
       extraError: extraError.message,
       placeDetails: null as PubPlaceRow | null,
       linkedCompetitions: [] as LinkedCompetition[],
+      googleOpeningHoursLines: null as string[] | null,
     };
   }
 
@@ -132,19 +141,136 @@ export async function loader({ params }: LoaderFunctionArgs) {
     .gt("ends_at", nowIso)
     .order("ends_at", { ascending: true });
 
+  const placeDetailsTyped = !placeErr
+    ? ((placeRow ?? null) as PubPlaceRow | null)
+    : null;
+
+  const resolvedPlaceId =
+    placeDetailsTyped?.google_place_id?.trim() ||
+    bar.google_place_id?.trim() ||
+    null;
+
+  let googleOpeningHoursLines: string[] | null = null;
+  if (resolvedPlaceId) {
+    const mapsKey = resolveGoogleMapsKeyForServer();
+    if (mapsKey) {
+      googleOpeningHoursLines = await fetchPlaceOpeningHoursWeekdayLines(
+        resolvedPlaceId,
+        mapsKey,
+      );
+    }
+  }
+
   return {
     barKey,
     bar,
     extra,
     extraError: null as string | null,
-    placeDetails: !placeErr
-      ? ((placeRow ?? null) as PubPlaceRow | null)
-      : null,
+    placeDetails: placeDetailsTyped,
     linkedCompetitions: !compErr ? ((comps ?? []) as LinkedCompetition[]) : [],
+    googleOpeningHoursLines,
   };
 }
 
-const fieldClass = `w-full rounded-lg border ${pubStroke} bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none focus:ring-1 focus:ring-guinness-gold/40`;
+type ImportGoogleActionData =
+  | {
+      ok: true;
+      placeId: string;
+      name: string | null;
+      formattedAddress: string | null;
+      weekdayLines: string[] | null;
+      mapsUrl: string | null;
+    }
+  | { ok: false; message?: string };
+
+export async function action({ request }: ActionFunctionArgs) {
+  if (request.method !== "POST") {
+    return data({ ok: false, message: "Method not allowed" } satisfies ImportGoogleActionData, {
+      status: 405,
+    });
+  }
+
+  const formData = await request.formData();
+  if (formData.get("intent") !== "importGooglePlace") {
+    return data({ ok: false, message: "Invalid action" } satisfies ImportGoogleActionData, {
+      status: 400,
+    });
+  }
+
+  const accessToken = String(formData.get("accessToken") ?? "").trim();
+  const placeInput = String(formData.get("placeInput") ?? "").trim();
+  const barFallback = String(formData.get("barGooglePlaceId") ?? "").trim();
+  const barDisplayName = String(formData.get("barDisplayName") ?? "").trim();
+  const barSampleAddress = String(formData.get("barSampleAddress") ?? "").trim();
+
+  if (!accessToken) {
+    return data({ ok: false, message: "Sign in to import." } satisfies ImportGoogleActionData, {
+      status: 401,
+    });
+  }
+
+  const { data: userData, error: userErr } =
+    await supabase.auth.getUser(accessToken);
+  const email = userData.user?.email;
+  if (userErr || !isPubDirectoryAdmin(email)) {
+    return data({ ok: false, message: "Admin only." } satisfies ImportGoogleActionData, {
+      status: 403,
+    });
+  }
+
+  const mapsKey = resolveGoogleMapsKeyForServer();
+  if (!mapsKey) {
+    return data({
+      ok: false,
+      message:
+        "Missing VITE_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_SERVER_KEY on the server.",
+    } satisfies ImportGoogleActionData);
+  }
+
+  const pasteBlob = [placeInput, barFallback].filter(Boolean).join("\n").trim();
+  const resolved = await resolvePlaceIdForPubImport(
+    pasteBlob,
+    mapsKey,
+    barDisplayName
+      ? {
+          displayName: barDisplayName,
+          sampleAddress: barSampleAddress || null,
+        }
+      : null,
+  );
+
+  if (!resolved.ok) {
+    return data({
+      ok: false,
+      message: resolved.message,
+    } satisfies ImportGoogleActionData);
+  }
+
+  const fetched = await fetchPlaceDetailsForDirectoryImport(
+    resolved.placeId,
+    mapsKey,
+  );
+  if (!fetched.ok) {
+    return data({
+      ok: false,
+      message: fetched.message ?? `Google: ${fetched.status}`,
+    } satisfies ImportGoogleActionData);
+  }
+
+  const d = fetched.data;
+  return data({
+    ok: true,
+    placeId: d.placeId,
+    name: d.name,
+    formattedAddress: d.formattedAddress,
+    weekdayLines: d.weekdayLines,
+    mapsUrl: d.mapsUrl,
+  } satisfies ImportGoogleActionData);
+}
+
+const fieldClass = `w-full rounded-lg border ${pubStroke} bg-guinness-black/60 px-3 py-2.5 text-sm leading-relaxed text-guinness-cream placeholder:text-guinness-tan/35 focus:border-guinness-gold focus:outline-none focus:ring-1 focus:ring-guinness-gold/40`;
+const fieldTextareaClass = `${fieldClass} min-h-[7.5rem] resize-y sm:min-h-[8.5rem]`;
+const fieldInputClass = `${fieldClass} min-h-11`;
 
 function formatSpend(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "—";
@@ -171,6 +297,38 @@ function DirectorySection({
   );
 }
 
+function PubOpeningHoursReadOnly({
+  googleOpeningHoursLines,
+}: {
+  googleOpeningHoursLines: string[] | null;
+}) {
+  if (googleOpeningHoursLines && googleOpeningHoursLines.length > 0) {
+    return (
+      <ul className="list-none space-y-2 border-t border-guinness-gold/10 pt-3">
+        {googleOpeningHoursLines.map((line, i) => (
+          <li
+            key={`${i}-${line}`}
+            className="flex gap-3 text-sm leading-snug text-guinness-cream"
+          >
+            <span
+              className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-guinness-gold/70"
+              aria-hidden
+            />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <p className="text-guinness-tan/55">
+      No linked listing hours yet. Add a Google Place ID or use admin import —
+      visitors see hours from the business listing when available.
+    </p>
+  );
+}
+
 export default function PubDetail() {
   const {
     barKey,
@@ -179,8 +337,15 @@ export default function PubDetail() {
     extraError,
     placeDetails,
     linkedCompetitions,
+    googleOpeningHoursLines,
   } = useLoaderData<typeof loader>();
   const revalidator = useRevalidator();
+  const importFetcher = useFetcher<ImportGoogleActionData>();
+  const lastImportHandledKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    lastImportHandledKey.current = null;
+  }, [barKey]);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -201,13 +366,40 @@ export default function PubDetail() {
   const [mapsPlaceUrl, setMapsPlaceUrl] = useState(
     placeDetails?.maps_place_url ?? "",
   );
+  const [directoryGooglePlaceId, setDirectoryGooglePlaceId] = useState(
+    placeDetails?.google_place_id ?? "",
+  );
   const [directoryBusy, setDirectoryBusy] = useState(false);
+
+  useEffect(() => {
+    if (importFetcher.state !== "idle" || importFetcher.data == null) return;
+    const key = JSON.stringify(importFetcher.data);
+    if (lastImportHandledKey.current === key) return;
+    lastImportHandledKey.current = key;
+
+    const d = importFetcher.data;
+    if (d.ok) {
+      if (d.weekdayLines?.length) setOpeningHours(d.weekdayLines.join("\n"));
+      if (d.mapsUrl) setMapsPlaceUrl(d.mapsUrl);
+      if (d.placeId) setDirectoryGooglePlaceId(d.placeId);
+      setToastOk(true);
+      const bits = [d.name, d.formattedAddress].filter(Boolean).join(" — ");
+      const hoursMsg = d.weekdayLines?.length
+        ? "Review fields and save."
+        : "Google did not return opening-hour lines for this listing (some venues omit them in the API). Place ID and Maps link were updated if available — add hours manually if needed, then save.";
+      setToast(bits ? `Imported: ${bits}. ${hoursMsg}` : `Imported from Google. ${hoursMsg}`);
+    } else {
+      setToastOk(false);
+      setToast(d.message ?? "Could not import from Google.");
+    }
+  }, [importFetcher.state, importFetcher.data]);
 
   useEffect(() => {
     setOpeningHours(placeDetails?.opening_hours ?? "");
     setGuinnessInfo(placeDetails?.guinness_info ?? "");
     setPromotions(placeDetails?.alcohol_promotions ?? "");
     setMapsPlaceUrl(placeDetails?.maps_place_url ?? "");
+    setDirectoryGooglePlaceId(placeDetails?.google_place_id ?? "");
   }, [placeDetails]);
 
   const canEditPubDirectory = useMemo(
@@ -315,6 +507,7 @@ export default function PubDetail() {
         guinness_info: guinnessInfo.trim() || null,
         alcohol_promotions: promotions.trim() || null,
         maps_place_url: mapsPlaceUrl.trim() || null,
+        google_place_id: directoryGooglePlaceId.trim() || null,
         updated_by: auth.user.id,
         updated_at: new Date().toISOString(),
       };
@@ -333,6 +526,29 @@ export default function PubDetail() {
     } finally {
       setDirectoryBusy(false);
     }
+  }
+
+  async function submitImportFromGoogle() {
+    setToast(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      setToastOk(false);
+      setToast("Sign in to import.");
+      return;
+    }
+    const placeInput = [directoryGooglePlaceId, mapsPlaceUrl]
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join("\n");
+    const fd = new FormData();
+    fd.set("intent", "importGooglePlace");
+    fd.set("accessToken", token);
+    fd.set("placeInput", placeInput);
+    fd.set("barGooglePlaceId", bar.google_place_id ?? "");
+    fd.set("barDisplayName", bar.display_name);
+    fd.set("barSampleAddress", bar.sample_address ?? "");
+    importFetcher.submit(fd, { method: "post" });
   }
 
   const mapsHref = useMemo(() => mapsSearchUrl(bar), [bar]);
@@ -394,9 +610,9 @@ export default function PubDetail() {
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-8 lg:grid lg:grid-cols-12 lg:items-start lg:gap-8">
-          {/* Mobile: map & location first; desktop: right column */}
-          <aside className="order-1 space-y-4 lg:order-none lg:sticky lg:top-24 lg:col-span-5 lg:self-start">
+        <div className="flex flex-col gap-8 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-10 lg:gap-y-8">
+          {/* Mobile: map & location first; desktop: left column */}
+          <aside className="order-1 space-y-5 lg:order-none lg:sticky lg:top-24 lg:col-span-5 lg:self-start">
             <section className={pubPanel} aria-labelledby="pub-location-heading">
               <h2
                 id="pub-location-heading"
@@ -408,7 +624,8 @@ export default function PubDetail() {
                 Pulled from community pour data; embedded map uses Google Maps
                 when your API key has{" "}
                 <span className="text-guinness-cream">Maps Embed API</span>{" "}
-                enabled.
+                enabled and listed under that key&apos;s API restrictions (separate
+                from Maps JavaScript API and Places).
               </p>
               {bar.sample_address ? (
                 <p className="mb-3 text-sm leading-relaxed text-guinness-cream">
@@ -449,6 +666,24 @@ export default function PubDetail() {
 
             <section
               className={pubPanel}
+              aria-labelledby="pub-hours-aside-heading"
+            >
+              <h2
+                id="pub-hours-aside-heading"
+                className="type-card-title mb-1 text-guinness-gold"
+              >
+                Opening hours
+              </h2>
+              <p className="type-meta mb-3 text-guinness-tan/70">
+                Hours from the linked Google Business Profile listing.
+              </p>
+              <PubOpeningHoursReadOnly
+                googleOpeningHoursLines={googleOpeningHoursLines}
+              />
+            </section>
+
+            <section
+              className={pubPanel}
               aria-labelledby="pub-comps-aside-heading"
             >
               <h2
@@ -485,7 +720,7 @@ export default function PubDetail() {
             </section>
           </aside>
 
-          <div className="order-2 space-y-8 lg:order-none lg:col-span-7">
+          <div className="order-2 space-y-8 lg:order-none lg:col-span-7 lg:min-w-0">
             <section
               className={pubPanel}
               aria-labelledby="pub-stats-heading"
@@ -574,37 +809,26 @@ export default function PubDetail() {
                 id="pub-directory-heading"
                 className="type-card-title mb-1 text-guinness-gold"
               >
-                Hours, Guinness & promos
+                Guinness & promos
               </h2>
               <p className="type-meta mb-4 text-guinness-tan/70">
                 Community notes — visible to everyone.
                 {canEditPubDirectory
-                  ? " You can edit using the form below."
+                  ? " Edit notes below. Listing hours appear in the left column when Google is linked."
                   : " Updates are managed by the team."}
               </p>
 
-              <DirectorySection title="Opening hours">
-                {placeDetails?.opening_hours?.trim() ? (
+              <DirectorySection title="Guinness">
+                {placeDetails?.guinness_info?.trim() ? (
                   <p className="whitespace-pre-wrap">
-                    {placeDetails.opening_hours.trim()}
+                    {placeDetails.guinness_info.trim()}
                   </p>
                 ) : (
-                  <p className="text-guinness-tan/55">Nothing added yet.</p>
+                  <p className="text-guinness-tan/55">
+                    Taps, pour quality, nitro — add below.
+                  </p>
                 )}
               </DirectorySection>
-              <div className={`${pubDivider} mt-5 pt-5`}>
-                <DirectorySection title="Guinness">
-                  {placeDetails?.guinness_info?.trim() ? (
-                    <p className="whitespace-pre-wrap">
-                      {placeDetails.guinness_info.trim()}
-                    </p>
-                  ) : (
-                    <p className="text-guinness-tan/55">
-                      Taps, pour quality, nitro — add below.
-                    </p>
-                  )}
-                </DirectorySection>
-              </div>
               <div className={`${pubDivider} mt-5 pt-5`}>
                 <DirectorySection title="Promotions & drinks">
                   {placeDetails?.alcohol_promotions?.trim() ? (
@@ -626,63 +850,147 @@ export default function PubDetail() {
                 <h3 className="type-card-title mb-1 text-guinness-gold">
                   Update pub details
                 </h3>
-                <p className="type-meta mb-4 text-guinness-tan/65">
-                  Admin only. Same fields as the directory above.
+                <p className="type-meta mb-6 text-guinness-tan/65">
+                  Admin only. The left column shows Google listing hours when a Place
+                  is linked; import fills Place ID, map link, and hours.
                 </p>
-                <div className="space-y-3">
-                  <label className="block">
-                    <span className="type-meta mb-1 block text-guinness-tan/75">
-                      Opening hours
-                    </span>
+
+                <div className="space-y-8">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="pub-admin-opening-hours"
+                      className="type-meta block text-guinness-tan/80"
+                    >
+                      Opening hours (admin backup)
+                    </label>
+                    <p className="type-meta text-guinness-tan/45">
+                      Not shown on the public page — visitors only see Google listing
+                      hours. Use for internal notes or when Google has no hours.
+                    </p>
                     <textarea
+                      id="pub-admin-opening-hours"
                       value={openingHours}
                       onChange={(e) => setOpeningHours(e.target.value)}
-                      rows={3}
-                      className={fieldClass}
+                      rows={5}
+                      className={fieldTextareaClass}
                       placeholder="e.g. Mon–Thu 4pm–12am, Fri–Sun 2pm–1am"
                     />
-                  </label>
-                  <label className="block">
-                    <span className="type-meta mb-1 block text-guinness-tan/75">
-                      Guinness & pour notes
-                    </span>
-                    <textarea
-                      value={guinnessInfo}
-                      onChange={(e) => setGuinnessInfo(e.target.value)}
-                      rows={3}
-                      className={fieldClass}
-                      placeholder="How’s the Guinness here?"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="type-meta mb-1 block text-guinness-tan/75">
-                      Promotions & other drinks
-                    </span>
-                    <textarea
-                      value={promotions}
-                      onChange={(e) => setPromotions(e.target.value)}
-                      rows={3}
-                      className={fieldClass}
-                      placeholder="Happy hour, other stouts, etc."
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="type-meta mb-1 block text-guinness-tan/75">
-                      Custom Maps URL (optional)
-                    </span>
-                    <input
-                      type="url"
-                      value={mapsPlaceUrl}
-                      onChange={(e) => setMapsPlaceUrl(e.target.value)}
-                      className={fieldClass}
-                      placeholder="https://maps.app.goo.gl/…"
-                    />
-                  </label>
+                  </div>
+
+                  <div
+                    className={`grid gap-5 border-t ${pubStroke} pt-6 sm:grid-cols-2 sm:gap-6`}
+                  >
+                    <div className="space-y-2 sm:min-w-0">
+                      <label
+                        htmlFor="pub-admin-guinness"
+                        className="type-meta block text-guinness-tan/80"
+                      >
+                        Guinness & pour notes
+                      </label>
+                      <textarea
+                        id="pub-admin-guinness"
+                        value={guinnessInfo}
+                        onChange={(e) => setGuinnessInfo(e.target.value)}
+                        rows={4}
+                        className={fieldTextareaClass}
+                        placeholder="How’s the Guinness here?"
+                      />
+                    </div>
+                    <div className="space-y-2 sm:min-w-0">
+                      <label
+                        htmlFor="pub-admin-promos"
+                        className="type-meta block text-guinness-tan/80"
+                      >
+                        Promotions & other drinks
+                      </label>
+                      <textarea
+                        id="pub-admin-promos"
+                        value={promotions}
+                        onChange={(e) => setPromotions(e.target.value)}
+                        rows={4}
+                        className={fieldTextareaClass}
+                        placeholder="Happy hour, other stouts, etc."
+                      />
+                    </div>
+                  </div>
+
+                  <div
+                    className={`space-y-4 rounded-xl border ${pubStroke} bg-guinness-black/25 p-4 sm:p-5`}
+                  >
+                    <div>
+                      <p className="type-label text-guinness-gold">
+                        Google listing & import
+                      </p>
+                      <p className="type-meta mt-1 text-guinness-tan/50">
+                        Link the business profile for hours on the left. Classic
+                        Places API + server key required for import.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="pub-admin-place-id"
+                        className="type-meta block text-guinness-tan/80"
+                      >
+                        Google Place ID or Maps URL
+                      </label>
+                      <input
+                        id="pub-admin-place-id"
+                        type="text"
+                        value={directoryGooglePlaceId}
+                        onChange={(e) =>
+                          setDirectoryGooglePlaceId(e.target.value)
+                        }
+                        className={fieldInputClass}
+                        placeholder="ChIJ… or paste a full google.com/maps/place/… link"
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="pub-admin-maps-url"
+                        className="type-meta block text-guinness-tan/80"
+                      >
+                        Custom Maps URL (optional)
+                      </label>
+                      <input
+                        id="pub-admin-maps-url"
+                        type="url"
+                        value={mapsPlaceUrl}
+                        onChange={(e) => setMapsPlaceUrl(e.target.value)}
+                        className={fieldInputClass}
+                        placeholder="https://maps.app.goo.gl/…"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        disabled={
+                          importFetcher.state !== "idle" || directoryBusy
+                        }
+                        onClick={() => void submitImportFromGoogle()}
+                        className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border ${pubStroke} bg-guinness-black/40 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/40 disabled:opacity-50`}
+                      >
+                        {importFetcher.state !== "idle"
+                          ? "Importing…"
+                          : "Import from Google Maps"}
+                      </button>
+                      <p className="type-meta max-w-xl text-guinness-tan/50 sm:text-right">
+                        Uses Place ID field, custom URL, or pub name. Then{" "}
+                        <span className="text-guinness-tan/70">Save pub details</span>
+                        .
+                      </p>
+                    </div>
+                  </div>
                 </div>
+
                 <button
                   type="submit"
                   disabled={directoryBusy}
-                  className="mt-4 rounded-lg bg-guinness-gold px-4 py-2.5 text-sm font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50"
+                  className="mt-8 w-full rounded-lg bg-guinness-gold px-4 py-3 text-sm font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
                 >
                   {directoryBusy ? "Saving…" : "Save pub details"}
                 </button>
