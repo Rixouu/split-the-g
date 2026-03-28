@@ -1,65 +1,89 @@
 # Split The G
 
-Split The G is a modern social pint game built around one simple obsession: how perfectly you can land the foam line through the Guinness `G`.
+**Split The G** is a social web app for scoring how cleanly a pint’s foam line crosses the Guinness “G”: capture a pour, get a split score, share a card, and compare with friends, pubs, and live competitions.
 
-Players can submit pours, save scores, claim their profile with Google, add friends, compare stats, and join live competitions. The current version of the app was substantially revamped by [Jonathan Rycx](https://github.com/Rixouu), who leads product direction, design refinement, and full-stack implementation across the platform.
+The current product was substantially revamped by [Jonathan Rycx](https://github.com/Rixouu), who leads product direction, design, and full-stack implementation.
 
-## What The App Does
+## What the app does
 
-- Score pours and keep a personal history.
-- Claim results to an authenticated profile.
-- Pick a nickname for leaderboards and feeds.
-- Save favorite pubs with Google Places suggestions.
-- Add friends, send email invites, and compare progress.
-- Create public or private competitions with invite flows.
+- **Pour & score** — Camera or upload on `/`; scoring uses **Roboflow** (workflow / Inference JS) with sensible env-based configuration.
+- **Shareable results** — Each pour has a stable URL under `/pour/:pourRef` (public slug). Legacy `/score/:splitId` redirects to the pour URL.
+- **Profile** — Google sign-in via Supabase; display name, optional **nickname** (unique, case-insensitive), country, favorites (Google Places), friends, progress, expenses, and score history (`/profile` and nested routes).
+- **Social surfaces** — **Feed** (`/feed`), **Wall** collage (`/wall`; `/collage` redirects), **Pubs** directory and per-pub pages (`/pubs`, `/pubs/:barKey`) with maps/embeds where configured.
+- **Leaderboards** — Global weekly (`/leaderboard`), by country (`/countryleaderboard`), and past 24h (`/past24hrleaderboard`), with profile/pour country flags where data exists.
+- **Competitions** — Create public or private comps, win rules (highest / closest to target / most submissions), location + optional linked pub, email invites, join/leave, live leaderboard and **Who’s in** tabs, pretty URLs via **`path_segment`** (`/competitions/:segment` or UUID), and pouring in-window with `/?competition=…`.
+- **Friends** — Requests, accepts, email invites via **Resend** (`POST /api/friend-invite`), and comparisons from profile.
 
 ## Stack
 
 | Layer | Technology |
 | --- | --- |
-| Frontend | React 19 |
-| App framework | React Router 7 |
-| Build tool | Vite |
-| Styling | Tailwind CSS |
-| Backend | Supabase |
-| Database | PostgreSQL with RLS |
-| Auth | Supabase Auth + Google sign-in |
-| Storage | Supabase Storage |
-| Location search | Google Maps JavaScript API + Places API (New) |
-| Email | Resend |
+| UI | React 19 |
+| Framework | **React Router 7** (SSR + file-based routes) |
+| Build | Vite 5 |
+| Styling | Tailwind CSS 3 (Guinness-inspired dark theme) |
+| Data & auth | Supabase (PostgreSQL, **RLS**, Auth, Storage) |
+| Maps & places | Google Maps JavaScript API, Places (browser key); optional server key for details |
+| Scoring / ML | Roboflow (workflow URL, Inference JS, optional publishable key) |
+| Email | Resend (friend invites; branded templates) |
+| Other | `date-fns`, `react-day-picker`, `sharp` (image pipeline), `qrcode`, `inferencejs` |
 
-## Project Notes
+The app ships as an **SSR** React Router application (not a static SPA). A **service worker** can be registered for offline/PWA-style behavior where enabled.
 
-- This repo runs as an SSR React Router app.
-- The UI is built around a dark Guinness-inspired visual system.
-- Profile, friends, leaderboard sync, and competition flows depend on Supabase migrations being applied in order.
+## Repository layout (high level)
+
+| Path | Purpose |
+| --- | --- |
+| `app/routes/` | Route modules (pages, loaders, actions) |
+| `app/routes.ts` | Route table (index, segments, API routes) |
+| `app/components/` | Shared UI (navigation, competitions, wall, pub, branded pieces, …) |
+| `app/utils/` | Supabase client, scoring, maps, emails, paths (`competitionPath`, `pubPath`, …) |
+| `public/` | Static assets; **mobile dock icons** live under `public/icons/nav/` |
+| `supabase/migrations/` | Ordered SQL migrations (run in timestamp order) |
+| `docs/` | Deeper notes: architecture, features, database, integrations |
 
 ## Documentation
 
-Developer-oriented docs live in [`docs/`](docs/) (overview, architecture, features, database, integrations).
+Developer-oriented detail lives in [`docs/`](docs/) — start with [`docs/overview.md`](docs/overview.md) and [`docs/features.md`](docs/features.md).
 
-## Local Setup
+## Requirements
 
-### Requirements
+- **Node.js** 20+
+- **npm**
+- A **Supabase** project (URL + anon key; run migrations)
+- Optional: **Google Maps** key (Places autocomplete, embeds)
+- Optional: **Resend** (friend-invite emails)
+- Optional: **Roboflow** credentials (pour scoring)
 
-- Node.js 20+
-- npm
-- A Supabase project
-- A Google Maps browser key if you want Places autocomplete
-- A Resend API key if you want friend invite emails
+## Environment variables
 
-### Environment variables
+Create **`.env.local`** in the project root. Vite loads it for dev/build; `vite.config.ts` also loads env into the Node process for **server** code (loaders, `POST` handlers).
 
-Create `.env.local` with the values your environment needs.
+### Required for a minimal app
 
-Core variables:
+| Variable | Used for |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key (client + SSR) |
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `VITE_GOOGLE_MAPS_API_KEY`
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
-- `APP_URL`
+### Common optional (client)
+
+| Variable | Used for |
+| --- | --- |
+| `VITE_GOOGLE_MAPS_API_KEY` | Places autocomplete, map embeds |
+
+### Common optional (server / secrets)
+
+| Variable | Used for |
+| --- | --- |
+| `RESEND_API_KEY` | Sending invite emails |
+| `RESEND_FROM_EMAIL` | From address (e.g. `Split The G <noreply@…>`) |
+| `APP_URL` / `PUBLIC_APP_URL` / `VITE_PUBLIC_APP_URL` / `EMAIL_PUBLIC_SITE_URL` | Absolute links in emails (see `friend-invite-email.tsx`) |
+| `GOOGLE_MAPS_SERVER_KEY` | Server-side place details when used |
+
+### Roboflow (pour scoring)
+
+Configured primarily in **`app/routes/home.tsx`** — e.g. `VITE_ROBOFLOW_WORKFLOW_INFER_URL`, `VITE_ROBOFLOW_PUBLISHABLE_KEY` / `VITE_ROBOFLOW_API_KEY`, workspace and workflow ids, optional `ROBOFLOW_PRIVATE_API_KEY` on the server. Set what matches your Roboflow deployment.
 
 ### Install and run
 
@@ -68,87 +92,49 @@ npm install
 npm run dev
 ```
 
-Default local URL:
-
-```bash
-http://localhost:5173
-```
+Default dev URL: **http://localhost:5173** (Vite `--host` allows LAN access).
 
 ## Scripts
 
-```bash
-npm run dev
-npm run lint
-npm run build
-npm run start
-```
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Vite dev server + React Router SSR |
+| `npm run build` | Production server + client build |
+| `npm run start` | Run production server from `./build/server` |
+| `npm run lint` / `npm run typecheck` | `react-router typegen` + `tsc` |
 
-## Database And Migrations
+## Database and migrations
 
-Supabase SQL lives in `supabase/migrations`.
+SQL lives in **`supabase/migrations/`**. Apply with the **Supabase CLI** or run files in **timestamp order** in the SQL editor.
 
-Apply migrations with the Supabase CLI or run them in the Supabase SQL editor in timestamp order.
+Schema covers scores (slugs, geo, competitions), `public_profiles` (nickname, country), friends, competition participants/scores/invites, pub/bar keys, RLS policies, and RPCs for feed, wall, pub tabs, and leaderboards. See [`docs/database.md`](docs/database.md) for narrative detail.
 
-Important profile-related migrations:
+**Nickname vs display:** optional `public_profiles.nickname` and `display_name` sync into `scores.username` for feeds and boards when the profile is saved.
 
-- `20260328120000_friends_profiles_competition_visibility.sql`
-- `20260328120100_friend_requests_from_email.sql`
-- `20260328220000_public_profiles_nickname.sql`
-- `20260328230000_sync_scores_username_for_jwt.sql`
+## HTTP API routes (app)
 
-### Nickname and leaderboard sync
+| Path | Role |
+| --- | --- |
+| `POST /api/email` | Optional email capture tied to scoring flows (`email.tsx`) |
+| `POST /api/friend-invite` | Resend-powered friend invite (`friend-invite-email.tsx`) |
 
-- `public.public_profiles.nickname` stores the optional public nickname.
-- `public.scores.username` is what the app shows in leaderboards and other social surfaces.
-- Saving the profile syncs the leaderboard display name from `nickname` or `display_name`.
+## Mobile navigation icons
 
-If leaderboard names are wrong for existing rows, this one-off SQL will backfill them:
-
-```sql
-update public.scores s
-set username = coalesce(
-  nullif(trim(p.nickname::text), ''),
-  trim(p.display_name::text)
-)
-from public.public_profiles p
-where p.user_id = '<user-uuid>'
-  and s.email is not null
-  and lower(trim(s.email::text)) = lower(trim('<their-login-email>'));
-```
-
-## Email Invites
-
-Friend invite emails are rendered server-side and sent through Resend.
-
-Key files:
-
-- `app/routes/friend-invite-email.tsx`
-- `app/utils/emails/friend-invite.ts`
-
-The email includes:
-
-- branded HTML layout
-- inviter name and email
-- recipient sign-in email
-- CTA back to the profile flow
+Custom dock assets are **`public/icons/nav/*.svg`** (feed, compete, pubs, profile, pour, wall, rank, faq). They are rendered in **`app/components/AppNavigation.tsx`** via CSS mask + `currentColor` so active/inactive colors stay consistent.
 
 ## Deployment
 
-Build for production with:
-
 ```bash
 npm run build
 npm run start
 ```
 
-Make sure production environment variables match your deployed Supabase, Google Maps, and Resend configuration.
+Set production env vars to match Supabase, maps, Resend, and Roboflow. If you deploy to **Vercel** (or similar), ensure serverless/Node adapters match React Router’s SSR output and that secrets are configured on the host, not only `VITE_*` in the client.
 
 ## Repository
-
-Primary repository:
 
 - [github.com/Rixouu/split-the-g](https://github.com/Rixouu/split-the-g)
 
 ## License
 
-See `LICENSE` if present. If not, usage remains under the project owner’s terms.
+See `LICENSE` if present; otherwise usage follows the project owner’s terms.

@@ -34,160 +34,73 @@ const mobileDockItems: { to: string; label: string }[] = [
   { to: "/profile", label: "Me" },
 ];
 
-function IconFeed({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      className={className}
-      aria-hidden
-    >
-      <path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" />
-      <circle cx="5" cy="19" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
+const NAV_ICON_DIR = "/icons/nav";
 
-function IconTrophy({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      className={className}
-      aria-hidden
-    >
-      <path d="M8 21h8M12 17v4M6 3h12v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V3zM14 3v2a2 2 0 0 0 2 2h1M10 3v2a2 2 0 0 1-2 2H7" />
-    </svg>
-  );
-}
+type MobileNavIconName =
+  | "feed"
+  | "compete"
+  | "pubs"
+  | "profile"
+  | "pour"
+  | "wall"
+  | "rank"
+  | "faq";
 
-function IconPint({ className }: { className?: string }) {
+/**
+ * Raster SVGs from /public/icons/nav — masked with `currentColor` so active/idle
+ * dock text colors still apply (same behavior as the previous inline SVGs).
+ */
+function MobileNavIcon({
+  name,
+  className = "",
+}: {
+  name: MobileNavIconName;
+  className?: string;
+}) {
+  const src = `${NAV_ICON_DIR}/${name}.svg`;
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      className={className}
+    <span
+      className={`inline-block shrink-0 bg-current ${className}`}
+      style={{
+        WebkitMaskImage: `url("${src}")`,
+        maskImage: `url("${src}")`,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
       aria-hidden
-    >
-      <path d="M8 2h6l1 10H7L8 2zM7 12h10v3a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4v-3zM5 22h14" />
-    </svg>
-  );
-}
-
-function IconUser({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      className={className}
-      aria-hidden
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
-    </svg>
-  );
-}
-
-/** Stacked frames — reads as photo gallery / collection */
-function IconWallGallery({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <rect x="3" y="5" width="14" height="14" rx="2" />
-      <rect x="7" y="3" width="14" height="14" rx="2" />
-      <path d="M10 8.5h8M10 11.5h6" opacity={0.85} />
-      <circle cx="17" cy="7.5" r="1.25" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-/** Podium ranks — center bar tallest */
-function IconPodium({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M4 18V12h4v6M10 18V8h4v10M16 18v-4h4v4" />
-      <path d="M3 18.5h18" />
-      <path d="M11 6.5h2M12 5.5v2" />
-    </svg>
-  );
-}
-
-function IconHelpCircle({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.5 9.5a2.5 2.5 0 0 1 4.2-1.7c.6.6.9 1.4.8 2.2-.1 1.2-1 2-2.5 2.5V14" />
-      <path d="M12 16.5h.01" strokeWidth={2.5} />
-    </svg>
+    />
   );
 }
 
 function secondaryDockIcon(to: string, className: string) {
   switch (to) {
     case "/wall":
-      return <IconWallGallery className={className} />;
+      return <MobileNavIcon name="wall" className={className} />;
     case "/leaderboard":
-      return <IconPodium className={className} />;
+      return <MobileNavIcon name="rank" className={className} />;
     case "/faq":
-      return <IconHelpCircle className={className} />;
+      return <MobileNavIcon name="faq" className={className} />;
     default:
       return null;
   }
 }
 
-const dockIconClass = "h-[1.125rem] w-[1.125rem] shrink-0";
+const dockIconClass = "h-[1.5rem] w-[1.5rem]";
 
 function dockIconFor(to: string) {
   switch (to) {
     case "/feed":
-      return <IconFeed className={dockIconClass} />;
+      return <MobileNavIcon name="feed" className={dockIconClass} />;
     case "/competitions":
-      return <IconTrophy className={dockIconClass} />;
+      return <MobileNavIcon name="compete" className={dockIconClass} />;
     case "/pubs":
-      return <IconPint className={dockIconClass} />;
+      return <MobileNavIcon name="pubs" className={dockIconClass} />;
     case "/profile":
-      return <IconUser className={dockIconClass} />;
+      return <MobileNavIcon name="profile" className={dockIconClass} />;
     default:
       return null;
   }
@@ -357,7 +270,7 @@ export function AppNavigation() {
               ].join(" ")
             }
           >
-            <IconPint className="h-5 w-5" />
+            <MobileNavIcon name="pour" className="h-7 w-7" />
             <span className="mt-0.5">Pour</span>
           </NavLink>
           <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
