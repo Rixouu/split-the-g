@@ -786,11 +786,9 @@ export default function PubDetail() {
                 Location & map
               </h2>
               <p className="type-meta mb-3 text-guinness-tan/70">
-                Pulled from community pour data; embedded map uses Google Maps
-                when your API key has{" "}
-                <span className="text-guinness-cream">Maps Embed API</span>{" "}
-                enabled and listed under that key&apos;s API restrictions (separate
-                from Maps JavaScript API and Places).
+                Location reflects where the community has poured at this pub. Use
+                the map to preview the area, or open Google Maps for directions
+                and the full listing.
               </p>
               {bar.sample_address ? (
                 <p className="mb-3 text-sm leading-relaxed text-guinness-cream">
