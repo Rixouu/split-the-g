@@ -845,8 +845,10 @@ export default function PubDetail() {
                     <button
                       key={id}
                       type="button"
+                      id={`pub-section-tab-${id}`}
                       role="tab"
-                      aria-selected={pubTab === id ? "true" : "false"}
+                      aria-selected={pubTab === id}
+                      aria-controls="pub-section-panel"
                       className={`min-h-11 w-full min-w-0 rounded-lg px-2 py-2.5 text-center text-xs font-semibold leading-tight transition-colors sm:min-h-12 sm:px-3 sm:text-sm ${
                         pubTab === id
                           ? "bg-guinness-gold text-guinness-black shadow-[0_0_0_1px_rgba(212,175,55,0.35)]"
@@ -860,6 +862,12 @@ export default function PubDetail() {
                 </div>
               </div>
 
+              <div
+                id="pub-section-panel"
+                role="tabpanel"
+                aria-labelledby={`pub-section-tab-${pubTab}`}
+                className="min-w-0"
+              >
               {pubTab === "promos" ? (
                 <>
                 <section aria-labelledby="pub-directory-heading">
@@ -1098,7 +1106,7 @@ export default function PubDetail() {
                           type="button"
                           id="pub-admin-merge-disclosure"
                           className="flex w-full min-h-11 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-guinness-black/20 sm:min-h-[3rem] sm:px-5 sm:py-3.5"
-                          aria-expanded={mergeSectionOpen ? "true" : "false"}
+                          aria-expanded={mergeSectionOpen}
                           aria-controls="pub-admin-merge-panel"
                           onClick={() => setMergeSectionOpen((o) => !o)}
                         >
@@ -1254,6 +1262,7 @@ export default function PubDetail() {
                   </Suspense>
                 </section>
               ) : null}
+              </div>
             </div>
           </div>
         </div>

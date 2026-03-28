@@ -895,7 +895,7 @@ export default function Competitions() {
               <h2 className="type-card-title">New competition</h2>
               <button
                 type="button"
-                aria-expanded={createFormOpen ? "true" : "false"}
+                aria-expanded={createFormOpen}
                 onClick={() => setCreateFormOpen((o) => !o)}
                 className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
               >
@@ -1176,6 +1176,7 @@ export default function Competitions() {
                           <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[20rem] sm:flex-row sm:flex-wrap sm:justify-end">
                             <Link
                               to={competitionDetailPath(c)}
+                              viewTransition
                               className={`${pageHeaderActionButtonClass} w-full justify-center text-xs sm:w-auto sm:min-w-[5.5rem] sm:text-sm`}
                             >
                               View

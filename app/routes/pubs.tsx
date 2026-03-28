@@ -393,7 +393,7 @@ export default function Pubs() {
               </span>
               <button
                 type="button"
-                aria-expanded={filtersOpen ? "true" : "false"}
+                aria-expanded={filtersOpen}
                 onClick={() => setFiltersOpen((o) => !o)}
                 className={`rounded-lg border ${PUB_LIST_STROKE} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
               >
@@ -570,6 +570,7 @@ export default function Pubs() {
         <div className="mt-10 flex justify-center pb-6">
           <Link
             to="/feed"
+            {...routeViewTransitionLinkProps}
             className={`${pageHeaderActionButtonClass} w-full max-w-xs sm:w-auto`}
           >
             Browse feed

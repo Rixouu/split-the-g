@@ -34,8 +34,6 @@ const mobileDockItems: { to: string; label: string }[] = [
   { to: "/profile", label: "Me" },
 ];
 
-const NAV_ICON_DIR = "/icons/nav";
-
 type MobileNavIconName =
   | "feed"
   | "compete"
@@ -57,20 +55,9 @@ function MobileNavIcon({
   name: MobileNavIconName;
   className?: string;
 }) {
-  const src = `${NAV_ICON_DIR}/${name}.svg`;
   return (
     <span
-      className={`inline-block shrink-0 bg-current ${className}`}
-      style={{
-        WebkitMaskImage: `url("${src}")`,
-        maskImage: `url("${src}")`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
+      className={`stg-nav-icon stg-nav-icon--${name} ${className}`.trim()}
       aria-hidden
     />
   );

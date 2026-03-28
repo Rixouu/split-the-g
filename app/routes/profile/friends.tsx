@@ -70,6 +70,7 @@ export default function ProfileFriendsPage() {
             <NavLink
               key={item.label}
               to={item.to}
+              viewTransition
               className="rounded-xl border border-[#372C16] bg-guinness-black/30 px-4 py-3 text-left transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold"
               aria-label={`${item.label}: ${item.value}. Jump to ${item.label} on this page.`}
             >

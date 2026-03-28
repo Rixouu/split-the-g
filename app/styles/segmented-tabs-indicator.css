@@ -1,0 +1,7 @@
+/* Sliding gold pill — position/size set via CSS vars from layout measurement */
+.stg-segmented-indicator {
+  left: var(--stg-si-left, 0);
+  top: var(--stg-si-top, 0);
+  width: var(--stg-si-width, 0);
+  height: var(--stg-si-height, 0);
+}

@@ -897,7 +897,7 @@ export default function Home() {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-2 border-b border-[#312814]/45 px-3 py-2.5 text-left transition-colors hover:bg-guinness-black/20 lg:hidden"
-                  aria-expanded={howItWorksOpen ? "true" : "false"}
+                  aria-expanded={howItWorksOpen}
                   onClick={() => setHowItWorksOpen((o) => !o)}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-guinness-tan/50">

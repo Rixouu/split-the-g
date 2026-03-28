@@ -1,4 +1,6 @@
 @import "./styles/view-transitions.css";
+@import "./styles/segmented-tabs-indicator.css";
+@import "./styles/nav-mask-icons.css";
 
 @tailwind base;
 @tailwind components;
@@ -8,8 +10,14 @@ html,
 body {
   @apply bg-guinness-black text-guinness-cream font-sans antialiased;
   color-scheme: dark;
-  scrollbar-color: rgba(197, 160, 89, 0.75) rgba(42, 27, 14, 0.55);
-  scrollbar-width: thin;
+}
+
+@supports (scrollbar-width: thin) {
+  html,
+  body {
+    scrollbar-color: rgba(197, 160, 89, 0.75) rgba(42, 27, 14, 0.55);
+    scrollbar-width: thin;
+  }
 }
 
 /* Brand scrollbar (Chrome, Edge, Safari) */

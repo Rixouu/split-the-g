@@ -494,7 +494,7 @@ export default function CompetitionDetail() {
           >
             <button
               type="button"
-              aria-expanded={joinedBannerExpanded ? "true" : "false"}
+              aria-expanded={joinedBannerExpanded}
               onClick={() => {
                 setJoinedBannerExpanded((prev) => {
                   const next = !prev;
@@ -620,7 +620,7 @@ export default function CompetitionDetail() {
           </h2>
           <button
             type="button"
-            aria-expanded={mobileSummaryOpen ? "true" : "false"}
+            aria-expanded={mobileSummaryOpen}
             aria-controls="comp-summary-body"
             onClick={() => setMobileSummaryOpen((o) => !o)}
             className="mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[#312814] bg-guinness-brown/25 px-3 py-2.5 text-left transition-colors hover:bg-guinness-brown/35 lg:hidden"

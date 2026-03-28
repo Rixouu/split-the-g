@@ -1,0 +1,45 @@
+/* Masked raster SVGs from /public/icons/nav — currentColor fill */
+.stg-nav-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.stg-nav-icon--feed {
+  -webkit-mask-image: url("/icons/nav/feed.svg");
+  mask-image: url("/icons/nav/feed.svg");
+}
+.stg-nav-icon--compete {
+  -webkit-mask-image: url("/icons/nav/compete.svg");
+  mask-image: url("/icons/nav/compete.svg");
+}
+.stg-nav-icon--pubs {
+  -webkit-mask-image: url("/icons/nav/pubs.svg");
+  mask-image: url("/icons/nav/pubs.svg");
+}
+.stg-nav-icon--profile {
+  -webkit-mask-image: url("/icons/nav/profile.svg");
+  mask-image: url("/icons/nav/profile.svg");
+}
+.stg-nav-icon--pour {
+  -webkit-mask-image: url("/icons/nav/pour.svg");
+  mask-image: url("/icons/nav/pour.svg");
+}
+.stg-nav-icon--wall {
+  -webkit-mask-image: url("/icons/nav/wall.svg");
+  mask-image: url("/icons/nav/wall.svg");
+}
+.stg-nav-icon--rank {
+  -webkit-mask-image: url("/icons/nav/rank.svg");
+  mask-image: url("/icons/nav/rank.svg");
+}
+.stg-nav-icon--faq {
+  -webkit-mask-image: url("/icons/nav/faq.svg");
+  mask-image: url("/icons/nav/faq.svg");
+}

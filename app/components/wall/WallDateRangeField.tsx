@@ -191,7 +191,7 @@ export function WallDateRangeField({
         ref={btnRef}
         type="button"
         className={`${selectFieldClass} flex items-center justify-between gap-2`}
-        aria-expanded={open ? "true" : "false"}
+        aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
       >

@@ -168,7 +168,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
             </span>
             <button
               type="button"
-              aria-expanded={filtersOpen ? "true" : "false"}
+              aria-expanded={filtersOpen}
               onClick={() => setFiltersOpen((o) => !o)}
               className={`rounded-lg border ${pubStroke} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
             >

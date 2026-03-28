@@ -86,6 +86,27 @@ function useSegmentedIndicator(
   return [rootRef, cellRefs, indicator] as const;
 }
 
+function useIndicatorCssVars(
+  rootRef: RefObject<HTMLDivElement | null>,
+  indicator: IndicatorRect | null,
+) {
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    if (!indicator || indicator.width <= 0) {
+      el.style.removeProperty("--stg-si-left");
+      el.style.removeProperty("--stg-si-top");
+      el.style.removeProperty("--stg-si-width");
+      el.style.removeProperty("--stg-si-height");
+      return;
+    }
+    el.style.setProperty("--stg-si-left", `${indicator.left}px`);
+    el.style.setProperty("--stg-si-top", `${indicator.top}px`);
+    el.style.setProperty("--stg-si-width", `${indicator.width}px`);
+    el.style.setProperty("--stg-si-height", `${indicator.height}px`);
+  }, [rootRef, indicator]);
+}
+
 function assignCellRef(
   cellRefs: MutableRefObject<(HTMLDivElement | null)[]>,
   index: number,
@@ -132,6 +153,7 @@ export function SegmentedTabs({
     activeIndex,
     items.length,
   );
+  useIndicatorCssVars(rootRef, indicator);
 
   const shell = variant === "rowEqual" ? triggerShellEqual : triggerShellGrid;
 
@@ -140,23 +162,13 @@ export function SegmentedTabs({
       ref={rootRef}
       className={`relative ${segmentedTabGroupChromeClass} ${layoutClassName} ${className}`.trim()}
       aria-label={ariaLabel}
-      role={role === "tablist" ? "tablist" : undefined}
+      {...(role === "tablist" ? { role: "tablist" as const } : {})}
     >
       <div
         aria-hidden
-        className={`pointer-events-none absolute z-0 rounded-lg bg-guinness-gold shadow-sm motion-safe:transition-[left,top,width,height] motion-safe:duration-300 motion-safe:ease-out ${
+        className={`stg-segmented-indicator pointer-events-none absolute z-0 rounded-lg bg-guinness-gold shadow-sm motion-safe:transition-[left,top,width,height] motion-safe:duration-300 motion-safe:ease-out ${
           indicator && indicator.width > 0 ? "opacity-100" : "opacity-0"
         }`}
-        style={
-          indicator
-            ? {
-                left: indicator.left,
-                top: indicator.top,
-                width: indicator.width,
-                height: indicator.height,
-              }
-            : undefined
-        }
       />
       {items.map((item, index) => {
         const isActive = item.value === value;
@@ -170,10 +182,10 @@ export function SegmentedTabs({
           >
             <button
               type="button"
-              role={role === "tablist" ? "tab" : undefined}
+              {...(role === "tablist" ? { role: "tab" as const } : {})}
               id={tabId}
               aria-selected={
-                role === "tablist" ? (isActive ? "true" : "false") : undefined
+                role === "tablist" ? isActive : undefined
               }
               aria-controls={
                 role === "tablist" ? item.panelId ?? panelId : undefined
@@ -218,6 +230,7 @@ export function SegmentedTabsNav({
     activeIndex,
     items.length,
   );
+  useIndicatorCssVars(rootRef, indicator);
 
   const shell = variant === "rowEqual" ? triggerShellEqual : triggerShellGrid;
 
@@ -229,19 +242,9 @@ export function SegmentedTabsNav({
     >
       <div
         aria-hidden
-        className={`pointer-events-none absolute z-0 rounded-lg bg-guinness-gold shadow-sm motion-safe:transition-[left,top,width,height] motion-safe:duration-300 motion-safe:ease-out ${
+        className={`stg-segmented-indicator pointer-events-none absolute z-0 rounded-lg bg-guinness-gold shadow-sm motion-safe:transition-[left,top,width,height] motion-safe:duration-300 motion-safe:ease-out ${
           indicator && indicator.width > 0 ? "opacity-100" : "opacity-0"
         }`}
-        style={
-          indicator
-            ? {
-                left: indicator.left,
-                top: indicator.top,
-                width: indicator.width,
-                height: indicator.height,
-              }
-            : undefined
-        }
       />
       {items.map((item, index) => {
         const cellEqual = variant === "rowEqual" ? "flex-1 basis-0" : "";

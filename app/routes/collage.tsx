@@ -196,7 +196,7 @@ export default function Collage() {
                 </span>
                 <button
                   type="button"
-                  aria-expanded={filtersOpen ? "true" : "false"}
+                  aria-expanded={filtersOpen}
                   onClick={() => setFiltersOpen((o) => !o)}
                   className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
                 >
