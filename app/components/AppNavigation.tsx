@@ -213,7 +213,9 @@ export function shouldShowAppNav(pathname: string): boolean {
     pathname === "/competitions" ||
     pathname.startsWith("/competitions/") ||
     pathname === "/profile" ||
+    pathname.startsWith("/profile/") ||
     pathname === "/pubs" ||
+    pathname.startsWith("/pubs/") ||
     pathname === "/faq"
   ) {
     return true;

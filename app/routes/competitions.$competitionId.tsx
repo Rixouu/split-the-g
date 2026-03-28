@@ -1,6 +1,6 @@
 import { Link, useLoaderData, useParams, useRevalidator } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   PageHeader,
   competitionDetailPageDescription,
@@ -18,12 +18,22 @@ import type { CompetitionRow } from "~/routes/competitions";
 
 type WinRule = CompetitionRow["win_rule"];
 
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 type ScoreSnippet = {
   id: string;
   slug?: string | null;
   username: string | null;
   split_score: number;
   created_at: string;
+  email?: string | null;
+};
+
+type ParticipantProfilePick = {
+  nickname?: string | null;
+  display_name?: string | null;
 };
 
 type CompetitionScoreJoin = {
@@ -295,6 +305,15 @@ export default function CompetitionDetail() {
   const [message, setMessage] = useState<string | null>(null);
   const [submitBusy, setSubmitBusy] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [participantUserIds, setParticipantUserIds] = useState<string[]>([]);
+  const [participantProfiles, setParticipantProfiles] = useState<
+    Record<string, ParticipantProfilePick>
+  >({});
+  const [friendPeerIds, setFriendPeerIds] = useState<Set<string>>(() => new Set());
+  const [pendingFriendEmails, setPendingFriendEmails] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [friendInviteBusy, setFriendInviteBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 1000);
@@ -306,6 +325,7 @@ export default function CompetitionDetail() {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id ?? null;
     const em = auth.user?.email?.trim() ?? null;
+    const emNorm = em ? normalizeEmail(em) : null;
     setUserId(uid);
     setUserEmail(em);
 
@@ -315,6 +335,37 @@ export default function CompetitionDetail() {
       .eq("id", id)
       .maybeSingle();
     if (compRows) setCompetition(compRows as CompetitionRow);
+
+    const { data: allParts } = await supabase
+      .from("competition_participants")
+      .select("user_id")
+      .eq("competition_id", id);
+    const partIds = [
+      ...new Set(
+        (allParts ?? [])
+          .map((r) => r.user_id as string | null)
+          .filter((x): x is string => Boolean(x)),
+      ),
+    ];
+    setParticipantUserIds(partIds);
+
+    if (partIds.length > 0) {
+      const { data: profs } = await supabase
+        .from("public_profiles")
+        .select("user_id, nickname, display_name")
+        .in("user_id", partIds);
+      const map: Record<string, ParticipantProfilePick> = {};
+      for (const p of profs ?? []) {
+        const u = p.user_id as string;
+        map[u] = {
+          nickname: p.nickname as string | null | undefined,
+          display_name: p.display_name as string | null | undefined,
+        };
+      }
+      setParticipantProfiles(map);
+    } else {
+      setParticipantProfiles({});
+    }
 
     if (uid) {
       const { data: part } = await supabase
@@ -328,10 +379,39 @@ export default function CompetitionDetail() {
       setJoined(false);
     }
 
+    if (uid && emNorm) {
+      const [{ data: fr }, { data: outReq }] = await Promise.all([
+        supabase
+          .from("user_friends")
+          .select("user_id, friend_user_id")
+          .or(`user_id.eq.${uid},friend_user_id.eq.${uid}`),
+        supabase
+          .from("friend_requests")
+          .select("to_email")
+          .eq("from_user_id", uid)
+          .eq("status", "pending"),
+      ]);
+      const peers = new Set<string>();
+      for (const row of fr ?? []) {
+        if (row.user_id === uid) peers.add(row.friend_user_id as string);
+        else if (row.friend_user_id === uid) peers.add(row.user_id as string);
+      }
+      setFriendPeerIds(peers);
+      const pending = new Set<string>();
+      for (const row of outReq ?? []) {
+        const t = normalizeEmail(String(row.to_email ?? ""));
+        if (t) pending.add(t);
+      }
+      setPendingFriendEmails(pending);
+    } else {
+      setFriendPeerIds(new Set());
+      setPendingFriendEmails(new Set());
+    }
+
     const { data: csRows } = await supabase
       .from("competition_scores")
       .select(
-        "id, user_id, score_id, created_at, scores (id, slug, username, split_score, created_at)",
+        "id, user_id, score_id, created_at, scores (id, slug, username, split_score, created_at, email)",
       )
       .eq("competition_id", id);
 
@@ -372,6 +452,182 @@ export default function CompetitionDetail() {
       target,
     );
   }, [competition, scoresJoined]);
+
+  const emailByUserId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const row of scoresJoined) {
+      const uid = row.user_id;
+      if (!uid) continue;
+      const s = unwrapScore(row.scores);
+      const raw = s?.email?.trim();
+      if (!raw) continue;
+      if (!m.has(uid)) m.set(uid, raw);
+    }
+    return m;
+  }, [scoresJoined]);
+
+  const rankedUsernameByUserId = useMemo(
+    () => new Map(ranked.map((r) => [r.userId, r.username])),
+    [ranked],
+  );
+
+  const sortedParticipantUserIds = useMemo(() => {
+    const ids = [...participantUserIds];
+    function labelFor(uid: string): string {
+      const p = participantProfiles[uid];
+      return (
+        p?.nickname?.trim() ||
+        p?.display_name?.trim() ||
+        rankedUsernameByUserId.get(uid) ||
+        "Player"
+      );
+    }
+    ids.sort((a, b) => {
+      if (userId) {
+        if (a === userId) return -1;
+        if (b === userId) return 1;
+      }
+      return labelFor(a).localeCompare(labelFor(b), undefined, {
+        sensitivity: "base",
+      });
+    });
+    return ids;
+  }, [participantUserIds, participantProfiles, rankedUsernameByUserId, userId]);
+
+  const sendFriendInviteToPeer = useCallback(
+    async (toEmail: string, peerUserId: string) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const me = auth.user;
+      if (!me?.id || !me.email) {
+        setMessage("Sign in to add friends.");
+        return;
+      }
+      const to = normalizeEmail(toEmail);
+      if (!to.includes("@")) {
+        setMessage("We don’t have an email on file for that player.");
+        return;
+      }
+      if (to === normalizeEmail(me.email)) return;
+
+      setFriendInviteBusy(peerUserId);
+      setMessage(null);
+      try {
+        const alreadyPending = pendingFriendEmails.has(to);
+        if (!alreadyPending) {
+          const { error } = await supabase.from("friend_requests").insert({
+            from_user_id: me.id,
+            to_email: to,
+            from_email: me.email ?? null,
+            status: "pending",
+          });
+          if (error) {
+            setMessage(error.message);
+            return;
+          }
+          setPendingFriendEmails((prev) => new Set(prev).add(to));
+        }
+
+        const inviterName =
+          (me.user_metadata?.full_name as string | undefined)?.trim() ||
+          (me.user_metadata?.name as string | undefined)?.trim() ||
+          null;
+
+        const emailResponse = await fetch("/api/friend-invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            inviterEmail: me.email,
+            inviterName,
+            toEmail: to,
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          const emailResult = (await emailResponse.json().catch(() => null)) as
+            | { error?: string }
+            | null;
+          setMessage(
+            emailResult?.error
+              ? alreadyPending
+                ? `Request already pending, but email invite failed: ${emailResult.error}`
+                : `Request saved, but email invite failed: ${emailResult.error}`
+              : alreadyPending
+                ? "Request already pending, but email invite failed."
+                : "Request saved, but email invite failed.",
+          );
+        } else {
+          setMessage(
+            alreadyPending
+              ? "Friend request already pending. Invite email sent again."
+              : "Friend request sent.",
+          );
+        }
+      } finally {
+        setFriendInviteBusy(null);
+      }
+    },
+    [pendingFriendEmails],
+  );
+
+  const participantLabel = useCallback(
+    (uid: string) => {
+      const p = participantProfiles[uid];
+      return (
+        p?.nickname?.trim() ||
+        p?.display_name?.trim() ||
+        rankedUsernameByUserId.get(uid) ||
+        "Player"
+      );
+    },
+    [participantProfiles, rankedUsernameByUserId],
+  );
+
+  const friendActionForPeer = useCallback(
+    (peerUserId: string): ReactNode => {
+      if (!userId || peerUserId === userId) return null;
+      if (friendPeerIds.has(peerUserId)) {
+        return (
+          <span className="type-meta text-xs text-emerald-400/90">Friends</span>
+        );
+      }
+      const claimEmail = emailByUserId.get(peerUserId) ?? null;
+      if (!claimEmail) {
+        return (
+          <span className="type-meta max-w-[11rem] text-right text-xs leading-snug text-guinness-tan/50">
+            Email visible after they submit a pour here
+          </span>
+        );
+      }
+      const norm = normalizeEmail(claimEmail);
+      if (userEmail && norm === normalizeEmail(userEmail)) return null;
+      if (pendingFriendEmails.has(norm)) {
+        return (
+          <span className="type-meta text-xs text-guinness-tan/60">
+            Request pending
+          </span>
+        );
+      }
+      return (
+        <button
+          type="button"
+          disabled={friendInviteBusy === peerUserId}
+          onClick={() => void sendFriendInviteToPeer(claimEmail, peerUserId)}
+          className="rounded-lg border border-guinness-gold/35 px-2.5 py-1 text-xs font-semibold text-guinness-gold hover:bg-guinness-brown/45 disabled:opacity-50"
+        >
+          {friendInviteBusy === peerUserId ? "…" : "Add friend"}
+        </button>
+      );
+    },
+    [
+      userId,
+      userEmail,
+      friendPeerIds,
+      emailByUserId,
+      pendingFriendEmails,
+      friendInviteBusy,
+      sendFriendInviteToPeer,
+    ],
+  );
 
   const timePhase = useMemo(() => {
     if (!competition) return null;
@@ -521,66 +777,118 @@ export default function CompetitionDetail() {
           </div>
         ) : null}
 
-        <div className="mb-6 rounded-2xl border border-guinness-gold/15 bg-guinness-brown/25 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-guinness-gold/10 pb-3 text-sm text-guinness-tan/80">
-            <span className="font-semibold text-guinness-gold">
-              {winRuleLabel(competition.win_rule)}
-              {competition.win_rule === "closest_to_target" &&
-              competition.target_score != null
-                ? ` · target ${Number(competition.target_score).toFixed(2)}`
-                : ""}
-            </span>
-            <span className="text-guinness-tan/50" aria-hidden>
-              ·
-            </span>
-            <span>{isPrivate ? "Private" : "Public"}</span>
+        <section className="mb-8" aria-labelledby="comp-overview-heading">
+          <h2 id="comp-overview-heading" className="type-card-title mb-3">
+            Overview
+          </h2>
+          <div className="rounded-2xl border border-guinness-gold/15 bg-guinness-brown/25 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-guinness-gold/10 pb-3 text-sm text-guinness-tan/80">
+              <span className="font-semibold text-guinness-gold">
+                {winRuleLabel(competition.win_rule)}
+                {competition.win_rule === "closest_to_target" &&
+                competition.target_score != null
+                  ? ` · target ${Number(competition.target_score).toFixed(2)}`
+                  : ""}
+              </span>
+              <span className="text-guinness-tan/50" aria-hidden>
+                ·
+              </span>
+              <span>{isPrivate ? "Private" : "Public"}</span>
+            </div>
+            {competition.linked_bar_key?.trim() ? (
+              <p className="type-meta mt-2 text-guinness-tan/75">
+                Linked pub:{" "}
+                <Link
+                  to={`/pubs/${encodeURIComponent(competition.linked_bar_key.trim())}`}
+                  viewTransition
+                  className="font-medium text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:decoration-guinness-gold"
+                >
+                  Open pub page
+                </Link>
+              </p>
+            ) : null}
+            <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
+                <dt className="type-meta text-guinness-tan/65">Status</dt>
+                <dd className="mt-1 text-lg font-semibold text-guinness-gold">
+                  {timePhase?.phase === "before"
+                    ? "Not started"
+                    : timePhase?.phase === "live"
+                      ? "Live"
+                      : "Ended"}
+                </dd>
+              </div>
+              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
+                <dt className="type-meta text-guinness-tan/65">
+                  {timePhase?.phase === "before"
+                    ? "Starts in"
+                    : timePhase?.phase === "live"
+                      ? "Ends in"
+                      : "Finished"}
+                </dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums text-guinness-cream">
+                  {timePhase?.phase === "after"
+                    ? "—"
+                    : timePhase
+                      ? formatDuration(timePhase.ms)
+                      : "—"}
+                </dd>
+              </div>
+              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3 sm:col-span-2 lg:col-span-1">
+                <dt className="type-meta text-guinness-tan/65">Window</dt>
+                <dd className="mt-1 text-xs leading-relaxed text-guinness-tan/85">
+                  {new Date(competition.starts_at).toLocaleString()} →{" "}
+                  {new Date(competition.ends_at).toLocaleString()}
+                </dd>
+              </div>
+              <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3 sm:col-span-2 lg:col-span-1">
+                <dt className="type-meta text-guinness-tan/65">Participants</dt>
+                <dd className="mt-1">
+                  <p className="text-lg font-semibold tabular-nums text-guinness-cream">
+                    {participantUserIds.length} / {competition.max_participants}{" "}
+                    joined
+                  </p>
+                  <p className="type-meta mt-1 text-guinness-tan/60">
+                    Up to {competition.max_participants} people ·{" "}
+                    {competition.glasses_per_person} glass
+                    {competition.glasses_per_person === 1 ? "" : "es"} each
+                  </p>
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-4 rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
+              <p className="type-meta text-guinness-tan/65">Location</p>
+              <div className="mt-1 text-sm leading-relaxed text-guinness-cream">
+                {competition.location_name?.trim() ||
+                competition.location_address?.trim() ? (
+                  <>
+                    {competition.location_name?.trim() ? (
+                      <span className="font-semibold text-guinness-gold">
+                        {competition.location_name.trim()}
+                      </span>
+                    ) : null}
+                    {competition.location_name?.trim() &&
+                    competition.location_address?.trim() ? (
+                      <span className="mt-1 block text-guinness-tan/85">
+                        {competition.location_address.trim()}
+                      </span>
+                    ) : competition.location_address?.trim() ? (
+                      <span>{competition.location_address.trim()}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="text-guinness-tan/55">Not specified</span>
+                )}
+              </div>
+            </div>
           </div>
-          <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
-              <dt className="type-meta text-guinness-tan/65">Status</dt>
-              <dd className="mt-1 text-lg font-semibold text-guinness-gold">
-                {timePhase?.phase === "before"
-                  ? "Not started"
-                  : timePhase?.phase === "live"
-                    ? "Live"
-                    : "Ended"}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3">
-              <dt className="type-meta text-guinness-tan/65">
-                {timePhase?.phase === "before"
-                  ? "Starts in"
-                  : timePhase?.phase === "live"
-                    ? "Ends in"
-                    : "Finished"}
-              </dt>
-              <dd className="mt-1 text-lg font-semibold tabular-nums text-guinness-cream">
-                {timePhase?.phase === "after"
-                  ? "—"
-                  : timePhase
-                    ? formatDuration(timePhase.ms)
-                    : "—"}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3 sm:col-span-2 lg:col-span-1">
-              <dt className="type-meta text-guinness-tan/65">Window</dt>
-              <dd className="mt-1 text-xs leading-relaxed text-guinness-tan/85">
-                {new Date(competition.starts_at).toLocaleString()} →{" "}
-                {new Date(competition.ends_at).toLocaleString()}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-guinness-gold/10 bg-guinness-black/25 px-3 py-3 sm:col-span-2 lg:col-span-1">
-              <dt className="type-meta text-guinness-tan/65">Capacity</dt>
-              <dd className="mt-1 text-base font-semibold leading-snug text-guinness-cream">
-                Up to {competition.max_participants} people ·{" "}
-                {competition.glasses_per_person} glass
-                {competition.glasses_per_person === 1 ? "" : "es"} each
-              </dd>
-            </div>
-          </dl>
-        </div>
+        </section>
 
-        <div className="mb-8 flex w-full flex-wrap items-center justify-center gap-2">
+        <section
+          className="mb-8"
+          aria-label="Competition actions"
+        >
+        <div className="flex w-full flex-wrap items-center justify-center gap-2">
           {!userId ? (
             <p className="type-meta text-guinness-tan/70">
               Sign in (Profile) to join or submit pours.
@@ -614,6 +922,49 @@ export default function CompetitionDetail() {
             </button>
           )}
         </div>
+        </section>
+
+        <section
+          className="mb-8"
+          aria-labelledby="comp-participants-heading"
+        >
+          <h2 id="comp-participants-heading" className="type-card-title mb-1">
+            Who&apos;s in
+          </h2>
+          <p className="type-meta mb-4 text-guinness-tan/70">
+            {userId
+              ? "People who joined this competition. Add friends when you see their pour email on the board."
+              : "Sign in to see friend actions. Participant count is always visible above."}
+          </p>
+          {sortedParticipantUserIds.length === 0 ? (
+            <p className="type-meta text-guinness-tan/60">
+              No participants yet — be the first to join.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {sortedParticipantUserIds.map((pid) => (
+                <li
+                  key={pid}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-guinness-gold/12 bg-guinness-brown/20 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-guinness-cream">
+                      {participantLabel(pid)}
+                      {userId && pid === userId ? (
+                        <span className="type-meta ml-2 font-normal text-guinness-tan/55">
+                          (you)
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center justify-end">
+                    {friendActionForPeer(pid)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {joined && userEmail && timePhase?.phase === "live" ? (
           <section className="mb-10 rounded-2xl border border-guinness-gold/20 bg-guinness-brown/30 p-5">
@@ -657,8 +1008,10 @@ export default function CompetitionDetail() {
           </section>
         ) : null}
 
-        <section>
-          <h2 className="type-card-title mb-4">Leaderboard</h2>
+        <section aria-labelledby="comp-leaderboard-heading">
+          <h2 id="comp-leaderboard-heading" className="type-card-title mb-4">
+            Leaderboard
+          </h2>
           {ranked.length === 0 ? (
             <p className="type-meta text-guinness-tan/65">
               No submissions yet. Join and pour!
@@ -667,34 +1020,44 @@ export default function CompetitionDetail() {
             <ul className="space-y-2">
               {ranked.map((r) => (
                 <li key={r.userId}>
-                  <Link
-                    to={r.pourPath}
-                    viewTransition
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-guinness-gold/15 bg-guinness-brown/35 px-4 py-3 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex flex-wrap items-stretch gap-0 rounded-xl border border-guinness-gold/15 bg-guinness-brown/35 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/50">
+                    <Link
+                      to={r.pourPath}
+                      viewTransition
+                      className="flex min-w-0 flex-1 flex-wrap items-center gap-3 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-guinness-gold"
+                    >
                       <span className="w-8 shrink-0 text-lg font-bold text-guinness-gold">
                         #{r.rank}
                       </span>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-guinness-cream">
                           {r.username}
                         </p>
                         <p className="type-meta text-guinness-tan/65">{r.detail}</p>
                       </div>
+                      <div className="flex shrink-0 items-center gap-1 sm:hidden">
+                        <p className="text-sm font-semibold text-guinness-gold">
+                          {r.metric}
+                        </p>
+                        <span className="text-guinness-tan/45 text-xs" aria-hidden>
+                          →
+                        </span>
+                      </div>
+                    </Link>
+                    <div className="flex min-w-[9rem] shrink-0 flex-col items-stretch justify-center gap-2 border-t border-guinness-gold/10 px-4 py-3 sm:border-l sm:border-t-0 sm:py-3">
+                      <div className="hidden items-center justify-end gap-2 text-right sm:flex">
+                        <p className="text-sm font-semibold text-guinness-gold">
+                          {r.metric}
+                        </p>
+                        <span className="text-guinness-tan/45 text-xs" aria-hidden>
+                          →
+                        </span>
+                      </div>
+                      <div className="flex justify-end sm:justify-end">
+                        {friendActionForPeer(r.userId)}
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2 text-right">
-                      <p className="text-sm font-semibold text-guinness-gold">
-                        {r.metric}
-                      </p>
-                      <span
-                        className="text-guinness-tan/45 text-xs"
-                        aria-hidden
-                      >
-                        →
-                      </span>
-                    </div>
-                  </Link>
+                  </div>
                 </li>
               ))}
             </ul>

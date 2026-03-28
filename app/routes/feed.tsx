@@ -22,6 +22,7 @@ type FeedRow = {
   city?: string | null;
   region?: string | null;
   country_code?: string | null;
+  pint_price?: number | null;
 };
 
 export async function loader(_args: LoaderFunctionArgs) {
@@ -100,6 +101,15 @@ export default function Feed() {
                     {row.bar_name ? (
                       <p className="line-clamp-2 text-[10px] text-guinness-tan/45 sm:text-xs">
                         {row.bar_name}
+                      </p>
+                    ) : null}
+                    {row.pint_price != null &&
+                    Number.isFinite(Number(row.pint_price)) ? (
+                      <p className="text-[10px] tabular-nums text-guinness-tan/50 sm:text-[11px]">
+                        {Number(row.pint_price).toLocaleString(undefined, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2,
+                        })}
                       </p>
                     ) : null}
                   </div>

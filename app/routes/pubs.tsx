@@ -346,14 +346,20 @@ export default function Pubs() {
               const isFav = Boolean(favIdByBarKey[b.bar_key]);
               const busy = favBusyKey === b.bar_key;
 
+              const detailTo = `/pubs/${encodeURIComponent(b.bar_key)}`;
+
               return (
                 <li
                   key={b.bar_key}
-                  className="rounded-lg border border-guinness-gold/15 bg-guinness-brown/35 px-4 py-3"
+                  className="rounded-lg border border-guinness-gold/15 bg-guinness-brown/35"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-guinness-cream">
+                  <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
+                    <Link
+                      to={detailTo}
+                      viewTransition
+                      className="min-w-0 flex-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-guinness-gold/50"
+                    >
+                      <p className="font-semibold text-guinness-gold hover:underline">
                         {b.display_name}
                       </p>
                       {b.sample_address ? (
@@ -361,7 +367,7 @@ export default function Pubs() {
                           {b.sample_address}
                         </p>
                       ) : null}
-                    </div>
+                    </Link>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                       <a
                         href={mapsSearchUrl(b)}
@@ -385,17 +391,26 @@ export default function Pubs() {
                       </button>
                     </div>
                   </div>
-                  <div className="type-meta mt-2 flex flex-wrap gap-x-3 gap-y-1 text-guinness-tan/70">
-                    <span>{b.submission_count} pour(s)</span>
-                    {b.rating_count > 0 && b.avg_pour_rating != null ? (
-                      <span className="text-guinness-gold">
-                        Avg rating {b.avg_pour_rating.toFixed(1)} / 5 (
-                        {b.rating_count})
+                  <Link
+                    to={detailTo}
+                    viewTransition
+                    className="block px-4 pb-3 pt-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-guinness-gold/40"
+                  >
+                    <div className="type-meta flex flex-wrap gap-x-3 gap-y-1 text-guinness-tan/70">
+                      <span>{b.submission_count} pour(s)</span>
+                      {b.rating_count > 0 && b.avg_pour_rating != null ? (
+                        <span className="text-guinness-gold">
+                          Avg rating {b.avg_pour_rating.toFixed(1)} / 5 (
+                          {b.rating_count})
+                        </span>
+                      ) : (
+                        <span>No pour ratings yet</span>
+                      )}
+                      <span className="text-guinness-tan/50">
+                        View details →
                       </span>
-                    ) : (
-                      <span>No pour ratings yet</span>
-                    )}
-                  </div>
+                    </div>
+                  </Link>
                 </li>
               );
             })}

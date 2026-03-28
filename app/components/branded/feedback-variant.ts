@@ -48,7 +48,8 @@ export function scorePageFeedbackVariant(text: string): BrandedNoticeVariant {
   if (
     t.includes("successfully") ||
     t.includes("added to competition") ||
-    t.includes("rating saved")
+    t.includes("rating saved") ||
+    t.includes("score unclaimed")
   ) {
     return "success";
   }
@@ -70,12 +71,15 @@ export function competitionDetailMessageVariant(
   if (text.includes("has finished") || text.includes("no longer active")) {
     return "info";
   }
+  if (text.includes("email invite failed")) return "danger";
   if (
     text.includes("You're in") ||
     text.includes("You’re in") ||
     text.includes("left this competition") ||
     text.includes("submitted to this competition") ||
-    text.includes("has started")
+    text.includes("has started") ||
+    text.includes("Friend request sent") ||
+    text.includes("Friend request already pending")
   ) {
     return "success";
   }

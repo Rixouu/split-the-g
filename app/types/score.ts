@@ -18,4 +18,6 @@ export interface Score {
   bar_name?: string;
   bar_address?: string;
   pour_rating?: number;
+  /** Optional amount paid for the pint (local currency). */
+  pint_price?: number | null;
 }

@@ -10,7 +10,8 @@ export const SCORES_LIST_COLUMNS = `
   bar_address,
   city,
   region,
-  country_code
+  country_code,
+  pint_price
 `;
 
 /** Collage / submissions grid (includes split image). */

@@ -67,7 +67,7 @@ export default function App() {
     Boolean(mapsKey) && pathnameNeedsGoogleMapsScript(pathname);
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -77,7 +77,7 @@ export default function App() {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div
           id="root"
           className={
@@ -106,8 +106,9 @@ export default function App() {
           }}
         />
         {/*
-          Maps JS loads only on /profile and /pour/* via GoogleMapsScript (see google-maps-routes).
-          Enable Maps JavaScript API + Places API (New), billing, and referrer restrictions.
+          Maps JS loads on /profile and /pour/* via GoogleMapsScript (see google-maps-routes).
+          Pub detail pages use the Maps Embed API in an iframe (same VITE_GOOGLE_MAPS_API_KEY);
+          enable "Maps Embed API" on that key. Places + JS API for pour/profile autocomplete.
         */}
         {mapsKey ? (
           <GoogleMapsScript apiKey={mapsKey} active={mapsScriptActive} />
@@ -134,7 +135,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -144,7 +145,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div id="root">
           <main className="pt-16 p-4 container mx-auto text-guinness-cream">
             <h1 className="type-display text-3xl">{message}</h1>

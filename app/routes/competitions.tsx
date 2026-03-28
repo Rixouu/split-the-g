@@ -32,6 +32,9 @@ export type CompetitionRow = {
   target_score?: number | null;
   created_at: string;
   visibility?: string | null;
+  location_name?: string | null;
+  location_address?: string | null;
+  linked_bar_key?: string | null;
 };
 
 type WinRuleChoice = "highest_score" | "closest_to_target" | "most_submissions";
@@ -55,6 +58,11 @@ type FriendPick = {
 type InviteRow = {
   id: string;
   invited_email: string;
+};
+
+type BarLinkOption = {
+  bar_key: string;
+  display_name: string;
 };
 
 function toDatetimeLocalValue(iso: string): string {
@@ -120,6 +128,9 @@ export default function Competitions() {
   const [createPublic, setCreatePublic] = useState(true);
   const [createWinRule, setCreateWinRule] = useState<WinRuleChoice>("highest_score");
   const [createTargetScore, setCreateTargetScore] = useState("2.50");
+  const [createLocationName, setCreateLocationName] = useState("");
+  const [createLocationAddress, setCreateLocationAddress] = useState("");
+  const [createLinkedBarKey, setCreateLinkedBarKey] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [uiToast, setUiToast] = useState<{
     text: string;
@@ -139,6 +150,9 @@ export default function Competitions() {
   const [editPublic, setEditPublic] = useState(true);
   const [editWinRule, setEditWinRule] = useState<WinRuleChoice>("highest_score");
   const [editTargetScore, setEditTargetScore] = useState("2.50");
+  const [editLocationName, setEditLocationName] = useState("");
+  const [editLocationAddress, setEditLocationAddress] = useState("");
+  const [editLinkedBarKey, setEditLinkedBarKey] = useState("");
   const [editBusy, setEditBusy] = useState(false);
   const [clientComps, setClientComps] = useState<CompetitionRow[] | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>(loaderCounts);
@@ -163,10 +177,22 @@ export default function Competitions() {
   const [invitedTitles, setInvitedTitles] = useState<
     { competition_id: string; title: string }[]
   >([]);
+  const [barLinkOptions, setBarLinkOptions] = useState<BarLinkOption[]>([]);
 
   useEffect(() => {
     setCounts(loaderCounts);
   }, [loaderCounts]);
+
+  useEffect(() => {
+    void supabase
+      .from("bar_pub_stats")
+      .select("bar_key, display_name")
+      .order("submission_count", { ascending: false })
+      .limit(200)
+      .then(({ data }) => {
+        setBarLinkOptions((data ?? []) as BarLinkOption[]);
+      });
+  }, [revalidator.state]);
 
   const mergedCompetitions = useMemo(() => {
     if (!userId || !clientComps) return competitions;
@@ -330,6 +356,9 @@ export default function Competitions() {
     setEditTargetScore(
       c.target_score != null ? String(c.target_score) : "2.50",
     );
+    setEditLocationName(c.location_name?.trim() ?? "");
+    setEditLocationAddress(c.location_address?.trim() ?? "");
+    setEditLinkedBarKey(c.linked_bar_key?.trim() ?? "");
     setFormError(null);
   }
 
@@ -386,6 +415,9 @@ export default function Competitions() {
         win_rule: createWinRule,
         target_score: target,
         visibility: createPublic ? "public" : "private",
+        location_name: createLocationName.trim() || null,
+        location_address: createLocationAddress.trim() || null,
+        linked_bar_key: createLinkedBarKey.trim() || null,
       });
 
       if (error) {
@@ -396,6 +428,9 @@ export default function Competitions() {
       setTitle("");
       setStartsAt("");
       setEndsAt("");
+      setCreateLocationName("");
+      setCreateLocationAddress("");
+      setCreateLinkedBarKey("");
       revalidator.revalidate();
       setUiToast({
         text: "Competition created. You’re on the board.",
@@ -463,6 +498,9 @@ export default function Competitions() {
           win_rule: editWinRule,
           target_score: editWinRule === "closest_to_target" ? target : null,
           visibility: editPublic ? "public" : "private",
+          location_name: editLocationName.trim() || null,
+          location_address: editLocationAddress.trim() || null,
+          linked_bar_key: editLinkedBarKey.trim() || null,
         })
         .eq("id", editing.id);
 
@@ -719,6 +757,63 @@ export default function Competitions() {
                   autoComplete="off"
                 />
               </div>
+              <div>
+                <label
+                  htmlFor="edit-location-name"
+                  className="type-label mb-1 block"
+                >
+                  Location (optional)
+                </label>
+                <input
+                  id="edit-location-name"
+                  value={editLocationName}
+                  onChange={(e) => setEditLocationName(e.target.value)}
+                  className={fieldClass}
+                  placeholder="Venue or area"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="edit-location-address"
+                  className="type-label mb-1 block"
+                >
+                  Address / details (optional)
+                </label>
+                <input
+                  id="edit-location-address"
+                  value={editLocationAddress}
+                  onChange={(e) => setEditLocationAddress(e.target.value)}
+                  className={fieldClass}
+                  placeholder="Street, neighborhood, notes"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="edit-linked-pub"
+                  className="type-label mb-1 block"
+                >
+                  Pub for listings (optional)
+                </label>
+                <select
+                  id="edit-linked-pub"
+                  value={editLinkedBarKey}
+                  onChange={(e) => setEditLinkedBarKey(e.target.value)}
+                  className={fieldClass}
+                >
+                  <option value="">— Not linked —</option>
+                  {barLinkOptions.map((o) => (
+                    <option key={o.bar_key} value={o.bar_key}>
+                      {o.display_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="type-meta mt-1 text-guinness-tan/60">
+                  Shows this competition on that pub&apos;s detail page while
+                  it&apos;s active.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="edit-max" className="type-label mb-1 block">
@@ -871,6 +966,62 @@ export default function Competitions() {
                   placeholder="Birthday Jon"
                   autoComplete="off"
                 />
+              </div>
+              <div>
+                <label
+                  htmlFor="comp-location-name"
+                  className="type-label mb-1 block"
+                >
+                  Location (optional)
+                </label>
+                <input
+                  id="comp-location-name"
+                  value={createLocationName}
+                  onChange={(e) => setCreateLocationName(e.target.value)}
+                  className={fieldClass}
+                  placeholder="Venue or area"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="comp-location-address"
+                  className="type-label mb-1 block"
+                >
+                  Address / details (optional)
+                </label>
+                <input
+                  id="comp-location-address"
+                  value={createLocationAddress}
+                  onChange={(e) => setCreateLocationAddress(e.target.value)}
+                  className={fieldClass}
+                  placeholder="Street, neighborhood, notes"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="comp-linked-pub"
+                  className="type-label mb-1 block"
+                >
+                  Pub for listings (optional)
+                </label>
+                <select
+                  id="comp-linked-pub"
+                  value={createLinkedBarKey}
+                  onChange={(e) => setCreateLinkedBarKey(e.target.value)}
+                  className={fieldClass}
+                >
+                  <option value="">— Not linked —</option>
+                  {barLinkOptions.map((o) => (
+                    <option key={o.bar_key} value={o.bar_key}>
+                      {o.display_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="type-meta mt-1 text-guinness-tan/60">
+                  Lists the competition on that pub&apos;s page while active.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
