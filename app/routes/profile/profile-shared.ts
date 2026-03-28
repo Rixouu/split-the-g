@@ -41,6 +41,8 @@ export type PublicProfileRow = {
   user_id: string;
   display_name: string | null;
   nickname?: string | null;
+  /** ISO 3166-1 alpha-2 */
+  country_code?: string | null;
 };
 
 export type ComparisonScoreRow = {

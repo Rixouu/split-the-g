@@ -38,6 +38,10 @@ import {
   type ScoreSummary,
   type UserFriendRow,
 } from "./profile-shared";
+import {
+  flagEmojiFromIso2,
+  getCountryOptions,
+} from "~/utils/countryDisplay";
 
 const profileNavItems = [
   { to: "/profile/progress", label: "Progress" },
@@ -70,7 +74,10 @@ export default function ProfileLayout() {
   const [friends, setFriends] = useState<UserFriendRow[]>([]);
   const [fullName, setFullName] = useState("");
   const [nickname, setNickname] = useState("");
+  /** ISO 3166-1 alpha-2; empty = not set */
+  const [countryCode, setCountryCode] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const countryOptions = useMemo(() => getCountryOptions(), []);
   const [progressRange, setProgressRange] = useState<ProgressRange>("30d");
   const [comparisonScores, setComparisonScores] = useState<ComparisonScoreRow[]>([]);
   const [comparisonLabels, setComparisonLabels] = useState<Record<string, string>>({});
@@ -83,6 +90,7 @@ export default function ProfileLayout() {
         avg: 0,
         last7: 0,
         dialPct: 0,
+        totalSpend: 0,
       };
     }
     const best = Math.max(...scores.map((s) => s.split_score));
@@ -92,12 +100,18 @@ export default function ProfileLayout() {
     const last7 = scores.filter((s) => new Date(s.created_at).getTime() >= t7)
       .length;
     const dialPct = Math.min(100, Math.max(0, (avg / 5) * 100));
+    const totalSpend = scores.reduce((acc, s) => {
+      const p = s.pint_price;
+      if (p == null || !Number.isFinite(Number(p))) return acc;
+      return acc + Number(p);
+    }, 0);
     return {
       count: scores.length,
       best,
       avg,
       last7,
       dialPct,
+      totalSpend,
     };
   }, [scores]);
 
@@ -322,7 +336,7 @@ export default function ProfileLayout() {
 
       const profRes = await supabase
         .from("public_profiles")
-        .select("display_name, nickname")
+        .select("display_name, nickname, country_code")
         .eq("user_id", u.id)
         .maybeSingle();
 
@@ -331,22 +345,29 @@ export default function ProfileLayout() {
 
       if (profErr) {
         const msg = `${profErr.message ?? ""} ${profErr.code ?? ""}`.toLowerCase();
-        const likelyMissingNickCol =
-          msg.includes("nickname") || msg.includes("column") || profErr.code === "42703";
-        if (likelyMissingNickCol) {
+        const likelyMissingCol =
+          msg.includes("nickname") ||
+          msg.includes("country_code") ||
+          msg.includes("column") ||
+          profErr.code === "42703";
+        if (likelyMissingCol) {
           const r2 = await supabase
             .from("public_profiles")
-            .select("display_name")
+            .select("display_name, nickname")
             .eq("user_id", u.id)
             .maybeSingle();
           prof = (r2.data ?? null) as PublicProfileRow | null;
           profErr = r2.error;
+          if (!profErr && prof) {
+            setCountryCode("");
+          }
         }
       }
 
       if (profErr) {
         setFullName(fromGoogle);
         setNickname("");
+        setCountryCode("");
         const socialRows = await loadSocial(u);
         await loadFriendComparison(u, socialRows);
         return;
@@ -360,6 +381,7 @@ export default function ProfileLayout() {
         });
         setFullName(fromGoogle);
         setNickname("");
+        setCountryCode("");
       } else {
         setFullName(prof.display_name?.trim() || fromGoogle);
         const rawNick = "nickname" in prof ? prof.nickname : null;
@@ -368,6 +390,11 @@ export default function ProfileLayout() {
             ? String(rawNick).trim()
             : "",
         );
+        const cc =
+          "country_code" in prof && prof.country_code != null
+            ? String(prof.country_code).trim().toUpperCase()
+            : "";
+        setCountryCode(/^[A-Z]{2}$/.test(cc) ? cc : "");
       }
 
       const socialRows = await loadSocial(u);
@@ -443,6 +470,7 @@ export default function ProfileLayout() {
     setComparisonLabels({});
     setFullName("");
     setNickname("");
+    setCountryCode("");
   };
 
   const nicknamePattern = /^[a-zA-Z0-9 _-]{2,30}$/;
@@ -461,6 +489,11 @@ export default function ProfileLayout() {
       setMessage(
         "Nickname: 2–30 characters, letters, numbers, spaces, hyphen or underscore.",
       );
+      return;
+    }
+    const ccRaw = countryCode.trim().toUpperCase();
+    if (ccRaw && !/^[A-Z]{2}$/.test(ccRaw)) {
+      setMessage("Choose a country from the list, or leave it unset.");
       return;
     }
     setProfileSaving(true);
@@ -483,6 +516,7 @@ export default function ProfileLayout() {
           user_id: user.id,
           display_name: nameTrim,
           nickname: nickTrim || null,
+          country_code: ccRaw || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" },
@@ -517,6 +551,7 @@ export default function ProfileLayout() {
 
       setFullName(nameTrim);
       setNickname(nickTrim);
+      setCountryCode(ccRaw);
       await loadProfileData(user);
       setMessage("Profile saved.");
     } finally {
@@ -769,6 +804,11 @@ export default function ProfileLayout() {
                     {user.email}
                   </p>
                   <p className="mt-2 text-lg font-semibold text-guinness-cream">
+                    {countryCode ? (
+                      <span className="mr-2" title={countryCode} aria-hidden>
+                        {flagEmojiFromIso2(countryCode)}
+                      </span>
+                    ) : null}
                     {fullName || "—"}
                   </p>
                 </div>
@@ -813,6 +853,35 @@ export default function ProfileLayout() {
                   <p className="type-meta mt-1.5 text-guinness-tan/60">
                     Leave blank to use your full name on feeds and boards. Must
                     be unique (letters, numbers, spaces, - or _). 2–30 characters.
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="profile-country"
+                    className="type-label mb-1.5 block text-guinness-tan/85"
+                  >
+                    Country
+                  </label>
+                  <select
+                    id="profile-country"
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Not set</option>
+                    {countryOptions.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {flagEmojiFromIso2(c.code)} {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="type-meta mt-1.5 text-guinness-tan/60">
+                    Shown as a flag next to your name.{" "}
+                    <strong className="font-medium text-guinness-tan/75">
+                      Local leaderboard
+                    </strong>{" "}
+                    lists top pours this week where the pour&apos;s location
+                    matches this country.
                   </p>
                 </div>
                 <button

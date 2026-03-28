@@ -16,6 +16,8 @@ export type ProgressStats = {
   avg: number;
   last7: number;
   dialPct: number;
+  /** Sum of `pint_price` on linked scores where price was entered. */
+  totalSpend: number;
 };
 
 export type ProfileOutletContextValue = {
