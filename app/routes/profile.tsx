@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -16,6 +16,11 @@ import {
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
+import {
+  clearPostOAuthReturnIfMatchesCurrentPath,
+  googleOAuthRedirectToSiteRoot,
+  rememberPathBeforeGoogleOAuth,
+} from "~/utils/post-oauth-return";
 
 type ProfileTab = "progress" | "scores" | "favorites" | "friends";
 type ProgressRange = "7d" | "30d" | "90d" | "all";
@@ -175,6 +180,7 @@ function buildFriendLeaderboard(
 }
 
 export default function Profile() {
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState<ScoreSummary[]>([]);
@@ -186,10 +192,6 @@ export default function Profile() {
   const [favAddress, setFavAddress] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
-  const [authNotice, setAuthNotice] = useState<{
-    title: string;
-    description: string;
-  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<ProfileTab>("progress");
   const [friendEmail, setFriendEmail] = useState("");
@@ -542,20 +544,25 @@ export default function Profile() {
     };
   }, [loadProfileData]);
 
+  useEffect(() => {
+    clearPostOAuthReturnIfMatchesCurrentPath(
+      location.pathname,
+      location.search,
+    );
+  }, [location.pathname, location.search]);
+
   const signInGoogle = async () => {
     setMessage(null);
-    setAuthNotice(null);
+    rememberPathBeforeGoogleOAuth();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.href },
+      options: { redirectTo: googleOAuthRedirectToSiteRoot() },
     });
     if (error) {
-      setAuthNotice({
-        title: "Sign-in didn’t work",
-        description:
-          error.message?.trim() ||
-          "We couldn’t start Google sign-in. Try again in a moment.",
-      });
+      const detail =
+        error.message?.trim() ||
+        "We couldn’t start Google sign-in. Try again in a moment.";
+      setMessage(`Couldn’t start Google sign-in. ${detail}`);
     }
   };
 
@@ -677,6 +684,7 @@ export default function Profile() {
       setFavName("");
       setFavAddress("");
       await loadProfileData(user);
+      setMessage("Favorite saved.");
     } finally {
       setBusy(false);
     }
@@ -695,6 +703,7 @@ export default function Profile() {
         return;
       }
       await loadProfileData(user);
+      setMessage("Favorite removed.");
     } finally {
       setBusy(false);
     }
@@ -819,6 +828,9 @@ export default function Profile() {
           setMessage(e1?.message || e2?.message || "Could not save friendship.");
           return;
         }
+        setMessage("Friend request accepted. You’re now friends.");
+      } else {
+        setMessage("Friend request declined.");
       }
       await loadProfileData(user);
     } finally {
@@ -845,6 +857,7 @@ export default function Profile() {
         .eq("friend_user_id", user.id);
       const socialRows = await loadSocial(user);
       await loadFriendComparison(user, socialRows);
+      setMessage("Friend removed.");
     } finally {
       setBusy(false);
     }
@@ -992,15 +1005,18 @@ export default function Profile() {
                   { label: "Incoming", value: incomingRequests.length },
                   { label: "Pending", value: outgoingRequests.length },
                 ].map((item) => (
-                  <div
+                  <button
                     key={item.label}
-                    className="rounded-xl border border-[#372C16] bg-guinness-black/30 px-4 py-3"
+                    type="button"
+                    onClick={() => setTab("friends")}
+                    className="rounded-xl border border-[#372C16] bg-guinness-black/30 px-4 py-3 text-left transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold"
+                    aria-label={`${item.label}: ${item.value}. Open Friends tab.`}
                   >
                     <p className="type-meta text-guinness-tan/65">{item.label}</p>
                     <p className="mt-1 text-2xl font-bold tabular-nums text-guinness-gold">
                       {item.value}
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
             </section>
@@ -1492,7 +1508,9 @@ export default function Profile() {
               ? "Couldn’t complete that"
               : messageVariant === "warning"
                 ? "Heads up"
-                : undefined
+                : messageVariant === "info"
+                  ? "Update"
+                  : undefined
           }
           onClose={() => setMessage(null)}
           autoCloseMs={toastAutoCloseForVariant(messageVariant)}
@@ -1511,18 +1529,6 @@ export default function Profile() {
             await signOut();
             setMessage("Signed out successfully.");
           }}
-        />
-
-        <BrandedNotice
-          open={authNotice != null}
-          onOpenChange={(open) => {
-            if (!open) setAuthNotice(null);
-          }}
-          title={authNotice?.title ?? ""}
-          description={authNotice?.description}
-          variant="danger"
-          primaryLabel="OK"
-          onPrimary={() => setAuthNotice(null)}
         />
 
         <div className="mt-10 flex justify-center">

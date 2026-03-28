@@ -15,6 +15,9 @@ import {
   AppNavigation,
   shouldShowAppNav,
 } from "~/components/AppNavigation";
+import { GlobalAuthToast } from "~/components/branded/GlobalAuthToast";
+import { GlobalCompetitionPourToast } from "~/components/branded/GlobalCompetitionPourToast";
+import { PostOAuthReturnRedirect } from "~/components/PostOAuthReturnRedirect";
 import { GoogleMapsScript } from "~/components/GoogleMapsScript";
 import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
 
@@ -86,6 +89,9 @@ export default function App() {
           <Outlet />
         </div>
         <AppNavigation />
+        <GlobalAuthToast />
+        <GlobalCompetitionPourToast />
+        <PostOAuthReturnRedirect />
         <ScrollRestoration />
         <Scripts />
         <script

@@ -35,8 +35,13 @@ import {
 import { cropGCloseupBase64 } from "~/utils/gCloseupCrop";
 import { generatePourSlug } from "~/utils/pourSlug";
 import { scorePourPath } from "~/utils/scorePath";
+import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
+import { BrandedToast } from "~/components/branded/BrandedToast";
+import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 
 const isClient = typeof window !== "undefined";
+
+const MAX_POUR_IMAGE_BYTES = 18 * 1024 * 1024;
 
 /**
  * Roboflow workflow API base. Official Deploy snippets often use `https://detect.roboflow.com`;
@@ -467,6 +472,11 @@ export default function Home() {
         console.error("Camera error:", err);
         mediaStreamRef.current = null;
         setIsCameraActive(false);
+        setHomeToast({
+          message:
+            "Camera unavailable or permission denied. Allow camera access or use Upload an image instead.",
+          variant: "warning",
+        });
       });
 
     return () => {
@@ -508,6 +518,10 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadProcessing, setIsUploadProcessing] = useState(false);
   const [showNoGModal, setShowNoGModal] = useState(false);
+  const [homeToast, setHomeToast] = useState<{
+    message: string;
+    variant: BrandedNoticeVariant;
+  } | null>(null);
 
   // Update the detection loop with feedback logic
   useEffect(() => {
@@ -612,14 +626,30 @@ export default function Home() {
 
   // Update the effect that handles action response
   useEffect(() => {
-    if (actionData) {
-      setIsUploadProcessing(false);
-      setIsSubmitting(false);
+    if (!actionData) return;
+    setIsUploadProcessing(false);
+    setIsSubmitting(false);
 
-      // Check if there was an error due to no G detected
-      if (actionData.error === "No G detected") {
-        setShowNoGModal(true);
-      }
+    if (actionData.error === "No G detected") {
+      setShowNoGModal(true);
+      return;
+    }
+
+    if (
+      "success" in actionData &&
+      actionData.success === false &&
+      actionData.error !== "No G detected"
+    ) {
+      const msg =
+        typeof actionData.message === "string" && actionData.message.trim()
+          ? actionData.message.trim()
+          : typeof actionData.error === "string"
+            ? actionData.error
+            : "Something went wrong processing your pour.";
+      setHomeToast({
+        message: msg,
+        variant: "danger",
+      });
     }
   }, [actionData]);
 
@@ -627,28 +657,59 @@ export default function Home() {
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0];
+    const input = event.target;
+    const file = input.files?.[0];
+    input.value = "";
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setHomeToast({
+        message: "Please choose an image file (for example JPG or PNG).",
+        variant: "warning",
+      });
+      return;
+    }
+    if (file.size > MAX_POUR_IMAGE_BYTES) {
+      setHomeToast({
+        message: `That image is too large (max ${Math.round(MAX_POUR_IMAGE_BYTES / (1024 * 1024))} MB). Try a smaller photo.`,
+        variant: "warning",
+      });
+      return;
+    }
 
     setIsUploadProcessing(true);
     const reader = new FileReader();
+
+    reader.onerror = () => {
+      setIsUploadProcessing(false);
+      setHomeToast({
+        message: "We couldn’t read that image. Try another photo or export it again.",
+        variant: "danger",
+      });
+    };
 
     reader.onloadend = () => {
       const base64Image = reader.result
         ?.toString()
         .replace(/^data:image\/\w+;base64,/, "");
-      if (base64Image) {
-        const formData = new FormData();
-        formData.append("image", base64Image);
-        if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
-          formData.append("competition", competitionIdParam);
-        }
-        submit(formData, {
-          method: "post",
-          action: "/?index",
-          encType: "multipart/form-data",
+      if (!base64Image) {
+        setIsUploadProcessing(false);
+        setHomeToast({
+          message: "Couldn’t read that image. Try a different file.",
+          variant: "danger",
         });
+        return;
       }
+      const formData = new FormData();
+      formData.append("image", base64Image);
+      if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
+        formData.append("competition", competitionIdParam);
+      }
+      submit(formData, {
+        method: "post",
+        action: "/?index",
+        encType: "multipart/form-data",
+      });
     };
     reader.readAsDataURL(file);
   };
@@ -852,6 +913,23 @@ export default function Home() {
 
         </div>
       )}
+
+      <BrandedToast
+        open={homeToast != null}
+        message={homeToast?.message ?? ""}
+        variant={homeToast?.variant ?? "info"}
+        title={
+          homeToast?.variant === "danger"
+            ? "Couldn’t process that image"
+            : homeToast?.variant === "warning"
+              ? "Heads up"
+              : undefined
+        }
+        onClose={() => setHomeToast(null)}
+        autoCloseMs={
+          homeToast ? toastAutoCloseForVariant(homeToast.variant) : undefined
+        }
+      />
     </main>
   );
 }

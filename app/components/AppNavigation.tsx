@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router";
+import { useHasActiveCompetitionParticipation } from "~/components/competition/hooks/useCompeteParticipation";
 
 /** Prefetch loader payloads and lazy chunks on hover, focus, or touch (before click). */
 const LINK_PREFETCH = "intent" as const;
@@ -235,6 +236,7 @@ export const shouldShowMobileNav = shouldShowAppNav;
 
 export function AppNavigation() {
   const { pathname } = useLocation();
+  const hasCompeteParticipation = useHasActiveCompetitionParticipation();
 
   if (!shouldShowAppNav(pathname)) return null;
 
@@ -261,20 +263,36 @@ export function AppNavigation() {
                 className="flex flex-wrap items-center justify-end gap-1 rounded-full border border-guinness-gold/15 bg-guinness-black/35 px-1.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                 aria-label="Primary"
               >
-                {primaryItems.map(({ to, label, end }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    prefetch={LINK_PREFETCH}
-                    viewTransition
-                    className={({ isActive }) =>
-                      `${deskPill} ${isActive ? deskActive : deskIdle}`
-                    }
-                  >
-                    {label}
-                  </NavLink>
-                ))}
+                {primaryItems.map(({ to, label, end }) => {
+                  const isCompete = to === "/competitions";
+                  const showCompeteDot = isCompete && hasCompeteParticipation;
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={end}
+                      prefetch={LINK_PREFETCH}
+                      viewTransition
+                      aria-label={
+                        showCompeteDot
+                          ? `${label} — you’re in an active competition`
+                          : undefined
+                      }
+                      className={({ isActive }) =>
+                        `${deskPill} ${isActive ? deskActive : deskIdle} ${showCompeteDot ? "relative pr-6" : ""}`
+                      }
+                    >
+                      {showCompeteDot ? (
+                        <span
+                          className="pointer-events-none absolute right-2.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.55)]"
+                          title="You’re in an active competition"
+                          aria-hidden
+                        />
+                      ) : null}
+                      {label}
+                    </NavLink>
+                  );
+                })}
               </nav>
               <nav
                 className="flex items-center gap-1 rounded-full border border-guinness-gold/10 bg-guinness-black/25 px-1.5 py-1"
@@ -326,40 +344,70 @@ export function AppNavigation() {
           <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
             <ul className="flex list-none items-stretch gap-0.5">
               <li className="flex min-w-0 flex-1 gap-0.5">
-                {mobileDockItems.slice(0, 2).map(({ to, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    prefetch={LINK_PREFETCH}
-                    viewTransition
-                    className={({ isActive }) =>
-                      `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
-                    }
-                  >
-                    {dockIconFor(to)}
-                    {label}
-                  </NavLink>
-                ))}
+                {mobileDockItems.slice(0, 2).map(({ to, label }) => {
+                  const showCompeteDot = to === "/competitions" && hasCompeteParticipation;
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      prefetch={LINK_PREFETCH}
+                      viewTransition
+                      aria-label={
+                        showCompeteDot
+                          ? `${label} — you’re in an active competition`
+                          : undefined
+                      }
+                      className={({ isActive }) =>
+                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}${showCompeteDot ? " relative" : ""}`
+                      }
+                    >
+                      {showCompeteDot ? (
+                        <span
+                          className="pointer-events-none absolute right-1 top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.65)]"
+                          title="You’re in an active competition"
+                          aria-hidden
+                        />
+                      ) : null}
+                      {dockIconFor(to)}
+                      {label}
+                    </NavLink>
+                  );
+                })}
               </li>
               <li
                 className="w-[4.5rem] shrink-0"
                 aria-hidden="true"
               />
               <li className="flex min-w-0 flex-1 gap-0.5">
-                {mobileDockItems.slice(2, 4).map(({ to, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    prefetch={LINK_PREFETCH}
-                    viewTransition
-                    className={({ isActive }) =>
-                      `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
-                    }
-                  >
-                    {dockIconFor(to)}
-                    {label}
-                  </NavLink>
-                ))}
+                {mobileDockItems.slice(2, 4).map(({ to, label }) => {
+                  const showCompeteDot = to === "/competitions" && hasCompeteParticipation;
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      prefetch={LINK_PREFETCH}
+                      viewTransition
+                      aria-label={
+                        showCompeteDot
+                          ? `${label} — you’re in an active competition`
+                          : undefined
+                      }
+                      className={({ isActive }) =>
+                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}${showCompeteDot ? " relative" : ""}`
+                      }
+                    >
+                      {showCompeteDot ? (
+                        <span
+                          className="pointer-events-none absolute right-1 top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.65)]"
+                          title="You’re in an active competition"
+                          aria-hidden
+                        />
+                      ) : null}
+                      {dockIconFor(to)}
+                      {label}
+                    </NavLink>
+                  );
+                })}
               </li>
             </ul>
             <div className="mt-1 flex w-full flex-row gap-0.5 border-t border-guinness-gold/10 pt-1.5">

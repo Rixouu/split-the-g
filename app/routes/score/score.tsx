@@ -1,13 +1,13 @@
 import {
   redirect,
   useLoaderData,
+  useLocation,
   useRevalidator,
   useSearchParams,
   type LoaderFunctionArgs,
   Link,
 } from "react-router";
 import type { User } from "@supabase/supabase-js";
-import { BrandedNotice } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import {
   scorePageFeedbackVariant,
@@ -22,6 +22,11 @@ import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import type { ParsedPlaceGeo } from "~/utils/placeGeoFromComponents";
 import { isScoreUuidRef, scorePourPath } from "~/utils/scorePath";
+import {
+  clearPostOAuthReturnIfMatchesCurrentPath,
+  googleOAuthRedirectToSiteRoot,
+  rememberPathBeforeGoogleOAuth,
+} from "~/utils/post-oauth-return";
 
 const COMPETITION_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -129,6 +134,7 @@ export default function Score() {
     isOwner: boolean;
   }>();
   const revalidator = useRevalidator();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const competitionIdParam =
     searchParams.get("competition")?.trim() ?? "";
@@ -157,10 +163,7 @@ export default function Score() {
   const [competitionAttachMessage, setCompetitionAttachMessage] = useState<
     string | null
   >(null);
-  const [authNotice, setAuthNotice] = useState<{
-    title: string;
-    description: string;
-  } | null>(null);
+  const [signInToastError, setSignInToastError] = useState<string | null>(null);
 
   async function attachScoreToCompetition(compId: string, scoreId: string) {
     const { data: u } = await supabase.auth.getUser();
@@ -177,6 +180,13 @@ export default function Score() {
     setCompetitionAttachMessage("Added to competition.");
     revalidator.revalidate();
   }
+
+  useEffect(() => {
+    clearPostOAuthReturnIfMatchesCurrentPath(
+      location.pathname,
+      location.search,
+    );
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     let mounted = true;
@@ -207,21 +217,19 @@ export default function Score() {
 
   const handleGoogleSignIn = async () => {
     setClaimMessage(null);
-    setAuthNotice(null);
-    const redirectTo = window.location.href;
+    setSignInToastError(null);
+    rememberPathBeforeGoogleOAuth();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo,
+        redirectTo: googleOAuthRedirectToSiteRoot(),
       },
     });
     if (error) {
-      setAuthNotice({
-        title: "Sign-in didn’t work",
-        description:
-          error.message?.trim() ||
-          "We couldn’t start Google sign-in. Try again shortly.",
-      });
+      const detail =
+        error.message?.trim() ||
+        "Try again shortly.";
+      setSignInToastError(`Couldn’t start Google sign-in. ${detail}`);
     }
   };
 
@@ -383,6 +391,7 @@ export default function Score() {
     : "0.0";
 
   const scoreToastText =
+    signInToastError ??
     submitError ??
     claimMessage ??
     competitionAttachMessage ??
@@ -664,6 +673,7 @@ export default function Score() {
               : undefined
         }
         onClose={() => {
+          setSignInToastError(null);
           setSubmitError(null);
           setClaimMessage(null);
           setSubmitSuccess(false);
@@ -672,17 +682,6 @@ export default function Score() {
         autoCloseMs={toastAutoCloseForVariant(scoreToastVariant)}
       />
 
-      <BrandedNotice
-        open={authNotice != null}
-        onOpenChange={(open) => {
-          if (!open) setAuthNotice(null);
-        }}
-        title={authNotice?.title ?? ""}
-        description={authNotice?.description}
-        variant="danger"
-        primaryLabel="OK"
-        onPrimary={() => setAuthNotice(null)}
-      />
     </main>
   );
 }

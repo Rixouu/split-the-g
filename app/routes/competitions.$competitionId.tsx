@@ -497,6 +497,30 @@ export default function CompetitionDetail() {
           </Link>
         </PageHeader>
 
+        {joined ? (
+          <div
+            className="mb-5 flex flex-wrap items-start gap-3 rounded-xl border border-emerald-500/35 bg-emerald-500/[0.08] px-4 py-3 sm:items-center sm:gap-4"
+            role="status"
+            aria-label="You are a participant in this competition"
+          >
+            <span
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-300 sm:mt-0"
+              aria-hidden
+            >
+              ✓
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-guinness-cream">
+                You&apos;re in this competition
+              </p>
+              <p className="type-meta mt-1 text-guinness-tan/80">
+                Your pours count toward this board while the window is live. We&apos;ll
+                notify you when someone else submits a pour.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mb-6 rounded-2xl border border-guinness-gold/15 bg-guinness-brown/25 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-guinness-gold/10 pb-3 text-sm text-guinness-tan/80">
             <span className="font-semibold text-guinness-gold">
@@ -689,7 +713,9 @@ export default function CompetitionDetail() {
             ? "Couldn’t complete that"
             : message && competitionDetailMessageVariant(message) === "warning"
               ? "Sign in required"
-              : undefined
+              : message && competitionDetailMessageVariant(message) === "info"
+                ? "Competition update"
+                : undefined
         }
         onClose={() => setMessage(null)}
         autoCloseMs={

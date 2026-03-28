@@ -993,6 +993,11 @@ export default function Competitions() {
                               <h3 className="text-lg font-semibold text-guinness-cream">
                                 {c.title}
                               </h3>
+                              {isJoined ? (
+                                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200/95">
+                                  You&apos;re in
+                                </span>
+                              ) : null}
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
                                   priv
