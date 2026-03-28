@@ -19,17 +19,17 @@ const secondaryItems: { to: string; label: string }[] = [
   { to: "/faq", label: "FAQ" },
 ];
 
-/** Mobile dock second row — matches desktop “More” links (compact labels where needed) */
+/** Mobile dock row 2 — compact strip under main dock */
 const mobileSecondaryItems: { to: string; label: string }[] = [
   { to: "/wall", label: "Wall" },
-  { to: "/leaderboard", label: "Ranks" },
+  { to: "/competitions", label: "Compete" },
   { to: "/faq", label: "FAQ" },
 ];
 
-/** Mobile dock: four corner tabs; Pour is the center FAB */
+/** Mobile dock row 1: Feed · Ranks · (Pour FAB) · Pubs · Me */
 const mobileDockItems: { to: string; label: string }[] = [
   { to: "/feed", label: "Feed" },
-  { to: "/competitions", label: "Compete" },
+  { to: "/leaderboard", label: "Ranks" },
   { to: "/pubs", label: "Pubs" },
   { to: "/profile", label: "Me" },
 ];
@@ -76,36 +76,6 @@ function MobileNavIcon({
   );
 }
 
-function secondaryDockIcon(to: string, className: string) {
-  switch (to) {
-    case "/wall":
-      return <MobileNavIcon name="wall" className={className} />;
-    case "/leaderboard":
-      return <MobileNavIcon name="rank" className={className} />;
-    case "/faq":
-      return <MobileNavIcon name="faq" className={className} />;
-    default:
-      return null;
-  }
-}
-
-const dockIconClass = "h-[1.5rem] w-[1.5rem]";
-
-function dockIconFor(to: string) {
-  switch (to) {
-    case "/feed":
-      return <MobileNavIcon name="feed" className={dockIconClass} />;
-    case "/competitions":
-      return <MobileNavIcon name="compete" className={dockIconClass} />;
-    case "/pubs":
-      return <MobileNavIcon name="pubs" className={dockIconClass} />;
-    case "/profile":
-      return <MobileNavIcon name="profile" className={dockIconClass} />;
-    default:
-      return null;
-  }
-}
-
 const deskPill =
   "rounded-full px-3.5 py-2 text-sm font-medium tracking-tight transition-all duration-200 md:px-4";
 const deskActive =
@@ -131,11 +101,20 @@ function CompetitionLiveBadge({
   );
 }
 
+/** Bottom underline for active tab — same pattern row 1 & 2 (Tailwind needs border-b-* for visibility). */
+const mobUnderlineBase =
+  "border-b-2 border-b-transparent pb-1.5 transition-[color,border-color] duration-200";
+
+/** Text-only dock row 1 — underline active state (no pill / ring) */
 const mobItem =
-  "relative flex min-h-[3.5rem] min-w-0 flex-1 flex-col items-center justify-center gap-1.5 overflow-visible rounded-xl px-0.5 py-1 text-[9px] font-bold uppercase leading-tight tracking-wide outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:min-h-[3.65rem] sm:gap-2 sm:text-[10px]";
-const mobActive =
-  "text-guinness-gold bg-guinness-gold/[0.08] shadow-inner ring-1 ring-guinness-gold/35 ring-inset";
-const mobIdle = "text-guinness-tan/55 hover:text-guinness-cream active:scale-[0.98]";
+  `relative z-0 flex min-h-[2.6rem] min-w-0 flex-1 flex-col items-center justify-center gap-0 overflow-visible px-0.5 pt-1.5 text-[9px] font-bold uppercase leading-tight tracking-wide outline-none focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:min-h-[2.75rem] sm:text-[10px] ${mobUnderlineBase}`;
+const mobActive = "text-guinness-gold !border-b-guinness-gold";
+const mobIdle =
+  "text-guinness-tan/55 hover:text-guinness-cream active:scale-[0.98]";
+
+/** Second row — 9px caps; same underline active as row 1 */
+const mobSecondaryItem =
+  `relative z-0 flex min-h-[2rem] min-w-0 flex-1 flex-col items-center justify-center gap-0 overflow-visible px-1 pt-1 text-[9px] font-semibold uppercase leading-none tracking-wide outline-none focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:min-h-[2.1rem] sm:px-1.5 sm:py-1 sm:pt-1.5 ${mobUnderlineBase}`;
 
 export function shouldShowAppNav(pathname: string): boolean {
   if (pathname === "/") return true;
@@ -170,6 +149,7 @@ export const shouldShowMobileNav = shouldShowAppNav;
 export function AppNavigation() {
   const { pathname } = useLocation();
   const hasCompeteParticipation = useHasActiveCompetitionParticipation();
+  const isHome = pathname === "/";
 
   if (!shouldShowAppNav(pathname)) return null;
 
@@ -186,9 +166,11 @@ export function AppNavigation() {
               to="/"
               prefetch={LINK_PREFETCH}
               viewTransition
+              title={isHome ? "Split the G — home" : undefined}
+              aria-label={isHome ? "Split the G — home" : undefined}
               className="group shrink-0 text-[0.8125rem] font-bold uppercase tracking-[0.12em] text-guinness-cream transition-colors hover:text-guinness-gold"
             >
-              Split the G
+              {isHome ? "The scorer" : "Split the G"}
             </NavLink>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1 sm:gap-1.5">
@@ -259,112 +241,99 @@ export function AppNavigation() {
             to="/"
             end
             title="Pour"
+            aria-label="Pour"
             prefetch={LINK_PREFETCH}
             viewTransition
             className={({ isActive }) =>
               [
-                "absolute left-1/2 top-0 z-10 flex h-[4.25rem] w-[4.25rem] -translate-x-1/2 -translate-y-[40%] flex-col items-center justify-center gap-0.5 rounded-full border-2 border-guinness-black/30 bg-guinness-gold text-[10px] font-bold uppercase leading-none tracking-wide text-guinness-black shadow-[0_8px_28px_rgba(0,0,0,0.45),0_0_0_1px_rgba(197,160,89,0.35)] transition-transform duration-200 active:scale-95",
+                "absolute left-1/2 top-0 z-10 flex h-[3.85rem] w-[3.85rem] -translate-x-1/2 -translate-y-[38%] items-center justify-center rounded-full border-2 border-guinness-black/30 bg-guinness-gold text-guinness-black shadow-[0_8px_28px_rgba(0,0,0,0.45),0_0_0_1px_rgba(197,160,89,0.35)] transition-transform duration-200 active:scale-95",
                 isActive
                   ? "ring-2 ring-guinness-gold/90 ring-offset-2 ring-offset-guinness-black"
                   : "hover:brightness-110",
               ].join(" ")
             }
           >
-            <MobileNavIcon name="pour" className="h-7 w-7" />
-            <span className="mt-0.5">Pour</span>
+            <MobileNavIcon name="pour" className="h-8 w-8" />
           </NavLink>
-          <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
+          <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
             <ul className="flex list-none items-stretch gap-0.5">
               <li className="flex min-w-0 flex-1 gap-0.5">
-                {mobileDockItems.slice(0, 2).map(({ to, label }) => {
-                  const showCompeteDot = to === "/competitions" && hasCompeteParticipation;
-                  return (
-                    <NavLink
-                      key={to}
-                      to={to}
-                      prefetch={LINK_PREFETCH}
-                      viewTransition
-                      aria-label={
-                        showCompeteDot
-                          ? `${label} — you’re in an active competition`
-                          : undefined
-                      }
-                      className={({ isActive }) =>
-                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
-                      }
-                    >
-                      {showCompeteDot ? (
-                        <CompetitionLiveBadge
-                          size="dock"
-                          className="right-1 top-0.5 -translate-y-px"
-                        />
-                      ) : null}
-                      {dockIconFor(to)}
-                      {label}
-                    </NavLink>
-                  );
-                })}
+                {mobileDockItems.slice(0, 2).map(({ to, label }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    prefetch={LINK_PREFETCH}
+                    viewTransition
+                    title={to === "/leaderboard" ? "Leaderboard" : undefined}
+                    aria-label={to === "/leaderboard" ? "Leaderboard" : undefined}
+                    className={({ isActive }) =>
+                      `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
+                    }
+                  >
+                    {label}
+                  </NavLink>
+                ))}
               </li>
               <li
                 className="w-[4.5rem] shrink-0"
                 aria-hidden="true"
               />
               <li className="flex min-w-0 flex-1 gap-0.5">
-                {mobileDockItems.slice(2, 4).map(({ to, label }) => {
-                  const showCompeteDot = to === "/competitions" && hasCompeteParticipation;
-                  return (
-                    <NavLink
-                      key={to}
-                      to={to}
-                      prefetch={LINK_PREFETCH}
-                      viewTransition
-                      aria-label={
-                        showCompeteDot
-                          ? `${label} — you’re in an active competition`
-                          : undefined
-                      }
-                      className={({ isActive }) =>
-                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
-                      }
-                    >
-                      {showCompeteDot ? (
-                        <CompetitionLiveBadge
-                          size="dock"
-                          className="right-1 top-0.5 -translate-y-px"
-                        />
-                      ) : null}
-                      {dockIconFor(to)}
-                      {label}
-                    </NavLink>
-                  );
-                })}
+                {mobileDockItems.slice(2, 4).map(({ to, label }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    prefetch={LINK_PREFETCH}
+                    viewTransition
+                    className={({ isActive }) =>
+                      `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
+                    }
+                  >
+                    {label}
+                  </NavLink>
+                ))}
               </li>
             </ul>
-            <div className="mt-1 flex w-full flex-row gap-0.5 border-t border-guinness-gold/10 pt-1.5">
-              {mobileSecondaryItems.map(({ to, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  prefetch={LINK_PREFETCH}
-                  viewTransition
-                  title={
-                    to === "/leaderboard" ? "Leaderboard" : to === "/faq" ? "FAQ" : "Wall"
-                  }
-                  aria-label={
-                    to === "/leaderboard"
-                      ? "Leaderboard"
-                      : to === "/faq"
+            <div className="mt-0.5 flex w-full flex-row gap-0.5 border-t border-guinness-gold/10 pt-0.5">
+              {mobileSecondaryItems.map(({ to, label }) => {
+                const showCompeteDot =
+                  to === "/competitions" && hasCompeteParticipation;
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    prefetch={LINK_PREFETCH}
+                    viewTransition
+                    title={
+                      to === "/faq"
                         ? "FAQ"
-                        : "Wall"
-                  }
-                  className={({ isActive }) =>
-                    `flex min-h-[2.85rem] min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl px-0.5 py-1 text-[8px] font-semibold uppercase leading-tight tracking-wide transition-colors sm:min-h-[3rem] sm:gap-2 sm:px-1 sm:text-[9px] ${isActive ? "bg-guinness-gold/20 text-guinness-gold" : "text-guinness-tan/50 hover:text-guinness-tan"}`
-                  }
-                >
-                  {secondaryDockIcon(to, "h-[1.125rem] w-[1.125rem] shrink-0")}
-                  <span className="w-full text-center leading-none">{label}</span>
-                </NavLink>
-              ))}
+                        : to === "/competitions"
+                          ? "Compete"
+                          : "Wall"
+                    }
+                    aria-label={
+                      showCompeteDot
+                        ? `${label} — you’re in an active competition`
+                        : to === "/faq"
+                          ? "FAQ"
+                          : to === "/competitions"
+                            ? "Compete"
+                            : "Wall"
+                    }
+                    className={({ isActive }) =>
+                      `${mobSecondaryItem} ${isActive ? mobActive : "text-guinness-tan/45 hover:text-guinness-tan/85"}`
+                    }
+                  >
+                    {showCompeteDot ? (
+                      <CompetitionLiveBadge
+                        size="dock"
+                        className="right-0 top-0 -translate-y-px"
+                      />
+                    ) : null}
+                    <span className="w-full text-center leading-none">{label}</span>
+                  </NavLink>
+                );
+              })}
             </div>
           </div>
         </div>

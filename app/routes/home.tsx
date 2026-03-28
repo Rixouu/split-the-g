@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Link,
   useSubmit,
   useActionData,
   redirect,
-  useLoaderData,
   useSearchParams,
 } from "react-router";
-import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import { PintGlassOverlay } from "~/components/PintGlassOverlay";
+import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import type {
   InferenceEngine as RoboflowInferenceEngine,
@@ -16,12 +16,9 @@ import type {
 import { calculateScore } from "~/utils/scoring";
 import { uploadImage } from "~/utils/imageStorage";
 import { supabase } from "~/utils/supabase";
-import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
-import { SubmissionsButton } from "~/components/leaderboard/SubmissionsButton";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { getLocationData } from "~/utils/locationService";
 import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
-import { homePageDescription } from "~/components/PageHeader";
 import * as crypto from "crypto";
 import {
   extractDetectionsFromWorkflow,
@@ -40,6 +37,10 @@ import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 
 const isClient = typeof window !== "undefined";
+
+/** Compact mobile browse links — avoids full-width gold blocks on small screens. */
+const homeMobileBrowseLinkClass =
+  "inline-flex min-h-9 w-full items-center justify-center rounded-md border border-guinness-gold/30 bg-guinness-black/40 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-guinness-gold transition-colors hover:border-guinness-gold/50 hover:bg-guinness-gold/10 active:bg-guinness-gold/15";
 
 const MAX_POUR_IMAGE_BYTES = 18 * 1024 * 1024;
 
@@ -75,13 +76,8 @@ const ROBOFLOW_INFERENCE_MODEL =
 const ROBOFLOW_INFERENCE_VERSION =
   import.meta.env.VITE_ROBOFLOW_INFERENCE_VERSION ?? "8";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  // Get total splits (all-time)
-  const { count: totalSplits } = await supabase
-    .from("scores")
-    .select("*", { count: "exact", head: true });
-
-  return { totalSplits };
+export async function loader(_args: LoaderFunctionArgs) {
+  return {};
 }
 
 export function meta() {
@@ -381,7 +377,6 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Home() {
-  const { totalSplits } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -442,6 +437,7 @@ export default function Home() {
   }, [inferEngine, modelLoading]);
 
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   // Camera: start when active; always stop tracks on deactivate, unmount, or aborted getUserMedia.
   useEffect(() => {
@@ -727,11 +723,11 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-start bg-guinness-black text-guinness-cream">
+    <main className="flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden bg-guinness-black text-guinness-cream max-lg:overflow-y-auto lg:max-h-dvh lg:min-h-0 lg:overflow-y-auto">
       {/* FAQ Button — desktop only (mobile: use nav on other routes or /faq URL) */}
       <a
         href="/faq"
-        className="fixed top-4 left-4 z-40 hidden items-center gap-1.5 rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-1.5 text-guinness-gold transition-colors hover:bg-guinness-gold/20 md:inline-flex"
+        className="fixed left-4 top-4 z-40 hidden items-center gap-1.5 rounded-lg border border-[#312814] bg-guinness-brown/40 p-1.5 text-guinness-gold transition-colors hover:border-guinness-gold/35 hover:bg-[#312814]/50 md:inline-flex"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -793,136 +789,279 @@ export default function Home() {
           </p>
         </div>
       ) : (
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center gap-5 px-4 pb-6 pt-6 sm:px-5 sm:pb-6 sm:pt-8">
-          <header className="flex flex-col items-center gap-4 px-2 text-center md:gap-5 md:px-4">
-            <SplitTheGLogo />
-            <div className="h-px w-20 bg-guinness-gold/50 md:w-28" aria-hidden />
-            <p className="type-body-muted mx-auto max-w-2xl text-base font-normal leading-relaxed text-guinness-tan/85 md:text-lg">
-              {homePageDescription}
-            </p>
-            <div className="flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
-              <LeaderboardButton className="min-h-11 w-full justify-center sm:w-auto" />
-              <SubmissionsButton className="w-full justify-center sm:w-auto" />
-            </div>
-          </header>
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-6 pt-4 max-lg:pb-[max(6.5rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-5 lg:min-h-0 lg:flex-1 lg:overflow-visible lg:px-8 lg:pb-5 lg:pt-[4.5rem]">
+          <h1 className="sr-only">Split the G: score your pour</h1>
 
-          <div className="flex w-full max-w-md flex-col gap-4">
-            {isCameraActive && (
-              <div className="px-8 py-4 bg-guinness-black/90 backdrop-blur-sm border border-guinness-gold/20 text-guinness-gold rounded-lg shadow-lg">
-                {isProcessing ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    <span className="type-label text-guinness-gold">
-                      {feedbackMessage}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center">
-                    <span className="type-label text-guinness-gold">
-                      {feedbackMessage}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="aspect-[3/4] w-full overflow-hidden rounded-lg border border-guinness-gold/20 bg-guinness-brown/50 shadow-lg shadow-black/50">
-              {isCameraActive ? (
-                <div className="relative h-full w-full">
-                  <video
-                    ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    autoPlay
-                    playsInline
-                    onLoadedMetadata={() => setIsVideoReady(true)}
-                    onError={(err) => {
-                      console.error("Camera error:", err);
-                      stopCameraTracks();
-                      setIsCameraActive(false);
-                    }}
-                  />
-                  <canvas
-                    ref={canvasRef}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center translate-y-8">
-                    <PintGlassOverlay className="w-80 md:w-96 h-[28rem] md:h-[32rem] text-guinness-gold opacity-50" />
-                  </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-x-10 lg:gap-y-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] xl:gap-x-12">
+            <aside className="flex min-w-0 shrink-0 flex-col items-center gap-4 text-center lg:items-start lg:gap-8 lg:pr-2 lg:pt-0 lg:text-left xl:gap-9">
+              <div className="flex w-full flex-col items-center gap-0 max-lg:mt-3 lg:mt-0 lg:items-start lg:gap-5">
+                <div className="flex w-full justify-center lg:justify-start">
+                  <SplitTheGLogo className="max-w-[min(82vw,14rem)] lg:max-w-[18rem] xl:max-w-[19rem]" />
                 </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setIsCameraActive(true)}
-                    className="w-full h-full flex flex-col items-center justify-center gap-4 text-guinness-gold hover:text-guinness-tan transition-colors duration-300"
+                <div
+                  className="mt-3 h-[2px] w-[min(72%,11.5rem)] rounded-full bg-gradient-to-r from-guinness-gold/65 via-guinness-tan/35 to-transparent lg:mt-0 lg:h-px lg:w-[min(88%,13.5rem)] lg:from-guinness-gold/55 lg:via-guinness-gold/28 lg:to-transparent"
+                  aria-hidden
+                />
+              </div>
+              <div className="flex w-full max-w-sm flex-col gap-2.5 lg:max-w-[23rem] lg:gap-3">
+                <h2 className="text-base font-medium leading-snug tracking-tight text-guinness-gold sm:text-[1.0625rem] lg:text-lg lg:leading-tight xl:text-xl">
+                  Frame it. Split it.
+                </h2>
+                <p className="text-[13px] leading-relaxed text-guinness-tan/70 sm:text-sm lg:text-[0.9375rem] lg:leading-[1.65] lg:text-guinness-tan/68">
+                  One photo of your pint, we score the G line. Share on the wall
+                  or chase the board.
+                </p>
+              </div>
+              <nav
+                aria-label="Browse splits and wall"
+                className="flex w-full max-w-sm flex-col items-stretch gap-2 lg:mt-2 lg:max-w-none"
+              >
+                <div className="mx-auto grid w-full max-w-[17.5rem] grid-cols-2 gap-2 lg:hidden">
+                  <Link
+                    to="/leaderboard"
+                    prefetch="intent"
+                    viewTransition
+                    className={homeMobileBrowseLinkClass}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-16 w-16 md:h-20 md:w-20"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    <span className="text-lg font-medium md:text-xl">
-                      Start Analysis
+                    Top splits
+                  </Link>
+                  <Link
+                    to="/wall"
+                    prefetch="intent"
+                    viewTransition
+                    className={homeMobileBrowseLinkClass}
+                  >
+                    Wall
+                  </Link>
+                </div>
+                <div className="hidden items-center gap-2 text-sm text-guinness-tan/65 lg:flex">
+                  <Link
+                    to="/leaderboard"
+                    prefetch="intent"
+                    viewTransition
+                    className="font-medium text-guinness-tan/88 underline decoration-guinness-tan/20 underline-offset-[3px] transition-colors hover:text-guinness-gold hover:decoration-guinness-gold/40"
+                  >
+                    Top splits
+                  </Link>
+                  <span className="text-guinness-tan/28" aria-hidden>
+                    ·
+                  </span>
+                  <Link
+                    to="/wall"
+                    prefetch="intent"
+                    viewTransition
+                    className="font-medium text-guinness-tan/88 underline decoration-guinness-tan/20 underline-offset-[3px] transition-colors hover:text-guinness-gold hover:decoration-guinness-gold/40"
+                  >
+                    The wall
+                  </Link>
+                </div>
+              </nav>
+
+              <div className="mt-3 w-full max-w-sm overflow-hidden rounded-xl border border-[#312814] bg-guinness-brown/12 text-left lg:mt-6 lg:max-w-[23rem] lg:rounded-none lg:border-0 lg:bg-transparent lg:overflow-visible">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 border-b border-[#312814]/45 px-3 py-2.5 text-left transition-colors hover:bg-guinness-black/20 lg:hidden"
+                  aria-expanded={howItWorksOpen}
+                  onClick={() => setHowItWorksOpen((o) => !o)}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-guinness-tan/50">
+                    How it works
+                  </span>
+                  <svg
+                    className={`h-4 w-4 shrink-0 text-guinness-gold/70 transition-transform duration-200 ${howItWorksOpen ? "rotate-180" : ""}`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                <div className="hidden lg:block">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-guinness-tan/32">
+                    How it works
+                  </p>
+                  <div
+                    className="mt-3 h-px w-[min(11rem,72%)] bg-gradient-to-r from-guinness-gold/28 via-guinness-tan/12 to-transparent"
+                    aria-hidden
+                  />
+                </div>
+                <ul
+                  className={`space-y-2.5 px-3.5 pb-4 pt-3 text-[11px] leading-relaxed text-guinness-tan/75 sm:text-xs max-lg:mt-0 lg:mt-5 lg:space-y-3.5 lg:px-0 lg:pb-0 lg:pt-0 lg:text-[12px] lg:leading-relaxed lg:text-guinness-tan/60 ${howItWorksOpen ? "block" : "hidden"} lg:block`}
+                >
+                  <li className="flex gap-3">
+                    <span className="w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-[1.5] text-guinness-gold/88 lg:font-medium lg:text-guinness-gold/42">
+                      1
                     </span>
-                  </button>
-                </>
+                    <span>Straight-on pint, G and foam line visible.</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-[1.5] text-guinness-gold/88 lg:font-medium lg:text-guinness-gold/42">
+                      2
+                    </span>
+                    <span>Start analysis and hold still for the score.</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-[1.5] text-guinness-gold/88 lg:font-medium lg:text-guinness-gold/42">
+                      3
+                    </span>
+                    <span>Post to the wall or climb the leaderboard.</span>
+                  </li>
+                </ul>
+              </div>
+            </aside>
+
+            <section
+              className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-2 sm:max-w-lg lg:mx-0 lg:max-h-full lg:min-h-0 lg:w-full lg:max-w-none lg:justify-self-stretch"
+              aria-label="Camera and upload"
+            >
+              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-guinness-tan/42 max-lg:pb-0 lg:hidden">
+                Score your pour
+              </p>
+              <div className="hidden w-full flex-row items-baseline justify-between gap-4 lg:flex">
+                <p className="text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-guinness-tan/42">
+                  Score your pour
+                </p>
+                <BuyCreatorsABeer variant="compact" className="shrink-0 text-sm" />
+              </div>
+
+              {isCameraActive && (
+                <div className="shrink-0 rounded-xl border border-[#312814] bg-guinness-brown/35 px-4 py-3 text-guinness-gold shadow-[inset_0_1px_0_rgba(212,175,55,0.05)] backdrop-blur-sm lg:px-4 lg:py-2.5">
+                  {isProcessing ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      <span className="type-label text-guinness-gold">
+                        {feedbackMessage}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <span className="type-label text-guinness-gold">
+                        {feedbackMessage}
+                      </span>
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
+
+              <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-[#312814] bg-guinness-brown/30 shadow-[inset_0_1px_0_rgba(212,175,55,0.06),0_12px_40px_rgba(0,0,0,0.45)] max-lg:min-h-[min(56dvh,26rem)] lg:aspect-auto lg:min-h-[min(34rem,calc(100dvh-10rem))] lg:max-h-[min(44rem,calc(100dvh-7.5rem))]">
+                <div
+                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_38%,rgba(179,139,45,0.12)_0%,transparent_62%)]"
+                  aria-hidden
+                />
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                  {isCameraActive ? (
+                    <div className="relative min-h-0 flex-1">
+                      <video
+                        ref={videoRef}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        autoPlay
+                        playsInline
+                        onLoadedMetadata={() => setIsVideoReady(true)}
+                        onError={(err) => {
+                          console.error("Camera error:", err);
+                          stopCameraTracks();
+                          setIsCameraActive(false);
+                        }}
+                      />
+                      <canvas
+                        ref={canvasRef}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex translate-y-6 items-center justify-center lg:translate-y-4">
+                        <PintGlassOverlay className="h-[26rem] w-72 text-guinness-gold opacity-50 sm:h-[28rem] sm:w-80 lg:h-[min(28rem,calc(100dvh-16rem))] lg:w-[min(20rem,45vw)]" />
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsCameraActive(true)}
+                      className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 py-6 text-guinness-gold transition-colors duration-300 hover:text-guinness-tan sm:gap-2.5 sm:py-8 lg:gap-2.5 lg:py-8"
+                    >
+                      <span
+                        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-[#312814] bg-guinness-black/35 shadow-[inset_0_1px_0_rgba(212,175,55,0.08)] sm:h-[4.5rem] sm:w-[4.5rem] lg:h-14 lg:w-14"
+                        aria-hidden
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-8 w-8 sm:h-9 sm:w-9"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      </span>
+                      <span className="text-base font-semibold tracking-tight sm:text-lg lg:text-base">
+                        Start analysis
+                      </span>
+                      <span className="type-meta max-w-[17rem] px-2 text-center text-[12px] text-guinness-tan/55 sm:text-[13px] lg:max-w-[15rem] lg:text-xs lg:leading-snug">
+                        Line up the pint and G, hold steady, or upload below.
+                      </span>
+                    </button>
+                  )}
+                  {!isCameraActive ? (
+                    <div className="relative z-10 shrink-0 border-t border-[#312814] bg-guinness-black/30 px-3 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          document.getElementById("file-upload")?.click()
+                        }
+                        className="flex min-h-10 w-full items-center justify-center rounded-lg border border-[#312814] bg-guinness-black/25 px-3 py-2 text-xs font-semibold text-guinness-tan/90 transition-colors duration-300 hover:border-guinness-gold/35 hover:bg-[#312814]/40 hover:text-guinness-cream sm:text-sm"
+                      >
+                        Upload a photo instead
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex justify-center pt-1 max-lg:pt-2 lg:hidden">
+                <BuyCreatorsABeer variant="compact" className="text-xs" />
+              </div>
+
+              <input
+                id="file-upload"
+                type="file"
+                accept="image/*"
+                aria-label="Upload an image"
+                title="Upload an image"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </section>
           </div>
-
-          <button
-            onClick={() => document.getElementById("file-upload")?.click()}
-            className="mt-4 w-3/4 rounded-lg bg-guinness-gold px-4 py-2 font-semibold text-guinness-black transition-colors duration-300 hover:bg-guinness-tan"
-          >
-            Upload an Image
-          </button>
-          <input
-            id="file-upload"
-            type="file"
-            accept="image/*"
-            aria-label="Upload an image"
-            title="Upload an image"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-
-          <div className="type-body-muted mx-auto max-w-[280px] rounded-lg border border-guinness-gold/20 bg-guinness-black/90 px-6 py-3 text-center text-base backdrop-blur-sm md:max-w-md md:text-lg">
-            All Time Total Splits: {totalSplits?.toLocaleString() || "0"}
-          </div>
-
-          <div className="mt-3 flex justify-center">
-            <BuyCreatorsABeer />
-          </div>
-
         </div>
       )}
 
