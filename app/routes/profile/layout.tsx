@@ -882,8 +882,8 @@ export default function ProfileLayout() {
                     <strong className="font-medium text-guinness-tan/75">
                       Local leaderboard
                     </strong>{" "}
-                    lists top pours this week where the pour&apos;s location
-                    matches this country.
+                    lists top pours this week from everyone who chose this same
+                    country on their profile.
                   </p>
                 </div>
                 <button

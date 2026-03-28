@@ -43,15 +43,30 @@ function mapRows(data: unknown): LeaderboardEntry[] {
 
 export const loader: LoaderFunction = async () => {
   const since = weekAgoIso();
-  const { data, error } = await supabase
-    .from("scores")
-    .select(SCORES_LEADERBOARD_COLUMNS)
-    .gte("created_at", since)
-    .order("split_score", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(15);
+  const { data, error } = await supabase.rpc("leaderboard_scores_global", {
+    p_since: since,
+    p_limit: 15,
+  });
 
-  if (error) throw error;
+  if (error) {
+    const hint = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
+    if (
+      error.code === "42883" ||
+      hint.includes("leaderboard_scores_global") ||
+      hint.includes("function")
+    ) {
+      const fb = await supabase
+        .from("scores")
+        .select(SCORES_LEADERBOARD_COLUMNS)
+        .gte("created_at", since)
+        .order("split_score", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(15);
+      if (fb.error) throw fb.error;
+      return { entries: (fb.data ?? []) as LeaderboardEntry[] };
+    }
+    throw error;
+  }
 
   return { entries: (data ?? []) as LeaderboardEntry[] };
 };
@@ -156,7 +171,7 @@ export default function Leaderboard() {
           if (!cancelled) {
             setEntries([]);
             setHint(
-              "Sign in and set your country on Profile to see pours from that country.",
+              "Sign in and set your country on Profile to see top pours from everyone in that country.",
             );
           }
           setLoading(false);
@@ -173,7 +188,7 @@ export default function Leaderboard() {
           if (!cancelled) {
             setEntries([]);
             setHint(
-              "Add your country under Profile — Local shows top pours this week where the pour’s location matches that country.",
+              "Add your country under Profile — Local lists top pours this week from every user who chose the same country.",
             );
           }
           setLoading(false);
@@ -192,7 +207,7 @@ export default function Leaderboard() {
             setEntries([]);
             setHint(
               error.message.includes("function") || error.code === "42883"
-                ? "Run the latest Supabase migration (leaderboard_scores_for_country)."
+                ? "Run migration 20260328330000_leaderboard_local_profile_friends_flags (leaderboard_scores_for_country)."
                 : error.message,
             );
           }
@@ -245,7 +260,7 @@ export default function Leaderboard() {
             setEntries([]);
             setHint(
               error.message.includes("function") || error.code === "42883"
-                ? "Run the latest Supabase migration (leaderboard_scores_for_emails)."
+                ? "Run migration 20260328330000_leaderboard_local_profile_friends_flags (leaderboard_scores_for_emails)."
                 : error.message,
             );
           }
@@ -275,7 +290,7 @@ export default function Leaderboard() {
   const title = useMemo(() => {
     switch (tab) {
       case "local":
-        return "Local pours this week";
+        return "Your country this week";
       case "friends":
         return "Friends & you this week";
       default:
