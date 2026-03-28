@@ -255,7 +255,7 @@ export function CompetitionDateTimeRangeField({
         ref={btnRef}
         type="button"
         className={`${triggerClass} flex items-center justify-between gap-2`}
-        aria-expanded={open}
+        aria-expanded={open ? "true" : "false"}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
       >

@@ -9,6 +9,8 @@ import {
 } from "react-router";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -23,10 +25,7 @@ import {
   pageShellClass,
 } from "~/components/PageHeader";
 import { PubGoogleMapEmbed } from "~/components/pub/PubGoogleMapEmbed";
-import {
-  PubWallTab,
-  type PubWallRow,
-} from "~/components/pub/PubWallTab";
+import type { PubWallRow } from "~/components/pub/PubWallTab";
 import { competitionDetailPath } from "~/utils/competitionPath";
 import { supabase } from "~/utils/supabase";
 import {
@@ -100,6 +99,12 @@ type LinkedCompetition = {
   path_segment?: string | null;
 };
 
+const PUB_WALL_PAGE_LIMIT = 120;
+const PubWallTab = lazy(async () => {
+  const mod = await import("~/components/pub/PubWallTab");
+  return { default: mod.PubWallTab };
+});
+
 function mapsSearchUrl(b: BarStat): string {
   const q = [b.display_name, b.sample_address].filter(Boolean).join(" ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
@@ -130,11 +135,23 @@ export async function loader({ params }: LoaderFunctionArgs) {
     }
   }
 
-  const { data: stat, error: statError } = await supabase
-    .from("bar_pub_stats")
-    .select("*")
+  const statProjection =
+    "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
+  let statQuery = await supabase
+    .from("bar_pub_stats_mv")
+    .select(
+      statProjection,
+    )
     .eq("bar_key", barKey)
     .maybeSingle();
+  if (statQuery.error) {
+    statQuery = await supabase
+      .from("bar_pub_stats")
+      .select(statProjection)
+      .eq("bar_key", barKey)
+      .maybeSingle();
+  }
+  const { data: stat, error: statError } = statQuery;
 
   if (statError || !stat) {
     throw new Response("Not found", { status: 404 });
@@ -142,11 +159,30 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
   const bar = stat as BarStat;
 
+  const nowIso = new Date().toISOString();
+  const [wallRes, extraRes, placeRes, compRes] = await Promise.all([
+    supabase.rpc("pub_wall_scores", {
+      p_bar_key: barKey,
+      p_limit: PUB_WALL_PAGE_LIMIT,
+    }),
+    supabase.rpc("pub_extra_stats_for_bar", { p_bar_key: barKey }),
+    supabase
+      .from("pub_place_details")
+      .select(
+        "bar_key, opening_hours, guinness_info, alcohol_promotions, maps_place_url, google_place_id, updated_at, updated_by",
+      )
+      .eq("bar_key", barKey)
+      .maybeSingle(),
+    supabase
+      .from("competitions")
+      .select("id, title, starts_at, ends_at, path_segment")
+      .eq("linked_bar_key", barKey)
+      .gt("ends_at", nowIso)
+      .order("ends_at", { ascending: true }),
+  ]);
+
   let wallPours: PubWallRow[] = [];
   let wallError: string | null = null;
-  const wallRes = await supabase.rpc("pub_wall_scores", {
-    p_bar_key: barKey,
-  });
   if (wallRes.error) {
     const msg = `${wallRes.error.message ?? ""} ${wallRes.error.code ?? ""}`.toLowerCase();
     if (
@@ -163,10 +199,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     wallPours = (wallRes.data ?? []) as PubWallRow[];
   }
 
-  const { data: extraRows, error: extraError } = await supabase.rpc(
-    "pub_extra_stats_for_bar",
-    { p_bar_key: barKey },
-  );
+  const { data: extraRows, error: extraError } = extraRes;
 
   if (extraError) {
     return {
@@ -200,19 +233,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
     my_pint_spend: numFromDb(rawExtra?.my_pint_spend),
   };
 
-  const { data: placeRow, error: placeErr } = await supabase
-    .from("pub_place_details")
-    .select("*")
-    .eq("bar_key", barKey)
-    .maybeSingle();
-
-  const nowIso = new Date().toISOString();
-  const { data: comps, error: compErr } = await supabase
-    .from("competitions")
-    .select("id, title, starts_at, ends_at, path_segment")
-    .eq("linked_bar_key", barKey)
-    .gt("ends_at", nowIso)
-    .order("ends_at", { ascending: true });
+  const { data: placeRow, error: placeErr } = placeRes;
+  const { data: comps, error: compErr } = compRes;
 
   const placeDetailsTyped = !placeErr
     ? ((placeRow ?? null) as PubPlaceRow | null)
@@ -227,10 +249,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
   if (resolvedPlaceId) {
     const mapsKey = resolveGoogleMapsKeyForServer();
     if (mapsKey) {
-      googleOpeningHoursLines = await fetchPlaceOpeningHoursWeekdayLines(
-        resolvedPlaceId,
-        mapsKey,
-      );
+      googleOpeningHoursLines = await Promise.race([
+        fetchPlaceOpeningHoursWeekdayLines(resolvedPlaceId, mapsKey),
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), 1500);
+        }),
+      ]);
     }
   }
 
@@ -372,35 +396,111 @@ function DirectorySection({
   );
 }
 
+/** Google `weekday_text` lines are typically `Monday: 9:00 AM – 5:00 PM`. */
+function parseWeekdayHoursLine(
+  line: string,
+): { day: string; hours: string } | null {
+  const idx = line.indexOf(":");
+  if (idx <= 0) return null;
+  const day = line.slice(0, idx).trim();
+  const hours = line.slice(idx + 1).trim();
+  if (!day || !hours) return null;
+  return { day, hours };
+}
+
+function weekdayLabelTodayEnUs(): string {
+  return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+    new Date(),
+  );
+}
+
+function isSameWeekdayLabel(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 function PubOpeningHoursReadOnly({
   googleOpeningHoursLines,
 }: {
   googleOpeningHoursLines: string[] | null;
 }) {
+  const todayLabel = weekdayLabelTodayEnUs();
+
   if (googleOpeningHoursLines && googleOpeningHoursLines.length > 0) {
     return (
-      <ul className={`list-none space-y-2 border-t ${pubStroke} pt-3`}>
-        {googleOpeningHoursLines.map((line, i) => (
-          <li
-            key={`${i}-${line}`}
-            className="flex gap-3 text-sm leading-snug text-guinness-cream"
-          >
-            <span
-              className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-guinness-gold/70"
-              aria-hidden
-            />
-            <span>{line}</span>
-          </li>
-        ))}
-      </ul>
+      <div className={`mt-1 border-t ${pubStroke} pt-4`}>
+        <ul
+          className={`list-none overflow-hidden rounded-xl border ${pubStroke} bg-guinness-black/40 shadow-[inset_0_1px_0_rgba(212,175,55,0.04)]`}
+          aria-label="Weekly opening hours"
+        >
+          {googleOpeningHoursLines.map((line, i) => {
+            const parsed = parseWeekdayHoursLine(line);
+            const isToday =
+              parsed != null &&
+              isSameWeekdayLabel(parsed.day, todayLabel);
+            const rowBase = `grid gap-x-4 border-b ${pubStroke} px-3 py-2.5 last:border-b-0 sm:px-4 sm:py-3`;
+            const rowToday =
+              "bg-guinness-gold/[0.07] ring-1 ring-inset ring-guinness-gold/20";
+            return (
+              <li
+                key={`${i}-${line}`}
+                className={
+                  parsed
+                    ? `${rowBase} grid-cols-1 sm:grid-cols-[minmax(5.5rem,1fr)_minmax(0,auto)] sm:items-baseline ${isToday ? rowToday : ""}`
+                    : `${rowBase} ${isToday ? rowToday : ""}`
+                }
+                aria-current={isToday ? "true" : undefined}
+              >
+                {parsed ? (
+                  <>
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span
+                        className={`text-sm font-semibold tracking-tight ${isToday ? "text-guinness-gold" : "text-guinness-tan/88"}`}
+                      >
+                        {parsed.day}
+                      </span>
+                      {isToday ? (
+                        <span className="type-meta shrink-0 rounded-md bg-guinness-gold/15 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-guinness-gold/90">
+                          Today
+                        </span>
+                      ) : null}
+                      <span
+                        className={`basis-full text-sm tabular-nums leading-snug sm:hidden ${isToday ? "text-guinness-cream" : "text-guinness-cream/95"}`}
+                      >
+                        {parsed.hours}
+                      </span>
+                    </div>
+                    <span
+                      className={`hidden text-right text-sm tabular-nums leading-snug sm:block ${isToday ? "text-guinness-cream" : "text-guinness-cream/95"}`}
+                    >
+                      {parsed.hours}
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex gap-3 text-sm leading-snug text-guinness-cream/95">
+                    <span
+                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-guinness-gold/65"
+                      aria-hidden
+                    />
+                    <span>{line}</span>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     );
   }
 
   return (
-    <p className="text-guinness-tan/55">
-      No linked listing hours yet. Add a Google Place ID or use admin import —
-      visitors see hours from the business listing when available.
-    </p>
+    <div
+      className={`mt-1 rounded-xl border border-dashed ${pubStroke} bg-guinness-black/25 px-3 py-4 text-center sm:px-4`}
+    >
+      <p className="type-meta leading-relaxed text-guinness-tan/55">
+        No linked listing hours yet. Add a Google Place ID or use admin import —
+        visitors see hours from the business listing when available.
+      </p>
+    </div>
   );
 }
 
@@ -962,7 +1062,7 @@ export default function PubDetail() {
                       key={id}
                       type="button"
                       role="tab"
-                      aria-selected={pubTab === id}
+                      aria-selected={pubTab === id ? "true" : "false"}
                       className={`min-h-11 w-full min-w-0 rounded-lg px-2 py-2.5 text-center text-xs font-semibold leading-tight transition-colors sm:min-h-12 sm:px-3 sm:text-sm ${
                         pubTab === id
                           ? "bg-guinness-gold text-guinness-black shadow-[0_0_0_1px_rgba(212,175,55,0.35)]"
@@ -1214,7 +1314,7 @@ export default function PubDetail() {
                           type="button"
                           id="pub-admin-merge-disclosure"
                           className="flex w-full min-h-11 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-guinness-black/20 sm:min-h-[3rem] sm:px-5 sm:py-3.5"
-                          aria-expanded={mergeSectionOpen}
+                          aria-expanded={mergeSectionOpen ? "true" : "false"}
                           aria-controls="pub-admin-merge-panel"
                           onClick={() => setMergeSectionOpen((o) => !o)}
                         >
@@ -1352,14 +1452,22 @@ export default function PubDetail() {
                   </h2>
                   <p className="type-meta mb-4 text-guinness-tan/70">
                     Pours tagged with this pub — same filters as the main Wall.
-                    Showing up to 300 most recent.
+                    Showing up to {PUB_WALL_PAGE_LIMIT} most recent.
                   </p>
                   {wallError ? (
                     <p className="type-meta mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100/90">
                       {wallError}
                     </p>
                   ) : null}
-                  <PubWallTab items={wallPours} pubStroke={pubStroke} />
+                  <Suspense
+                    fallback={
+                      <p className="type-meta rounded-lg border border-[#322914] bg-guinness-black/20 px-3 py-2 text-guinness-tan/70">
+                        Loading wall...
+                      </p>
+                    }
+                  >
+                    <PubWallTab items={wallPours} pubStroke={pubStroke} />
+                  </Suspense>
                 </section>
               ) : null}
             </div>

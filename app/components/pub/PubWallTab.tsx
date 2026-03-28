@@ -93,7 +93,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
     const toTs = dateTo ? endOfLocalDay(dateTo) : null;
     const countryWant = countryFilter.trim().toUpperCase();
 
-    let list = items.filter((s) => {
+    const list = items.filter((s) => {
       if (s.split_score < minOk) return false;
       const t = new Date(s.created_at).getTime();
       if (fromTs != null && Number.isFinite(fromTs) && t < fromTs) return false;
@@ -168,7 +168,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
             </span>
             <button
               type="button"
-              aria-expanded={filtersOpen}
+              aria-expanded={filtersOpen ? "true" : "false"}
               onClick={() => setFiltersOpen((o) => !o)}
               className={`rounded-lg border ${pubStroke} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
             >
@@ -263,7 +263,6 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
             <li key={row.id} className="min-w-0">
               <Link
                 to={scorePourPathFromFields(row)}
-                prefetch="intent"
                 viewTransition
                 className={`group block overflow-hidden rounded-lg border ${pubStroke} bg-guinness-brown/30 transition-colors hover:border-guinness-gold/35`}
               >

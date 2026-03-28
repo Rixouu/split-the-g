@@ -136,7 +136,7 @@ export default function Collage() {
     const toTs = dateTo ? endOfLocalDay(dateTo) : null;
     const countryWant = countryFilter.trim().toUpperCase();
 
-    let list = submissions.filter((s) => {
+    const list = submissions.filter((s) => {
       if (Number(s.split_score) < minOk) return false;
       const t = new Date(s.created_at).getTime();
       if (fromTs != null && Number.isFinite(fromTs) && t < fromTs) return false;
@@ -199,7 +199,7 @@ export default function Collage() {
                 </span>
                 <button
                   type="button"
-                  aria-expanded={filtersOpen}
+                  aria-expanded={filtersOpen ? "true" : "false"}
                   onClick={() => setFiltersOpen((o) => !o)}
                   className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
                 >

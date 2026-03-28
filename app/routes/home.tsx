@@ -19,7 +19,6 @@ import { supabase } from "~/utils/supabase";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { getLocationData } from "~/utils/locationService";
 import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
-import * as crypto from "crypto";
 import {
   extractDetectionsFromWorkflow,
   extractWorkflowOutputImageByNames,
@@ -29,7 +28,6 @@ import {
   stripBase64ImagePayload,
   toLegacyScoringOutputs,
 } from "~/utils/roboflowWorkflow";
-import { cropGCloseupBase64 } from "~/utils/gCloseupCrop";
 import { generatePourSlug } from "~/utils/pourSlug";
 import { scorePourPath } from "~/utils/scorePath";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
@@ -75,6 +73,27 @@ const ROBOFLOW_INFERENCE_MODEL =
   import.meta.env.VITE_ROBOFLOW_INFERENCE_MODEL ?? "split-g-label-experiment";
 const ROBOFLOW_INFERENCE_VERSION =
   import.meta.env.VITE_ROBOFLOW_INFERENCE_VERSION ?? "8";
+const INFERENCEJS_CDN_URL =
+  "https://esm.sh/inferencejs@2.10.2?target=es2022";
+
+/** Second argument to `InferenceEngine.infer` (CDN build matches npm typings). */
+type InferenceImageInput = Parameters<RoboflowInferenceEngine["infer"]>[1];
+
+type InferenceJsModule = {
+  InferenceEngine: new () => RoboflowInferenceEngine;
+  CVImage: new (source: HTMLVideoElement) => InferenceImageInput;
+};
+
+let inferenceModulePromise: Promise<InferenceJsModule> | null = null;
+
+async function loadInferenceJsModule(): Promise<InferenceJsModule> {
+  if (!inferenceModulePromise) {
+    inferenceModulePromise = import(
+      /* @vite-ignore */ INFERENCEJS_CDN_URL
+    ) as Promise<InferenceJsModule>;
+  }
+  return inferenceModulePromise;
+}
 
 export async function loader(_args: LoaderFunctionArgs) {
   return {};
@@ -102,7 +121,8 @@ export async function action({ request }: ActionFunctionArgs) {
       ? competitionRaw.trim()
       : "";
   const username = generateBeerUsername();
-  const sessionId = crypto.randomUUID();
+  const { randomUUID } = await import("node:crypto");
+  const sessionId = randomUUID();
 
   // Prioritize Fly.io headers since we're using Fly hosting
   const clientIP =
@@ -189,6 +209,7 @@ export async function action({ request }: ActionFunctionArgs) {
       pintImage = stripBase64ImagePayload(pintVisualization);
 
       try {
+        const { cropGCloseupBase64 } = await import("~/utils/gCloseupCrop");
         gCloseupBase64 = await cropGCloseupBase64(
           imagePayload,
           extracted.predictions,
@@ -259,6 +280,7 @@ export async function action({ request }: ActionFunctionArgs) {
       splitScore = calculateScore(result.outputs[0]);
 
       try {
+        const { cropGCloseupBase64 } = await import("~/utils/gCloseupCrop");
         gCloseupBase64 = await cropGCloseupBase64(imagePayload, pintPredictions);
       } catch (cropErr) {
         console.error("G close-up crop failed:", cropErr);
@@ -409,10 +431,20 @@ export default function Home() {
     if (inferEngine) return;
 
     let cancelled = false;
-    void import("inferencejs").then(({ InferenceEngine }) => {
-      if (cancelled) return;
-      setInferEngine(new InferenceEngine());
-    });
+    void loadInferenceJsModule()
+      .then(({ InferenceEngine }) => {
+        if (cancelled) return;
+        setInferEngine(new InferenceEngine());
+      })
+      .catch((err) => {
+        console.error("Could not load inference module:", err);
+        if (cancelled) return;
+        setHomeToast({
+          message:
+            "Live camera guidance is temporarily unavailable. You can still upload a photo.",
+          variant: "warning",
+        });
+      });
 
     return () => {
       cancelled = true;
@@ -510,7 +542,7 @@ export default function Home() {
   }, [isCameraActive, stopCameraTracks]);
 
   // Add new state for tracking detections
-  const [consecutiveDetections, setConsecutiveDetections] = useState(0);
+  const [, setConsecutiveDetections] = useState(0);
   const [feedbackMessage, setFeedbackMessage] = useState(
     "Show your pint glass"
   );
@@ -537,86 +569,90 @@ export default function Home() {
     let intervalId: ReturnType<typeof setInterval> | undefined;
     let cancelled = false;
 
-    void import("inferencejs").then(({ CVImage }) => {
-      if (cancelled) return;
+    void loadInferenceJsModule()
+      .then(({ CVImage }) => {
+        if (cancelled) return;
 
-      const detectFrame = async () => {
-        if (!modelWorkerId || !videoRef.current) return;
+        const detectFrame = async () => {
+          if (!modelWorkerId || !videoRef.current) return;
 
-        try {
-          const img = new CVImage(videoRef.current);
-          const predictions: InferencePrediction[] = await inferEngine.infer(
-            modelWorkerId,
-            img,
-          );
+          try {
+            const img = new CVImage(videoRef.current);
+            const predictions: InferencePrediction[] = await inferEngine.infer(
+              modelWorkerId,
+              img,
+            );
 
-          const hasGlass = predictions.some(
-            (pred: InferencePrediction) => pred.class === "glass",
-          );
-          const hasG = predictions.some(
-            (pred: InferencePrediction) => pred.class === "G",
-          );
+            const hasGlass = predictions.some(
+              (pred: InferencePrediction) => pred.class === "glass",
+            );
+            const hasG = predictions.some(
+              (pred: InferencePrediction) => pred.class === "G",
+            );
 
-          if (hasGlass && hasG) {
-            setConsecutiveDetections((prev) => {
-              if (prev >= 4) return prev;
-              const next = prev + 1;
-              if (next === 4) {
-                setFeedbackMessage("Perfect! Processing your pour...");
-                setIsProcessing(true);
-                setIsSubmitting(true);
+            if (hasGlass && hasG) {
+              setConsecutiveDetections((prev) => {
+                if (prev >= 4) return prev;
+                const next = prev + 1;
+                if (next === 4) {
+                  setFeedbackMessage("Perfect! Processing your pour...");
+                  setIsProcessing(true);
+                  setIsSubmitting(true);
 
-                const vid = videoRef.current;
-                const canvas = canvasRef.current;
-                if (vid && canvas) {
-                  const context = canvas.getContext("2d");
-                  canvas.width = vid.videoWidth;
-                  canvas.height = vid.videoHeight;
-                  context?.drawImage(vid, 0, 0, canvas.width, canvas.height);
+                  const vid = videoRef.current;
+                  const canvas = canvasRef.current;
+                  if (vid && canvas) {
+                    const context = canvas.getContext("2d");
+                    canvas.width = vid.videoWidth;
+                    canvas.height = vid.videoHeight;
+                    context?.drawImage(vid, 0, 0, canvas.width, canvas.height);
 
-                  const imageData = canvas.toDataURL("image/jpeg");
-                  const base64Image = imageData.replace(
-                    /^data:image\/\w+;base64,/,
-                    "",
-                  );
+                    const imageData = canvas.toDataURL("image/jpeg");
+                    const base64Image = imageData.replace(
+                      /^data:image\/\w+;base64,/,
+                      "",
+                    );
 
-                  stopCameraTracks();
-                  setIsCameraActive(false);
+                    stopCameraTracks();
+                    setIsCameraActive(false);
 
-                  const formData = new FormData();
-                  formData.append("image", base64Image);
-                  if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
-                    formData.append("competition", competitionIdParam);
+                    const formData = new FormData();
+                    formData.append("image", base64Image);
+                    if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
+                      formData.append("competition", competitionIdParam);
+                    }
+
+                    submit(formData, {
+                      method: "post",
+                      action: "/?index",
+                      encType: "multipart/form-data",
+                    });
                   }
-
-                  submit(formData, {
-                    method: "post",
-                    action: "/?index",
-                    encType: "multipart/form-data",
-                  });
+                } else if (next >= 2) {
+                  setFeedbackMessage("Hold still...");
+                } else {
+                  setFeedbackMessage("Keep the glass centered...");
                 }
-              } else if (next >= 2) {
-                setFeedbackMessage("Hold still...");
-              } else {
-                setFeedbackMessage("Keep the glass centered...");
+                return next;
+              });
+            } else {
+              setConsecutiveDetections(0);
+              if (!hasGlass) {
+                setFeedbackMessage("Show your pint glass");
+              } else if (!hasG) {
+                setFeedbackMessage("Make sure the G pattern is visible");
               }
-              return next;
-            });
-          } else {
-            setConsecutiveDetections(0);
-            if (!hasGlass) {
-              setFeedbackMessage("Show your pint glass");
-            } else if (!hasG) {
-              setFeedbackMessage("Make sure the G pattern is visible");
             }
+          } catch (error) {
+            console.error("Detection error:", error);
           }
-        } catch (error) {
-          console.error("Detection error:", error);
-        }
-      };
+        };
 
-      intervalId = setInterval(detectFrame, 500);
-    });
+        intervalId = setInterval(detectFrame, 500);
+      })
+      .catch((err) => {
+        console.error("Could not load inference module:", err);
+      });
 
     return () => {
       cancelled = true;
@@ -861,7 +897,7 @@ export default function Home() {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-2 border-b border-[#312814]/45 px-3 py-2.5 text-left transition-colors hover:bg-guinness-black/20 lg:hidden"
-                  aria-expanded={howItWorksOpen}
+                  aria-expanded={howItWorksOpen ? "true" : "false"}
                   onClick={() => setHowItWorksOpen((o) => !o)}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-guinness-tan/50">

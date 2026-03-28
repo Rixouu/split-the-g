@@ -161,22 +161,25 @@ export function SegmentedTabs({
       {items.map((item, index) => {
         const isActive = item.value === value;
         const tabId = tabIdPrefix ? `${tabIdPrefix}-${item.value}` : undefined;
+        const cellEqual = variant === "rowEqual" ? "flex-1 basis-0" : "";
         return (
           <div
             key={item.value}
             ref={(el) => assignCellRef(cellRefs, index, el)}
-            className="relative z-[1] min-w-0"
+            className={`relative z-[1] min-w-0 ${cellEqual}`.trim()}
           >
             <button
               type="button"
               role={role === "tablist" ? "tab" : undefined}
               id={tabId}
-              aria-selected={role === "tablist" ? isActive : undefined}
+              aria-selected={
+                role === "tablist" ? (isActive ? "true" : "false") : undefined
+              }
               aria-controls={
                 role === "tablist" ? item.panelId ?? panelId : undefined
               }
               onClick={() => onValueChange(item.value)}
-              className={`${shell} ${triggerTextClass(isActive)} outline-none ring-guinness-gold/40 focus-visible:ring-2`}
+              className={`${shell} ${variant === "rowEqual" ? "w-full" : ""} ${triggerTextClass(isActive)} outline-none ring-guinness-gold/40 focus-visible:ring-2`.trim()}
             >
               {item.label}
             </button>
@@ -240,25 +243,28 @@ export function SegmentedTabsNav({
             : undefined
         }
       />
-      {items.map((item, index) => (
-        <div
-          key={item.value}
-          ref={(el) => assignCellRef(cellRefs, index, el)}
-          className="relative z-[1] min-w-0"
-        >
-          <NavLink
-            to={item.to}
-            end={item.end}
-            prefetch="intent"
-            viewTransition
-            className={({ isActive }) =>
-              `${shell} block w-full ${triggerTextClass(isActive)} outline-none ring-guinness-gold/40 focus-visible:ring-2`
-            }
+      {items.map((item, index) => {
+        const cellEqual = variant === "rowEqual" ? "flex-1 basis-0" : "";
+        return (
+          <div
+            key={item.value}
+            ref={(el) => assignCellRef(cellRefs, index, el)}
+            className={`relative z-[1] min-w-0 ${cellEqual}`.trim()}
           >
-            {item.label}
-          </NavLink>
-        </div>
-      ))}
+            <NavLink
+              to={item.to}
+              end={item.end}
+              prefetch="intent"
+              viewTransition
+              className={({ isActive }) =>
+                `${shell} block w-full ${triggerTextClass(isActive)} outline-none ring-guinness-gold/40 focus-visible:ring-2`
+              }
+            >
+              {item.label}
+            </NavLink>
+          </div>
+        );
+      })}
     </nav>
   );
 }

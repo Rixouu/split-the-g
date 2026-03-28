@@ -20,7 +20,14 @@ import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 import { CompetitionDateTimeRangeField } from "~/components/competitions/CompetitionDateTimeRangeField";
 import { CompetitionLocationField } from "~/components/competitions/CompetitionLocationField";
+import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { competitionDetailPath } from "~/utils/competitionPath";
+import {
+  buildLeaderboard,
+  COMPETITION_SCORE_LIMIT,
+  COMPETITION_SCORES_SELECT,
+  type CompetitionScoreJoin,
+} from "~/utils/competitionLeaderboard";
 import { supabase } from "~/utils/supabase";
 
 export type CompetitionRow = {
@@ -81,9 +88,11 @@ function isPrivate(c: CompetitionRow): boolean {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
+  const competitionSelect =
+    "id, title, created_by, max_participants, glasses_per_person, starts_at, ends_at, win_rule, target_score, created_at, visibility, location_name, location_address, linked_bar_key, path_segment";
   const { data, error } = await supabase
     .from("competitions")
-    .select("*")
+    .select(competitionSelect)
     .order("created_at", { ascending: false })
     .limit(40);
 
@@ -183,6 +192,16 @@ export default function Competitions() {
     { competition_id: string; title: string }[]
   >([]);
   const [barLinkOptions, setBarLinkOptions] = useState<BarLinkOption[]>([]);
+  const [listingsTab, setListingsTab] = useState<"open" | "past">("open");
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [pastWinnerByCompId, setPastWinnerByCompId] = useState<
+    Record<string, string | null>
+  >({});
+
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     setCounts(loaderCounts);
@@ -197,7 +216,7 @@ export default function Competitions() {
       .then(({ data }) => {
         setBarLinkOptions((data ?? []) as BarLinkOption[]);
       });
-  }, [revalidator.state]);
+  }, []);
 
   const mergedCompetitions = useMemo(() => {
     if (!userId || !clientComps) return competitions;
@@ -209,6 +228,51 @@ export default function Competitions() {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
   }, [competitions, clientComps, userId]);
+
+  const { openCompetitions, pastCompetitions } = useMemo(() => {
+    const open: CompetitionRow[] = [];
+    const past: CompetitionRow[] = [];
+    for (const c of mergedCompetitions) {
+      if (new Date(c.ends_at).getTime() > nowMs) open.push(c);
+      else past.push(c);
+    }
+    return { openCompetitions: open, pastCompetitions: past };
+  }, [mergedCompetitions, nowMs]);
+
+  const visibleCompetitions =
+    listingsTab === "open" ? openCompetitions : pastCompetitions;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (pastCompetitions.length === 0) {
+      setPastWinnerByCompId({});
+      return;
+    }
+    void (async () => {
+      const entries = await Promise.all(
+        pastCompetitions.map(async (c) => {
+          const { data } = await supabase
+            .from("competition_scores")
+            .select(COMPETITION_SCORES_SELECT)
+            .eq("competition_id", c.id)
+            .order("created_at", { ascending: false })
+            .limit(COMPETITION_SCORE_LIMIT);
+          const rows = (data ?? []) as CompetitionScoreJoin[];
+          const target =
+            c.target_score != null ? Number(c.target_score) : null;
+          const ranked = buildLeaderboard(rows, c.win_rule, target);
+          const winner = ranked[0]?.username ?? null;
+          return [c.id, winner] as const;
+        }),
+      );
+      if (!cancelled) {
+        setPastWinnerByCompId(Object.fromEntries(entries));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pastCompetitions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,11 +296,17 @@ export default function Competitions() {
       if (cancelled) return;
       setJoinedIds(new Set((rows ?? []).map((r) => r.competition_id as string)));
 
+      const joinedCompIds = (rows ?? []).map((r) => r.competition_id as string);
+      if (joinedCompIds.length === 0) {
+        setClientComps(null);
+        return;
+      }
       const { data: comps } = await supabase
         .from("competitions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(60);
+        .select(
+          "id, title, created_by, max_participants, glasses_per_person, starts_at, ends_at, win_rule, target_score, created_at, visibility, location_name, location_address, linked_bar_key, path_segment",
+        )
+        .in("id", joinedCompIds);
       if (cancelled) return;
       setClientComps((comps ?? []) as CompetitionRow[]);
     }
@@ -249,12 +319,15 @@ export default function Competitions() {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
-  }, [revalidator.state]);
+  }, []);
 
   useEffect(() => {
     const list = mergedCompetitions;
     if (list.length === 0) return;
-    const ids = list.map((c) => c.id);
+    const ids = list
+      .map((c) => c.id)
+      .filter((id) => loaderCounts[id] == null);
+    if (ids.length === 0) return;
     void supabase
       .from("competition_participants")
       .select("competition_id")
@@ -265,9 +338,9 @@ export default function Competitions() {
           const id = r.competition_id as string;
           m[id] = (m[id] ?? 0) + 1;
         }
-        setCounts(m);
+        setCounts((prev) => ({ ...prev, ...m }));
       });
-  }, [mergedCompetitions]);
+  }, [mergedCompetitions, loaderCounts]);
 
   useEffect(() => {
     if (!userId) {
@@ -311,7 +384,7 @@ export default function Competitions() {
         }
         setInvitesByComp(m);
       });
-  }, [userId, mergedCompetitions, revalidator.state]);
+  }, [userId, mergedCompetitions]);
 
   useEffect(() => {
     if (!userId || !userEmail) {
@@ -321,16 +394,14 @@ export default function Competitions() {
     const norm = userEmail.trim().toLowerCase();
     void supabase
       .from("competition_invites")
-      .select("competition_id, invited_email")
+      .select("competition_id")
+      .eq("invited_email", norm)
       .then(async ({ data: inv }) => {
-        const mine = (inv ?? []).filter(
-          (r) => String(r.invited_email).trim().toLowerCase() === norm,
-        );
-        if (mine.length === 0) {
+        if (!inv || inv.length === 0) {
           setInvitedTitles([]);
           return;
         }
-        const ids = [...new Set(mine.map((r) => r.competition_id as string))];
+        const ids = [...new Set(inv.map((r) => r.competition_id as string))];
         const { data: comps } = await supabase
           .from("competitions")
           .select("id, title")
@@ -342,7 +413,7 @@ export default function Competitions() {
           })),
         );
       });
-  }, [userId, userEmail, revalidator.state]);
+  }, [userId, userEmail]);
 
   function beginEdit(c: CompetitionRow) {
     setEditing(c);
@@ -910,7 +981,7 @@ export default function Competitions() {
               <h2 className="type-card-title">New competition</h2>
               <button
                 type="button"
-                aria-expanded={createFormOpen}
+                aria-expanded={createFormOpen ? "true" : "false"}
                 onClick={() => setCreateFormOpen((o) => !o)}
                 className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
               >
@@ -1073,15 +1144,29 @@ export default function Competitions() {
           <section className="rounded-2xl border border-guinness-gold/15 bg-guinness-brown/20 p-5 sm:p-6">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
-                <h2 className="type-card-title">Open listings</h2>
+                <h2 className="type-card-title">Your competitions</h2>
                 <p className="type-meta mt-1 max-w-2xl text-guinness-tan/75">
                   {competitionsOpenListingsDescription}
                 </p>
               </div>
               <p className="type-meta shrink-0 text-guinness-tan/60">
-                {mergedCompetitions.length} active listing(s)
+                {openCompetitions.length} open · {pastCompetitions.length} past
               </p>
             </div>
+
+            <SegmentedTabs
+              className="mb-5 w-full"
+              layoutClassName="flex w-full"
+              variant="rowEqual"
+              aria-label="Competition list scope"
+              value={listingsTab}
+              onValueChange={(v) => setListingsTab(v === "past" ? "past" : "open")}
+              items={[
+                { value: "open", label: "Open" },
+                { value: "past", label: "Past" },
+              ]}
+            />
+
             {listError ? (
               <p className="type-meta rounded-lg border border-guinness-gold/20 bg-guinness-brown/30 p-4 text-guinness-tan/80">
                 Could not load competitions. Apply Supabase migrations including{" "}
@@ -1094,20 +1179,38 @@ export default function Competitions() {
               <p className="type-meta text-guinness-tan/70">
                 No competitions yet. Create one on the left.
               </p>
+            ) : visibleCompetitions.length === 0 ? (
+              <p className="type-meta text-guinness-tan/70">
+                {listingsTab === "open"
+                  ? "No open or upcoming competitions. Check Past for finished ones."
+                  : "No past competitions yet."}
+              </p>
             ) : (
               <ul className="space-y-3">
-                {mergedCompetitions.map((c) => {
+                {visibleCompetitions.map((c) => {
                   const count = counts[c.id] ?? 0;
                   const isOwner = userId === c.created_by;
                   const isJoined = joinedIds.has(c.id);
+                  const isPastTab = listingsTab === "past";
                   const full = count >= c.max_participants;
                   const priv = isPrivate(c);
                   const invites = invitesByComp[c.id] ?? [];
+                  const rawWinner = pastWinnerByCompId[c.id];
+                  const winnerLine =
+                    rawWinner === undefined
+                      ? "—"
+                      : rawWinner === null
+                        ? "No pours logged"
+                        : rawWinner;
 
                   return (
                     <li
                       key={c.id}
-                      className="overflow-hidden rounded-2xl border border-guinness-gold/15 bg-guinness-brown/35"
+                      className={`overflow-hidden rounded-2xl border bg-guinness-brown/35 ${
+                        isPastTab
+                          ? "border-amber-500/20"
+                          : "border-guinness-gold/15"
+                      }`}
                     >
                       <div className="flex flex-col gap-4 p-4 sm:p-5">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -1116,9 +1219,20 @@ export default function Competitions() {
                               <h3 className="text-lg font-semibold text-guinness-cream">
                                 {c.title}
                               </h3>
+                              {isPastTab ? (
+                                <span className="rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200/95">
+                                  Ended
+                                </span>
+                              ) : null}
                               {isJoined ? (
-                                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200/95">
-                                  You&apos;re in
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                                    isPastTab
+                                      ? "border-guinness-tan/30 bg-guinness-black/40 text-guinness-tan/85"
+                                      : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200/95"
+                                  }`}
+                                >
+                                  {isPastTab ? "You participated" : "You&apos;re in"}
                                 </span>
                               ) : null}
                               <span
@@ -1135,6 +1249,14 @@ export default function Competitions() {
                               {new Date(c.starts_at).toLocaleString()} →{" "}
                               {new Date(c.ends_at).toLocaleString()}
                             </p>
+                            {isPastTab ? (
+                              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-guinness-gold">
+                                <span className="type-meta font-bold uppercase tracking-wide text-amber-200/90">
+                                  Winner
+                                </span>
+                                <span className="text-guinness-cream">{winnerLine}</span>
+                              </p>
+                            ) : null}
                           </div>
 
                           <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[20rem] sm:flex-row sm:flex-wrap sm:justify-end">
@@ -1171,6 +1293,10 @@ export default function Competitions() {
                                 >
                                   Leave
                                 </button>
+                              ) : isPastTab ? (
+                                <span className="type-meta w-full py-2 text-center text-guinness-tan/50 sm:text-right">
+                                  Closed
+                                </span>
                               ) : (
                                 <button
                                   type="button"
@@ -1181,7 +1307,7 @@ export default function Competitions() {
                                   {full ? "Full" : "Join"}
                                 </button>
                               )
-                            ) : (
+                            ) : isPastTab ? null : (
                               <p className="type-meta w-full text-center text-guinness-tan/55 sm:text-left">
                                 Sign in to join.
                               </p>
@@ -1223,101 +1349,111 @@ export default function Competitions() {
                         </div>
                       </div>
 
-                      {isOwner ? (
-                        <div className="space-y-3 border-t border-guinness-gold/10 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-                          <div className="space-y-1">
-                            <p className="type-label text-guinness-tan/80">
-                              Invite by email
-                            </p>
-                            <p className="type-meta text-guinness-tan/60">
-                              If they sign up later with this email, they&apos;ll see the
-                              invite and can join manually. This does not auto-add them as
-                              a friend or auto-join them.
-                            </p>
-                          </div>
-                          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
-                            <input
-                              type="email"
-                              value={inviteInputs[c.id] ?? ""}
-                              onChange={(e) =>
-                                setInviteInputs((prev) => ({
-                                  ...prev,
-                                  [c.id]: e.target.value,
-                                }))
-                              }
-                              placeholder="friend@email.com"
-                              className={fieldClass}
-                            />
-                            <button
-                              type="button"
-                              disabled={inviteBusy === c.id}
-                              onClick={() => void addEmailInvite(c.id)}
-                              className="min-h-11 rounded-lg bg-guinness-gold/20 px-4 py-2 text-xs font-semibold text-guinness-gold hover:bg-guinness-gold/30 disabled:opacity-50 lg:min-w-[8.5rem]"
-                            >
-                              Send invite
-                            </button>
-                          </div>
-                          {invites.length > 0 ? (
-                            <ul className="space-y-1 text-xs text-guinness-tan/70">
-                              {invites.map((inv) => (
-                                <li
-                                  key={inv.id}
-                                  className="flex items-center justify-between gap-2"
-                                >
-                                  <span>{inv.invited_email}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      void removeInvite(c.id, inv.id)
-                                    }
-                                    className="text-red-400/90 hover:underline"
-                                  >
-                                    Remove
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-
-                          {myFriends.length > 0 ? (
+                      {isOwner && !isPastTab ? (
+                        <details className="group border-t border-guinness-gold/10 bg-guinness-black/20">
+                          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/30 sm:px-5 [&::-webkit-details-marker]:hidden">
+                            <span className="flex items-center justify-between gap-2">
+                              <span>Invites &amp; friends</span>
+                              <span className="text-guinness-tan/50 transition-transform group-open:rotate-180">
+                                ⌄
+                              </span>
+                            </span>
+                          </summary>
+                          <div className="space-y-4 border-t border-guinness-gold/10 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
                             <div>
-                              <p className="type-label mb-2 text-guinness-tan/80">
-                                Invite accepted friends
+                              <p className="type-label text-guinness-tan/85">
+                                Invite by email
                               </p>
-                              <p className="type-meta mb-3 text-guinness-tan/60">
-                                Friends must already be accepted in Profile before you can
-                                add them straight into a competition.
+                              <p className="type-meta mt-1 text-guinness-tan/60">
+                                They can join manually after signing up with that email. This
+                                does not add them as a friend or auto-join them.
                               </p>
-                              <ul className="grid gap-2 sm:grid-cols-2">
-                                {myFriends.map((f) => (
-                                  <li
-                                    key={f.friend_user_id}
-                                    className="flex items-center justify-between gap-2 rounded-lg bg-guinness-black/30 px-3 py-2 text-sm"
-                                  >
-                                    <span className="truncate text-guinness-cream">
-                                      {f.peer_email ||
-                                        f.friend_user_id.slice(0, 8) + "…"}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void addFriendParticipant(
-                                          c.id,
-                                          f.friend_user_id,
-                                        )
-                                      }
-                                      className={outlineBtn}
+                              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch">
+                                <input
+                                  type="email"
+                                  value={inviteInputs[c.id] ?? ""}
+                                  onChange={(e) =>
+                                    setInviteInputs((prev) => ({
+                                      ...prev,
+                                      [c.id]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="friend@email.com"
+                                  className={fieldClass}
+                                />
+                                <button
+                                  type="button"
+                                  disabled={inviteBusy === c.id}
+                                  onClick={() => void addEmailInvite(c.id)}
+                                  className="min-h-11 rounded-lg bg-guinness-gold/20 px-4 py-2 text-xs font-semibold text-guinness-gold hover:bg-guinness-gold/30 disabled:opacity-50 sm:min-w-[8.5rem]"
+                                >
+                                  Send invite
+                                </button>
+                              </div>
+                              {invites.length > 0 ? (
+                                <ul className="mt-3 space-y-2 rounded-lg border border-guinness-gold/10 bg-guinness-black/25 px-3 py-2 text-xs text-guinness-tan/80">
+                                  {invites.map((inv) => (
+                                    <li
+                                      key={inv.id}
+                                      className="flex items-center justify-between gap-2 py-0.5"
                                     >
-                                      Add to comp
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
+                                      <span className="min-w-0 truncate">
+                                        {inv.invited_email}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void removeInvite(c.id, inv.id)
+                                        }
+                                        className="shrink-0 text-red-400/90 hover:underline"
+                                      >
+                                        Remove
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
                             </div>
-                          ) : null}
-                        </div>
-                      ) : null}
 
+                            {myFriends.length > 0 ? (
+                              <div className="border-t border-guinness-gold/10 pt-4">
+                                <p className="type-label text-guinness-tan/85">
+                                  Add accepted friends
+                                </p>
+                                <p className="type-meta mt-1 text-guinness-tan/60">
+                                  Friends must be accepted in Profile first; then you can add
+                                  them here.
+                                </p>
+                                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                                  {myFriends.map((f) => (
+                                    <li
+                                      key={f.friend_user_id}
+                                      className="flex flex-col gap-2 rounded-lg border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                      <span className="min-w-0 truncate text-sm text-guinness-cream">
+                                        {f.peer_email ||
+                                          f.friend_user_id.slice(0, 8) + "…"}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void addFriendParticipant(
+                                            c.id,
+                                            f.friend_user_id,
+                                          )
+                                        }
+                                        className={`${outlineBtn} shrink-0 self-start sm:self-auto`}
+                                      >
+                                        Add to comp
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                          </div>
+                        </details>
+                      ) : null}
                     </li>
                   );
                 })}

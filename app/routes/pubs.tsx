@@ -189,20 +189,35 @@ function StatPill({ icon, children }: { icon: ReactNode; children: ReactNode }) 
 const selectFieldClass = `w-full min-h-11 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none`;
 
 export async function loader(_args: LoaderFunctionArgs) {
+  const projection =
+    "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
+  const mv = await supabase
+    .from("bar_pub_stats_mv")
+    .select(projection)
+    .order("rating_count", { ascending: false })
+    .limit(120);
+  if (!mv.error) {
+    return { bars: (mv.data ?? []) as BarStat[], source: "view" as const };
+  }
+
   const { data, error } = await supabase
     .from("bar_pub_stats")
-    .select("*")
+    .select(
+      projection,
+    )
     .order("rating_count", { ascending: false })
     .limit(120);
 
-  if (!error && data && data.length > 0) {
-    return { bars: data as BarStat[], source: "view" as const };
+  if (!error) {
+    return { bars: (data ?? []) as BarStat[], source: "view" as const };
   }
 
   const { data: scores, error: scoresError } = await supabase
     .from("scores")
     .select("bar_name, bar_address, pour_rating, google_place_id")
-    .not("bar_name", "is", null);
+    .not("bar_name", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(5000);
 
   if (scoresError) throw scoresError;
 
@@ -373,7 +388,7 @@ export default function Pubs() {
               </span>
               <button
                 type="button"
-                aria-expanded={filtersOpen}
+                aria-expanded={filtersOpen ? "true" : "false"}
                 onClick={() => setFiltersOpen((o) => !o)}
                 className={`rounded-lg border ${PUB_LIST_STROKE} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
               >

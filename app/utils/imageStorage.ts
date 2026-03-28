@@ -28,7 +28,7 @@ export async function uploadImage(base64Data: string, folder: string): Promise<s
 
   const filename = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
 
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('split-g-images')
     .upload(filename, blob, {
       contentType,

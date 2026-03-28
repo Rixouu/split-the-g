@@ -3,7 +3,6 @@ import {
   redirect,
   useLoaderData,
   useParams,
-  useRevalidator,
 } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { format } from "date-fns";
@@ -20,12 +19,19 @@ import {
   toastAutoCloseForVariant,
 } from "~/components/branded/feedback-variant";
 import { supabase } from "~/utils/supabase";
-import { scorePourPathFromFields } from "~/utils/scorePath";
 import { isCompetitionUuidParam } from "~/utils/competitionPath";
 import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import type { CompetitionRow } from "~/routes/competitions";
+import {
+  buildLeaderboard,
+  COMPETITION_SCORE_LIMIT,
+  COMPETITION_SCORES_SELECT,
+  unwrapScore,
+  type CompetitionScoreJoin,
+  type RankedRow,
+} from "~/utils/competitionLeaderboard";
 
 type WinRule = CompetitionRow["win_rule"];
 
@@ -33,37 +39,11 @@ function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-type ScoreSnippet = {
-  id: string;
-  slug?: string | null;
-  username: string | null;
-  split_score: number;
-  created_at: string;
-  email?: string | null;
-  country_code?: string | null;
-  split_image_url?: string | null;
-};
-
 type ParticipantProfilePick = {
   nickname?: string | null;
   display_name?: string | null;
   country_code?: string | null;
 };
-
-type CompetitionScoreJoin = {
-  id: string;
-  user_id: string | null;
-  score_id: string;
-  created_at: string;
-  scores: ScoreSnippet | ScoreSnippet[] | null;
-};
-
-function unwrapScore(
-  s: ScoreSnippet | ScoreSnippet[] | null | undefined,
-): ScoreSnippet | null {
-  if (!s) return null;
-  return Array.isArray(s) ? s[0] ?? null : s;
-}
 
 function winRuleLabel(rule: string): string {
   switch (rule) {
@@ -91,28 +71,6 @@ function formatDuration(ms: number): string {
   if (s > 0 || parts.length === 0) parts.push(`${s}s`);
   return parts.join(" ");
 }
-
-type PourEntry = {
-  value: number;
-  at: number;
-  scoreId: string;
-  slug: string | null;
-  countryCode: string | null;
-  createdAt: string;
-  splitImageUrl: string | null;
-};
-
-type RankedRow = {
-  rank: number;
-  userId: string;
-  username: string;
-  metric: string;
-  detail: string;
-  pourPath: string;
-  countryCode: string | null;
-  representativeCreatedAt: string;
-  splitImageUrl: string | null;
-};
 
 function competitionLeaderboardSecondaryMeta(
   r: RankedRow,
@@ -166,197 +124,20 @@ function CompetitionLeaderboardScoreAside({
   );
 }
 
-function pickRepresentativePour(pours: PourEntry[]): PourEntry {
-  let best = pours[0];
-  for (const p of pours) {
-    if (
-      p.value > best.value ||
-      (p.value === best.value && p.at < best.at)
-    ) {
-      best = p;
-    }
-  }
-  return best;
-}
-
-function buildLeaderboard(
-  rows: CompetitionScoreJoin[],
-  winRule: WinRule,
-  targetScore: number | null,
-): RankedRow[] {
-  type Agg = {
-    userId: string;
-    username: string;
-    pours: PourEntry[];
-  };
-  const map = new Map<string, Agg>();
-
-  for (const row of rows) {
-    const scoreRow = unwrapScore(row.scores);
-    if (!scoreRow) continue;
-    const uid = row.user_id ?? "";
-    if (!uid) continue;
-    const prev = map.get(uid);
-    const username = scoreRow.username?.trim() || "Player";
-    const value = Number(scoreRow.split_score);
-    const at = new Date(scoreRow.created_at).getTime();
-    const cc = scoreRow.country_code?.trim().toUpperCase() ?? null;
-    const pour: PourEntry = {
-      value,
-      at,
-      scoreId: row.score_id,
-      slug: scoreRow.slug ?? null,
-      countryCode: cc && /^[A-Z]{2}$/.test(cc) ? cc : null,
-      createdAt: scoreRow.created_at,
-      splitImageUrl: scoreRow.split_image_url?.trim() || null,
-    };
-    if (!prev) {
-      map.set(uid, {
-        userId: uid,
-        username,
-        pours: [pour],
-      });
-    } else {
-      prev.pours.push(pour);
-    }
-  }
-
-  const list = [...map.values()];
-
-  if (winRule === "most_submissions") {
-    return list
-      .map((a) => {
-        const bestVal = Math.max(...a.pours.map((x) => x.value));
-        const linkPour = pickRepresentativePour(a.pours);
-        return {
-          userId: a.userId,
-          username: a.username,
-          sortKey: a.pours.length,
-          tie: bestVal,
-          metric: `${a.pours.length} pour(s)`,
-          detail: `Best ${bestVal.toFixed(2)} / 5`,
-          pourPath: scorePourPathFromFields({
-            id: linkPour.scoreId,
-            slug: linkPour.slug,
-          }),
-          countryCode: linkPour.countryCode,
-          representativeCreatedAt: linkPour.createdAt,
-          splitImageUrl: linkPour.splitImageUrl,
-        };
-      })
-      .sort((x, y) =>
-        y.sortKey !== x.sortKey
-          ? y.sortKey - x.sortKey
-          : y.tie !== x.tie
-            ? y.tie - x.tie
-            : x.username.localeCompare(y.username),
-      )
-      .map((r, i) => ({
-        rank: i + 1,
-        userId: r.userId,
-        username: r.username,
-        metric: r.metric,
-        detail: r.detail,
-        pourPath: r.pourPath,
-        countryCode: r.countryCode,
-        representativeCreatedAt: r.representativeCreatedAt,
-        splitImageUrl: r.splitImageUrl,
-      }));
-  }
-
-  if (winRule === "closest_to_target" && targetScore != null && Number.isFinite(targetScore)) {
-    return list
-      .map((a) => {
-        let bestDist = Infinity;
-        let bestScore = 0;
-        let bestAt = Infinity;
-        let linkPour = a.pours[0];
-        for (const s of a.pours) {
-          const d = Math.abs(s.value - targetScore);
-          if (
-            d < bestDist ||
-            (d === bestDist && s.value > bestScore) ||
-            (d === bestDist && s.value === bestScore && s.at < bestAt)
-          ) {
-            bestDist = d;
-            bestScore = s.value;
-            bestAt = s.at;
-            linkPour = s;
-          }
-        }
-        return {
-          userId: a.userId,
-          username: a.username,
-          sortKey: bestDist,
-          tie: -bestScore,
-          tie2: bestAt,
-          metric: `Δ ${bestDist.toFixed(2)} from ${targetScore.toFixed(2)}`,
-          detail: `Score ${bestScore.toFixed(2)} / 5`,
-          pourPath: scorePourPathFromFields({
-            id: linkPour.scoreId,
-            slug: linkPour.slug,
-          }),
-          countryCode: linkPour.countryCode,
-          representativeCreatedAt: linkPour.createdAt,
-          splitImageUrl: linkPour.splitImageUrl,
-        };
-      })
-      .sort((x, y) =>
-        x.sortKey !== y.sortKey
-          ? x.sortKey - y.sortKey
-          : x.tie !== y.tie
-            ? x.tie - y.tie
-            : x.tie2 - y.tie2,
-      )
-      .map((r, i) => ({
-        rank: i + 1,
-        userId: r.userId,
-        username: r.username,
-        metric: r.metric,
-        detail: r.detail,
-        pourPath: r.pourPath,
-        countryCode: r.countryCode,
-        representativeCreatedAt: r.representativeCreatedAt,
-        splitImageUrl: r.splitImageUrl,
-      }));
-  }
-
-  // highest_score (default)
-  return list
-    .map((a) => {
-      const linkPour = pickRepresentativePour(a.pours);
-      return {
-        userId: a.userId,
-        username: a.username,
-        sortKey: linkPour.value,
-        tie: linkPour.at,
-        metric: `${linkPour.value.toFixed(2)} / 5`,
-        detail: "Best pour",
-        pourPath: scorePourPathFromFields({
-          id: linkPour.scoreId,
-          slug: linkPour.slug,
-        }),
-        countryCode: linkPour.countryCode,
-        representativeCreatedAt: linkPour.createdAt,
-        splitImageUrl: linkPour.splitImageUrl,
-      };
-    })
-    .sort((x, y) =>
-      y.sortKey !== x.sortKey
-        ? y.sortKey - x.sortKey
-        : x.tie - y.tie,
-    )
-    .map((r, i) => ({
-      rank: i + 1,
-      userId: r.userId,
-      username: r.username,
-      metric: r.metric,
-      detail: r.detail,
-      pourPath: r.pourPath,
-      countryCode: r.countryCode,
-      representativeCreatedAt: r.representativeCreatedAt,
-      splitImageUrl: r.splitImageUrl,
-    }));
+function CrownIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path d="M5 16L3 7l5.5 3L12 4l3.5 6L21 7l-2 9H5zm1 2h12v2H6v-2z" />
+    </svg>
+  );
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -365,9 +146,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Not found", { status: 404 });
   }
 
+  const competitionSelect =
+    "id, title, created_by, max_participants, glasses_per_person, starts_at, ends_at, win_rule, target_score, created_at, visibility, location_name, location_address, linked_bar_key, path_segment";
   const query = isCompetitionUuidParam(raw)
-    ? supabase.from("competitions").select("*").eq("id", raw)
-    : supabase.from("competitions").select("*").ilike("path_segment", raw);
+    ? supabase.from("competitions").select(competitionSelect).eq("id", raw)
+    : supabase
+        .from("competitions")
+        .select(competitionSelect)
+        .ilike("path_segment", raw);
 
   const { data, error } = await query.maybeSingle();
 
@@ -405,7 +191,6 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 export default function CompetitionDetail() {
   const { competitionId, competition: loaderComp, loadError } =
     useLoaderData<typeof loader>();
-  const revalidator = useRevalidator();
   const params = useParams();
 
   const [competition, setCompetition] = useState<CompetitionRow | null>(
@@ -415,8 +200,9 @@ export default function CompetitionDetail() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [scoresJoined, setScoresJoined] = useState<CompetitionScoreJoin[]>([]);
+  const [scoresLimited, setScoresLimited] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [participantUserIds, setParticipantUserIds] = useState<string[]>([]);
   const [participantProfiles, setParticipantProfiles] = useState<
     Record<string, ParticipantProfilePick>
@@ -434,7 +220,7 @@ export default function CompetitionDetail() {
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    const t = setInterval(() => setNowMs(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -456,17 +242,18 @@ export default function CompetitionDetail() {
     setUserId(uid);
     setUserEmail(em);
 
-    const { data: compRows } = await supabase
-      .from("competitions")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-    if (compRows) setCompetition(compRows as CompetitionRow);
-
-    const { data: allParts } = await supabase
-      .from("competition_participants")
-      .select("user_id")
-      .eq("competition_id", id);
+    const [{ data: allParts }, { data: csRows }] = await Promise.all([
+      supabase
+        .from("competition_participants")
+        .select("user_id")
+        .eq("competition_id", id),
+      supabase
+        .from("competition_scores")
+        .select(COMPETITION_SCORES_SELECT)
+        .eq("competition_id", id)
+        .order("created_at", { ascending: false })
+        .limit(COMPETITION_SCORE_LIMIT),
+    ]);
     const partIds = [
       ...new Set(
         (allParts ?? [])
@@ -475,14 +262,36 @@ export default function CompetitionDetail() {
       ),
     ];
     setParticipantUserIds(partIds);
+    setJoined(uid ? partIds.includes(uid) : false);
 
-    if (partIds.length > 0) {
-      const { data: profs } = await supabase
-        .from("public_profiles")
-        .select("user_id, nickname, display_name, country_code")
-        .in("user_id", partIds);
+    const profilesPromise = partIds.length
+      ? supabase
+          .from("public_profiles")
+          .select("user_id, nickname, display_name, country_code")
+          .in("user_id", partIds)
+      : Promise.resolve({ data: null } as { data: null });
+    const friendsPromise =
+      uid && emNorm
+        ? Promise.all([
+            supabase
+              .from("user_friends")
+              .select("user_id, friend_user_id")
+              .or(`user_id.eq.${uid},friend_user_id.eq.${uid}`),
+            supabase
+              .from("friend_requests")
+              .select("to_email")
+              .eq("from_user_id", uid)
+              .eq("status", "pending"),
+          ])
+        : Promise.resolve(null);
+
+    const [profilesRes, friendsRes] = await Promise.all([
+      profilesPromise,
+      friendsPromise,
+    ]);
+    if (profilesRes.data) {
       const map: Record<string, ParticipantProfilePick> = {};
-      for (const p of profs ?? []) {
+      for (const p of profilesRes.data) {
         const u = p.user_id as string;
         const ccRaw = p.country_code != null ? String(p.country_code).trim() : "";
         map[u] = {
@@ -496,30 +305,10 @@ export default function CompetitionDetail() {
       setParticipantProfiles({});
     }
 
-    if (uid) {
-      const { data: part } = await supabase
-        .from("competition_participants")
-        .select("competition_id")
-        .eq("competition_id", id)
-        .eq("user_id", uid)
-        .maybeSingle();
-      setJoined(Boolean(part));
-    } else {
-      setJoined(false);
-    }
-
-    if (uid && emNorm) {
-      const [{ data: fr }, { data: outReq }] = await Promise.all([
-        supabase
-          .from("user_friends")
-          .select("user_id, friend_user_id")
-          .or(`user_id.eq.${uid},friend_user_id.eq.${uid}`),
-        supabase
-          .from("friend_requests")
-          .select("to_email")
-          .eq("from_user_id", uid)
-          .eq("status", "pending"),
-      ]);
+    if (friendsRes) {
+      const [friendsResult, outReqResult] = friendsRes;
+      const fr = friendsResult.data;
+      const outReq = outReqResult.data;
       const peers = new Set<string>();
       for (const row of fr ?? []) {
         if (row.user_id === uid) peers.add(row.friend_user_id as string);
@@ -537,20 +326,14 @@ export default function CompetitionDetail() {
       setPendingFriendEmails(new Set());
     }
 
-    const { data: csRows } = await supabase
-      .from("competition_scores")
-      .select(
-        "id, user_id, score_id, created_at, scores (id, slug, username, split_score, created_at, email, country_code, split_image_url)",
-      )
-      .eq("competition_id", id);
-
     const list = (csRows ?? []) as CompetitionScoreJoin[];
     setScoresJoined(list);
+    setScoresLimited(list.length >= COMPETITION_SCORE_LIMIT);
   }, [competitionId]);
 
   useEffect(() => {
     void refreshAll();
-  }, [refreshAll, revalidator.state]);
+  }, [refreshAll]);
 
   useEffect(() => {
     if (loaderComp) setCompetition(loaderComp);
@@ -747,13 +530,13 @@ export default function CompetitionDetail() {
 
   const timePhase = useMemo(() => {
     if (!competition) return null;
-    const now = Date.now();
+    const now = nowMs;
     const start = new Date(competition.starts_at).getTime();
     const end = new Date(competition.ends_at).getTime();
     if (now < start) return { phase: "before" as const, ms: start - now };
     if (now > end) return { phase: "after" as const, ms: 0 };
     return { phase: "live" as const, ms: end - now };
-  }, [competition, tick]);
+  }, [competition, nowMs]);
 
   async function handleJoin() {
     setMessage(null);
@@ -769,7 +552,6 @@ export default function CompetitionDetail() {
     if (error) setMessage(error.message);
     else {
       setJoined(true);
-      revalidator.revalidate();
       void refreshAll();
       setMessage("You’re in! Welcome to the competition.");
     }
@@ -787,7 +569,6 @@ export default function CompetitionDetail() {
     if (error) setMessage(error.message);
     else {
       setJoined(false);
-      revalidator.revalidate();
       void refreshAll();
       setMessage("You’ve left this competition.");
     }
@@ -845,13 +626,21 @@ export default function CompetitionDetail() {
 
         {joined ? (
           <div
-            className="mb-5 rounded-lg border border-[#312814] bg-guinness-black/30"
+            className={`mb-5 rounded-lg border bg-guinness-black/30 ${
+              timePhase?.phase === "after"
+                ? "border-amber-500/25 bg-amber-950/15"
+                : "border-[#312814]"
+            }`}
             role="status"
-            aria-label="You are a participant in this competition"
+            aria-label={
+              timePhase?.phase === "after"
+                ? "You participated in this competition; it has ended"
+                : "You are a participant in this competition"
+            }
           >
             <button
               type="button"
-              aria-expanded={joinedBannerExpanded}
+              aria-expanded={joinedBannerExpanded ? "true" : "false"}
               onClick={() => {
                 setJoinedBannerExpanded((prev) => {
                   const next = !prev;
@@ -866,16 +655,26 @@ export default function CompetitionDetail() {
                   return next;
                 });
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-guinness-brown/20 sm:gap-3 sm:px-4 sm:py-3"
+              className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors sm:gap-3 sm:px-4 sm:py-3 ${
+                timePhase?.phase === "after"
+                  ? "hover:bg-amber-950/25"
+                  : "hover:bg-guinness-brown/20"
+              }`}
             >
               <span
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-400/90"
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  timePhase?.phase === "after"
+                    ? "bg-amber-500/20 text-amber-200/95"
+                    : "bg-emerald-500/15 text-emerald-400/90"
+                }`}
                 aria-hidden
               >
                 ✓
               </span>
               <span className="min-w-0 flex-1 font-medium text-guinness-cream/95">
-                You&apos;re in this competition
+                {timePhase?.phase === "after"
+                  ? "You took part in this competition"
+                  : "You&apos;re in this competition"}
               </span>
               <span
                 className={`shrink-0 text-xs text-guinness-tan/50 transition-transform duration-200 ${
@@ -887,12 +686,29 @@ export default function CompetitionDetail() {
               </span>
             </button>
             {joinedBannerExpanded ? (
-              <div className="border-t border-[#312814] px-3 pb-3 pt-0 sm:px-4 sm:pb-3.5">
+              <div
+                className={`border-t px-3 pb-3 pt-0 sm:px-4 sm:pb-3.5 ${
+                  timePhase?.phase === "after"
+                    ? "border-amber-500/20"
+                    : "border-[#312814]"
+                }`}
+              >
                 <p className="type-meta mt-4 pl-10 text-guinness-tan/75 sm:pl-11">
-                  Log each pour with{" "}
-                  <span className="text-guinness-cream/90">New pour for comp</span> while the
-                  window is live — older scores can&apos;t be attached afterward. We&apos;ll
-                  notify you when someone else submits.
+                  {timePhase?.phase === "after" ? (
+                    <>
+                      The competition window has closed. Pours had to be logged with{" "}
+                      <span className="text-guinness-cream/90">New pour for comp</span> while
+                      it was live — older scores couldn&apos;t be attached afterward. Thanks
+                      for playing.
+                    </>
+                  ) : (
+                    <>
+                      Log each pour with{" "}
+                      <span className="text-guinness-cream/90">New pour for comp</span> while the
+                      window is live — older scores can&apos;t be attached afterward. We&apos;ll
+                      notify you when someone else submits.
+                    </>
+                  )}
                 </p>
               </div>
             ) : null}
@@ -950,7 +766,7 @@ export default function CompetitionDetail() {
           </h2>
           <button
             type="button"
-            aria-expanded={mobileSummaryOpen}
+            aria-expanded={mobileSummaryOpen ? "true" : "false"}
             aria-controls="comp-summary-body"
             onClick={() => setMobileSummaryOpen((o) => !o)}
             className="mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[#312814] bg-guinness-brown/25 px-3 py-2.5 text-left transition-colors hover:bg-guinness-brown/35 lg:hidden"
@@ -1187,11 +1003,26 @@ export default function CompetitionDetail() {
             aria-labelledby="tab-comp-leaderboard"
             hidden={rightColTab !== "leaderboard"}
           >
+            {scoresLimited ? (
+              <p className="type-meta mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100/90">
+                Showing the most recent {COMPETITION_SCORE_LIMIT} competition
+                pours for leaderboard performance.
+              </p>
+            ) : null}
             {ranked.length === 0 ? (
               <p className="type-meta rounded-2xl border border-[#322914] bg-guinness-brown/30 p-8 text-center text-guinness-tan/70">
-                Waiting for the first pour. Scores appear when someone uses{" "}
-                <span className="text-guinness-tan/85">New pour for comp</span> during the live
-                window.
+                {timePhase?.phase === "after" ? (
+                  <>
+                    No pours were logged for this competition during the live window, so there is
+                    no leaderboard.
+                  </>
+                ) : (
+                  <>
+                    Waiting for the first pour. Scores appear when someone uses{" "}
+                    <span className="text-guinness-tan/85">New pour for comp</span> during the live
+                    window.
+                  </>
+                )}
               </p>
             ) : (
               <ul className="w-full">
@@ -1201,12 +1032,19 @@ export default function CompetitionDetail() {
                     r.countryCode ?? participantProfiles[r.userId]?.country_code;
                   const winRule = competition.win_rule as WinRule;
                   const secondary = competitionLeaderboardSecondaryMeta(r, winRule);
+                  const isEndedWinner =
+                    timePhase?.phase === "after" && r.rank === 1;
                   return (
                     <li key={r.userId} className="mb-4 last:mb-0">
-                      <div className="flex flex-col overflow-hidden rounded-2xl border border-[#322914] bg-guinness-brown/35 transition-colors hover:border-guinness-gold/30 hover:bg-guinness-brown/50 sm:flex-row sm:items-stretch">
+                      <div
+                        className={`flex flex-col overflow-hidden rounded-2xl border bg-guinness-brown/35 transition-colors sm:flex-row sm:items-stretch ${
+                          isEndedWinner
+                            ? "border-guinness-gold/45 shadow-md shadow-amber-900/20 hover:border-guinness-gold/55 hover:bg-guinness-brown/50"
+                            : "border-[#322914] hover:border-guinness-gold/30 hover:bg-guinness-brown/50"
+                        }`}
+                      >
                         <Link
                           to={r.pourPath}
-                          prefetch="intent"
                           viewTransition
                           className="flex min-w-0 flex-1 items-center gap-3 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold sm:gap-5 sm:p-5"
                         >
@@ -1226,6 +1064,14 @@ export default function CompetitionDetail() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
+                                {isEndedWinner ? (
+                                  <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-guinness-gold/40 bg-guinness-gold/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-guinness-gold">
+                                      <CrownIcon className="text-guinness-gold" />
+                                      Winner
+                                    </span>
+                                  </div>
+                                ) : null}
                                 <p className="truncate text-lg font-semibold text-guinness-cream sm:text-2xl">
                                   {flagEmojiFromIso2(cc) ? (
                                     <span

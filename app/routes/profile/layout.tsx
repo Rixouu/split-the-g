@@ -30,7 +30,6 @@ import {
   escapeIlikePattern,
   emailDisplayName,
   normalizeEmail,
-  progressRangeOptions,
   progressRangeStart,
   type ComparisonScoreRow,
   type FavoriteBarStats,
@@ -102,6 +101,19 @@ export default function ProfileLayout() {
   const profileActiveSection = useMemo(
     () => resolveProfileSectionTab(location.pathname, profileSectionPaths),
     [location.pathname, profileSectionPaths],
+  );
+  const activeLoadOptions = useMemo(
+    () => ({
+      includeScores:
+        profileActiveSection === "/profile/progress" ||
+        profileActiveSection === "/profile/expenses" ||
+        profileActiveSection === "/profile/scores",
+      includeFavorites: profileActiveSection === "/profile/favorites",
+      includeSocial:
+        profileActiveSection === "/profile/friends" ||
+        profileActiveSection === "/profile/progress",
+    }),
+    [profileActiveSection],
   );
   const [progressRange, setProgressRange] = useState<ProgressRange>("30d");
   const [comparisonScores, setComparisonScores] = useState<ComparisonScoreRow[]>([]);
@@ -200,6 +212,7 @@ export default function ProfileLayout() {
       supabase
         .from("friend_requests")
         .select("id, from_user_id, to_email, from_email, status, created_at")
+        .eq("to_email", emailNorm)
         .eq("status", "pending")
         .order("created_at", { ascending: false }),
       supabase
@@ -210,11 +223,7 @@ export default function ProfileLayout() {
 
     setOutgoingRequests((out ?? []) as FriendRequestRow[]);
     const incRows = (inc ?? []) as FriendRequestRow[];
-    setIncomingRequests(
-      incRows.filter(
-        (r) => normalizeEmail(String(r.to_email)) === emailNorm && r.from_user_id !== uid,
-      ),
-    );
+    setIncomingRequests(incRows.filter((r) => r.from_user_id !== uid));
     const friendRows = (fr ?? []) as UserFriendRow[];
     setFriends(friendRows);
     return friendRows;
@@ -289,9 +298,17 @@ export default function ProfileLayout() {
   }, [fullName]);
 
   const loadProfileData = useCallback(
-    async (u: User) => {
+    async (
+      u: User,
+      overrides?: Partial<{
+        includeScores: boolean;
+        includeFavorites: boolean;
+        includeSocial: boolean;
+      }>,
+    ) => {
+      const options = { ...activeLoadOptions, ...overrides };
       const email = u.email;
-      if (email) {
+      if (email && options.includeScores) {
         const emailTrim = email.trim();
         const pattern = escapeIlikePattern(emailTrim);
         const { data: scoreRows, error: scoresQerr } = await supabase
@@ -315,42 +332,45 @@ export default function ProfileLayout() {
         setScores([]);
       }
 
-      const { data: favRows, error: favErr } = await supabase
-        .from("user_favorite_bars")
-        .select("id, bar_name, bar_address, created_at")
-        .order("created_at", { ascending: false });
+      if (options.includeFavorites) {
+        const { data: favRows, error: favErr } = await supabase
+          .from("user_favorite_bars")
+          .select("id, bar_name, bar_address, created_at")
+          .eq("user_id", u.id)
+          .order("created_at", { ascending: false });
 
-      const nextFavorites = favErr ? [] : ((favRows ?? []) as FavoriteRow[]);
-      setFavorites(nextFavorites);
-      if (nextFavorites.length > 0) {
-        const favoriteNames = [...new Set(nextFavorites.map((f) => f.bar_name))];
-        const { data: ratingRows } = await supabase
-          .from("scores")
-          .select("bar_name, bar_address, split_score")
-          .in("bar_name", favoriteNames);
+        const nextFavorites = favErr ? [] : ((favRows ?? []) as FavoriteRow[]);
+        setFavorites(nextFavorites);
+        if (nextFavorites.length > 0) {
+          const favoriteNames = [...new Set(nextFavorites.map((f) => f.bar_name))];
+          const { data: ratingRows } = await supabase
+            .from("scores")
+            .select("bar_name, bar_address, split_score")
+            .in("bar_name", favoriteNames);
 
-        const stats = (ratingRows ?? []).reduce<Record<string, FavoriteBarStats>>(
-          (acc, row) => {
-            const name = String(row.bar_name ?? "").trim();
-            if (!name) return acc;
-            const keys = [barKey(name, row.bar_address as string | null), barKey(name)];
-            for (const key of keys) {
-              const current = acc[key] ?? { avg: 0, count: 0 };
-              const nextCount = current.count + 1;
-              acc[key] = {
-                avg:
-                  (current.avg * current.count + Number(row.split_score ?? 0)) /
-                  nextCount,
-                count: nextCount,
-              };
-            }
-            return acc;
-          },
-          {},
-        );
-        setFavoriteStats(stats);
-      } else {
-        setFavoriteStats({});
+          const stats = (ratingRows ?? []).reduce<Record<string, FavoriteBarStats>>(
+            (acc, row) => {
+              const name = String(row.bar_name ?? "").trim();
+              if (!name) return acc;
+              const keys = [barKey(name, row.bar_address as string | null), barKey(name)];
+              for (const key of keys) {
+                const current = acc[key] ?? { avg: 0, count: 0 };
+                const nextCount = current.count + 1;
+                acc[key] = {
+                  avg:
+                    (current.avg * current.count + Number(row.split_score ?? 0)) /
+                    nextCount,
+                  count: nextCount,
+                };
+              }
+              return acc;
+            },
+            {},
+          );
+          setFavoriteStats(stats);
+        } else {
+          setFavoriteStats({});
+        }
       }
 
       const fromGoogle =
@@ -393,8 +413,10 @@ export default function ProfileLayout() {
         setFullName(fromGoogle);
         setNickname("");
         setCountryCode("");
-        const socialRows = await loadSocial(u);
-        await loadFriendComparison(u, socialRows);
+        if (options.includeSocial) {
+          const socialRows = await loadSocial(u);
+          await loadFriendComparison(u, socialRows);
+        }
         return;
       }
 
@@ -422,10 +444,12 @@ export default function ProfileLayout() {
         setCountryCode(/^[A-Z]{2}$/.test(cc) ? cc : "");
       }
 
-      const socialRows = await loadSocial(u);
-      await loadFriendComparison(u, socialRows);
+      if (options.includeSocial) {
+        const socialRows = await loadSocial(u);
+        await loadFriendComparison(u, socialRows);
+      }
     },
-    [loadFriendComparison, loadSocial],
+    [activeLoadOptions, loadFriendComparison, loadSocial],
   );
 
   useEffect(() => {
@@ -435,7 +459,6 @@ export default function ProfileLayout() {
       const { data } = await supabase.auth.getUser();
       if (cancelled) return;
       setUser(data.user ?? null);
-      if (data.user) await loadProfileData(data.user);
       setLoading(false);
     }
 
@@ -444,10 +467,10 @@ export default function ProfileLayout() {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       const next = session?.user ?? null;
       setUser(next);
-      if (next) void loadProfileData(next);
-      else {
+      if (!next) {
         setScores([]);
         setFavorites([]);
+        setFavoriteStats({});
         setOutgoingRequests([]);
         setIncomingRequests([]);
         setFriends([]);
@@ -461,6 +484,11 @@ export default function ProfileLayout() {
       sub.subscription.unsubscribe();
     };
   }, [loadProfileData]);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadProfileData(user);
+  }, [loadProfileData, user]);
 
   useEffect(() => {
     clearPostOAuthReturnIfMatchesCurrentPath(
@@ -577,7 +605,7 @@ export default function ProfileLayout() {
       setFullName(nameTrim);
       setNickname(nickTrim);
       setCountryCode(ccRaw);
-      await loadProfileData(user);
+      await loadProfileData(user, { includeScores: true, includeSocial: true });
       setMessage("Profile saved.");
     } finally {
       setProfileSaving(false);
@@ -609,7 +637,7 @@ export default function ProfileLayout() {
       }
       setFavName("");
       setFavAddress("");
-      await loadProfileData(user);
+      await loadProfileData(user, { includeFavorites: true });
       setMessage("Favorite saved.");
     } finally {
       setBusy(false);
@@ -628,7 +656,7 @@ export default function ProfileLayout() {
         setMessage(error.message);
         return;
       }
-      await loadProfileData(user);
+      await loadProfileData(user, { includeFavorites: true });
       setMessage("Favorite removed.");
     } finally {
       setBusy(false);
@@ -768,7 +796,7 @@ export default function ProfileLayout() {
       } else {
         setMessage("Friend request declined.");
       }
-      await loadProfileData(user);
+      await loadProfileData(user, { includeSocial: true });
     } finally {
       setBusy(false);
     }

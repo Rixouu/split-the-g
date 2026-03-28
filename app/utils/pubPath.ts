@@ -39,11 +39,20 @@ export async function resolveBarKeyFromPubPathSegment(
   const decoded = decodePubUrlSegment(rawSegment).trim();
   if (!decoded) return null;
 
-  const { data: direct } = await client
-    .from("bar_pub_stats")
+  const lowered = decoded.toLowerCase();
+  let directQuery = await client
+    .from("bar_pub_stats_mv")
     .select("bar_key")
-    .eq("bar_key", decoded.toLowerCase())
+    .eq("bar_key", lowered)
     .maybeSingle();
+  if (directQuery.error) {
+    directQuery = await client
+      .from("bar_pub_stats")
+      .select("bar_key")
+      .eq("bar_key", lowered)
+      .maybeSingle();
+  }
+  const direct = directQuery.data;
 
   if (direct?.bar_key) return direct.bar_key;
 
