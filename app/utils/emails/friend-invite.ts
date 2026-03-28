@@ -3,6 +3,12 @@ interface FriendInviteEmailProps {
   inviteeEmail: string;
   inviterEmail: string;
   inviterName?: string | null;
+  /** Primary button target, e.g. `/competitions/uuid` or `/profile`. */
+  invitePath?: string;
+  /** When set, subject/body mention this competition. */
+  competitionTitle?: string | null;
+  /** Full URL to logo image (e.g. CDN). Defaults to `{appUrl}/logo-splittheg.png`. */
+  logoUrlOverride?: string | null;
 }
 
 interface FriendInviteEmailPayload {
@@ -25,17 +31,36 @@ export function buildFriendInviteEmail({
   inviteeEmail,
   inviterEmail,
   inviterName,
+  invitePath,
+  competitionTitle,
+  logoUrlOverride,
 }: FriendInviteEmailProps): FriendInviteEmailPayload {
   const baseUrl = appUrl.replace(/\/+$/, "");
   const inviterLabel = inviterName?.trim() || inviterEmail.trim();
-  const inviteUrl = `${baseUrl}/profile`;
-  const logoUrl = `${baseUrl}/logo-splittheg.svg`;
+  const rawInvitePath = invitePath?.trim();
+  const path =
+    !rawInvitePath || rawInvitePath === ""
+      ? "/profile"
+      : rawInvitePath.startsWith("/")
+        ? rawInvitePath
+        : `/${rawInvitePath}`;
+  const inviteUrl = `${baseUrl}${path}`;
+  const logoFromOverride = logoUrlOverride?.trim();
+  const logoUrl = logoFromOverride
+    ? logoFromOverride
+    : `${baseUrl}/logo-splittheg.png`;
+  const safeLogoUrl = escapeHtml(logoUrl);
   const safeInviterLabel = escapeHtml(inviterLabel);
   const safeInviterEmail = escapeHtml(inviterEmail.trim());
   const safeInviteeEmail = escapeHtml(inviteeEmail.trim());
   const inviteeMailto = `mailto:${encodeURIComponent(inviteeEmail.trim())}`;
   const inviterMailto = `mailto:${encodeURIComponent(inviterEmail.trim())}`;
-  const subject = `${inviterLabel} invited you to Split The G`;
+  const compTitle = competitionTitle?.trim();
+  const safeCompTitle = compTitle ? escapeHtml(compTitle) : "";
+  const subject = compTitle
+    ? `${inviterLabel} invited you to “${compTitle}” on Split The G`
+    : `${inviterLabel} invited you to Split The G`;
+  const ctaLabel = compTitle ? "View competition" : "Open Split The G";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -174,17 +199,19 @@ export function buildFriendInviteEmail({
     text-align: center;
   }
 
+  /* Fallback; primary CTA uses table + inline styles for Gmail/Outlook. */
   .cta-btn {
     display: inline-block;
     background-color: #c49a3c;
-    color: #0f0e09;
+    color: #0f0e09 !important;
     font-family: 'DM Sans', Arial, sans-serif;
     font-size: 14px;
     font-weight: 700;
     letter-spacing: .03em;
-    text-decoration: none;
+    text-decoration: none !important;
     padding: 14px 32px;
     border-radius: 4px;
+    -webkit-text-fill-color: #0f0e09;
   }
 
   .meta-wrap {
@@ -192,15 +219,18 @@ export function buildFriendInviteEmail({
     border-left: 1px solid #2a2418;
     border-right: 1px solid #2a2418;
     padding: 28px 40px 32px;
+    text-align: center;
   }
 
   .meta-line {
-    font-size: 12.5px;
-    color: #4a4438;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #8a8070;
+    text-align: center;
   }
 
   .meta-line a {
-    color: #f5f0e8 !important;
+    color: #d4c9b0 !important;
     text-decoration: none;
   }
 
@@ -217,30 +247,29 @@ export function buildFriendInviteEmail({
   }
 
   .footer {
-    background-color: #0f0e09;
+    background-color: #14120c;
     border: 1px solid #2a2418;
     border-top: none;
     border-radius: 0 0 4px 4px;
-    padding: 20px 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    padding: 24px 40px 28px;
+    text-align: center;
   }
 
   .footer-brand {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: .06em;
-    color: #3a3428;
+    letter-spacing: .1em;
+    color: #b8a88c;
     text-transform: uppercase;
+    margin: 0 0 12px 0;
   }
 
   .footer-tagline {
-    font-size: 12px;
-    color: #3a3428;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #9a907c;
     letter-spacing: .01em;
-    text-align: right;
+    margin: 0;
   }
 
   @media only screen and (max-width: 640px) {
@@ -258,23 +287,9 @@ export function buildFriendInviteEmail({
       padding-right: 22px !important;
     }
 
-    .header,
-    .footer {
-      display: block !important;
-    }
-
-    .footer-tagline {
-      margin-top: 14px;
-      display: inline-block;
-    }
-
     .hero-heading {
       font-size: 34px !important;
       line-height: 1.08 !important;
-    }
-
-    .footer-tagline {
-      text-align: left;
     }
   }
 </style>
@@ -283,7 +298,7 @@ export function buildFriendInviteEmail({
 <div class="wrapper">
   <div class="header">
     <div class="logo">
-      <img src="${logoUrl}" alt="Split The G" />
+      <img src="${safeLogoUrl}" alt="Split The G" width="200" height="34" style="display:block;height:34px;width:auto;max-width:220px;margin:0 auto;border:0;outline:none;text-decoration:none;color:#e8e4dc;" />
     </div>
   </div>
 
@@ -293,7 +308,11 @@ export function buildFriendInviteEmail({
     <p class="hero-eyebrow">You've been invited</p>
     <h1 class="hero-heading">${safeInviterLabel}<br>wants you on<br>the <span>board.</span></h1>
     <p class="hero-body">
-      You've been invited to join <strong>Split The G</strong>. Chase the perfect pour, climb the live leaderboard, and stir up a little friendly rivalry with your mates.
+      ${
+        compTitle
+          ? `You&apos;re invited to <strong>${safeCompTitle}</strong> on Split The G. `
+          : `You&apos;ve been invited to join <strong>Split The G</strong>. `
+      }Chase the perfect pour, climb the live leaderboard, and stir up a little friendly rivalry with your mates.
     </p>
   </div>
 
@@ -309,14 +328,22 @@ export function buildFriendInviteEmail({
 
   <div class="cta-wrap">
     <div style="height:8px;"></div>
-    <a href="${inviteUrl}" class="cta-btn">Open Split The G</a>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto;border-collapse:collapse;">
+      <tr>
+        <td align="center" bgcolor="#c49a3c" style="background-color:#c49a3c;border-radius:4px;mso-padding-alt:14px 32px;">
+          <a href="${inviteUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 32px;font-family:'DM Sans',Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;line-height:1.25;letter-spacing:0.03em;color:#0f0e09 !important;-webkit-text-fill-color:#0f0e09;text-decoration:none !important;border-radius:4px;">
+            <span style="color:#0f0e09 !important;-webkit-text-fill-color:#0f0e09;text-decoration:none !important;">${escapeHtml(ctaLabel)}</span>
+          </a>
+        </td>
+      </tr>
+    </table>
   </div>
 
   <div class="meta-wrap">
     <div style="height:20px;"></div>
     <p class="meta-line">
       Invited by ${safeInviterLabel}
-      <span class="meta-dot"></span>
+      <span class="meta-dot" aria-hidden="true"></span>
       <a href="${inviterMailto}">${safeInviterEmail}</a>
     </p>
   </div>
@@ -324,21 +351,24 @@ export function buildFriendInviteEmail({
   <div class="rule"></div>
 
   <div class="footer">
-    <span class="footer-brand">Split The G</span>
-    <span class="footer-tagline">Simple pours, live boards, good friends.</span>
+    <p class="footer-brand">Split The G</p>
+    <p class="footer-tagline">Simple pours, live boards, good friends.</p>
   </div>
 </div>
 </body>
 </html>`;
 
   const text = [
-    `${inviterLabel} invited you to Split The G.`,
+    subject,
     "",
+    compTitle ? `Competition: ${compTitle}` : null,
     `Sign in with ${inviteeEmail.trim()} to see the invite in the app.`,
     `Open: ${inviteUrl}`,
     "",
     `Invited by: ${inviterLabel} (${inviterEmail.trim()})`,
-  ].join("\n");
+  ]
+    .filter((line): line is string => line != null && line !== "")
+    .join("\n");
 
   return { subject, html, text };
 }

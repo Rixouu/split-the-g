@@ -608,23 +608,60 @@ export default function Competitions() {
     setInviteBusy(compId);
     setFormError(null);
     const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
+    if (!u.user?.email) {
+      setInviteBusy(null);
+      setFormError("Sign in to send invites.");
+      return;
+    }
     const { error } = await supabase.from("competition_invites").insert({
       competition_id: compId,
       invited_email: raw,
       invited_by: u.user.id,
     });
-    setInviteBusy(null);
     if (error) {
+      setInviteBusy(null);
       setFormError(error.message);
       return;
     }
     setInviteInputs((prev) => ({ ...prev, [compId]: "" }));
     revalidator.revalidate();
-    setUiToast({
-      text: "Invite sent. They’ll see it when they sign up with that email.",
-      variant: "success",
-    });
+
+    const comp = mergedCompetitions.find((c) => c.id === compId);
+    const inviterName =
+      (u.user.user_metadata?.full_name as string | undefined)?.trim() ||
+      (u.user.user_metadata?.name as string | undefined)?.trim() ||
+      null;
+
+    let emailOk = false;
+    try {
+      const emailResponse = await fetch("/api/friend-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inviterEmail: u.user.email,
+          inviterName,
+          toEmail: raw,
+          invitePath: `/competitions/${compId}`,
+          competitionTitle: comp?.title ?? null,
+        }),
+      });
+      emailOk = emailResponse.ok;
+    } catch {
+      emailOk = false;
+    }
+
+    setInviteBusy(null);
+    if (emailOk) {
+      setUiToast({
+        text: "Competition invite email sent.",
+        variant: "success",
+      });
+    } else {
+      setUiToast({
+        text: "Invite saved. They can join when they sign in with that email, but the invite email could not be sent (check RESEND_API_KEY and APP_URL on the server).",
+        variant: "warning",
+      });
+    }
   }
 
   async function removeInvite(compId: string, inviteId: string) {
