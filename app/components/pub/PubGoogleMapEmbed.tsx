@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const embedBorder =
-  "rounded-xl border border-[#372C16] bg-guinness-black/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  "rounded-xl border border-[#322914] bg-guinness-black/40 shadow-[inset_0_1px_0_rgba(212,175,55,0.04)]";
 
 /**
  * Embedded map via Google Maps Embed API (Search mode).

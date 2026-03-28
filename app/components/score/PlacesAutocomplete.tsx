@@ -3,12 +3,18 @@ import {
   parsePlaceGeoFromComponents,
   type ParsedPlaceGeo,
 } from "~/utils/placeGeoFromComponents";
+import { normalizeGooglePlaceId } from "~/utils/googlePlaceDetails";
 
 export type PlaceSelection = {
   name: string;
   address: string;
   /** From Google address components when a suggestion is chosen; null for manual entry. */
   geo: ParsedPlaceGeo | null;
+  /**
+   * Set when the user picks a Places row (not “type name only”).
+   * Stored on scores for pub pages (opening hours via Place Details).
+   */
+  placeId?: string | null;
 };
 
 export type PlacesAutocompleteProps = {
@@ -159,12 +165,15 @@ export function PlacesAutocomplete({
     try {
       const place = row.placePrediction.toPlace();
       await place.fetchFields({
-        fields: ["displayName", "formattedAddress", "addressComponents"],
+        fields: ["displayName", "formattedAddress", "addressComponents", "id"],
       });
       const name = place.displayName?.trim() || row.name;
       const address = place.formattedAddress?.trim() || row.address;
       const geo = parsePlaceGeoFromComponents(place.addressComponents);
-      onSelect({ name, address, geo });
+      const rawPid =
+        (typeof place.id === "string" && place.id.trim()) || row.placeId;
+      const placeId = rawPid ? normalizeGooglePlaceId(rawPid) : null;
+      onSelect({ name, address, geo, placeId });
       setInputValue(name);
       onChangeText(name);
       setShowSuggestions(false);
@@ -175,6 +184,7 @@ export function PlacesAutocomplete({
         name: row.name,
         address: row.address,
         geo: null,
+        placeId: row.placeId ? normalizeGooglePlaceId(row.placeId) : null,
       });
       setInputValue(row.name);
       onChangeText(row.name);
@@ -246,6 +256,7 @@ export function PlacesAutocomplete({
                   name: inputValue.trim(),
                   address: "",
                   geo: null,
+                  placeId: null,
                 });
                 onChangeText(inputValue.trim());
                 setShowSuggestions(false);

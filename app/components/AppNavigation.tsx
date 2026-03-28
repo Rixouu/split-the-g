@@ -200,8 +200,26 @@ const deskActive =
 const deskIdle =
   "text-guinness-tan/85 hover:bg-guinness-gold/10 hover:text-guinness-cream";
 
+/** Live competition indicator — corner badge so label text stays readable. */
+function CompetitionLiveBadge({
+  size,
+  className = "",
+}: {
+  size: "dock" | "desktop";
+  className?: string;
+}) {
+  const dim = size === "desktop" ? "h-2.5 w-2.5" : "h-2 w-2";
+  return (
+    <span
+      className={`pointer-events-none absolute z-[2] rounded-full border-2 border-[#322914] bg-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.5)] ${dim} ${className}`}
+      title="You're in an active competition"
+      aria-hidden
+    />
+  );
+}
+
 const mobItem =
-  "relative flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1 text-[9px] font-bold uppercase leading-tight tracking-wide outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:text-[10px]";
+  "relative flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl px-0.5 py-1 text-[9px] font-bold uppercase leading-tight tracking-wide outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:text-[10px]";
 const mobActive =
   "text-guinness-gold bg-guinness-gold/[0.08] shadow-inner ring-1 ring-guinness-gold/35 ring-inset";
 const mobIdle = "text-guinness-tan/55 hover:text-guinness-cream active:scale-[0.98]";
@@ -262,7 +280,7 @@ export function AppNavigation() {
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1 sm:gap-1.5">
               <nav
-                className="flex flex-wrap items-center justify-end gap-1 rounded-full border border-guinness-gold/15 bg-guinness-black/35 px-1.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                className="flex flex-wrap items-center justify-end gap-1 overflow-visible rounded-full border border-guinness-gold/15 bg-guinness-black/35 px-1.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                 aria-label="Primary"
               >
                 {primaryItems.map(({ to, label, end }) => {
@@ -281,14 +299,13 @@ export function AppNavigation() {
                           : undefined
                       }
                       className={({ isActive }) =>
-                        `${deskPill} ${isActive ? deskActive : deskIdle} ${showCompeteDot ? "relative pr-6" : ""}`
+                        `${deskPill} ${isActive ? deskActive : deskIdle} ${showCompeteDot ? "relative overflow-visible" : ""}`
                       }
                     >
                       {showCompeteDot ? (
-                        <span
-                          className="pointer-events-none absolute right-2.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.55)]"
-                          title="You’re in an active competition"
-                          aria-hidden
+                        <CompetitionLiveBadge
+                          size="desktop"
+                          className="-right-0.5 -top-1.5 translate-x-1/4 -translate-y-0"
                         />
                       ) : null}
                       {label}
@@ -360,14 +377,13 @@ export function AppNavigation() {
                           : undefined
                       }
                       className={({ isActive }) =>
-                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}${showCompeteDot ? " relative" : ""}`
+                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
                       }
                     >
                       {showCompeteDot ? (
-                        <span
-                          className="pointer-events-none absolute right-1 top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.65)]"
-                          title="You’re in an active competition"
-                          aria-hidden
+                        <CompetitionLiveBadge
+                          size="dock"
+                          className="right-1 top-0.5 -translate-y-px"
                         />
                       ) : null}
                       {dockIconFor(to)}
@@ -395,14 +411,13 @@ export function AppNavigation() {
                           : undefined
                       }
                       className={({ isActive }) =>
-                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}${showCompeteDot ? " relative" : ""}`
+                        `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
                       }
                     >
                       {showCompeteDot ? (
-                        <span
-                          className="pointer-events-none absolute right-1 top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.65)]"
-                          title="You’re in an active competition"
-                          aria-hidden
+                        <CompetitionLiveBadge
+                          size="dock"
+                          className="right-1 top-0.5 -translate-y-px"
                         />
                       ) : null}
                       {dockIconFor(to)}

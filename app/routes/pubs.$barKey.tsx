@@ -32,9 +32,9 @@ function isPubDirectoryAdmin(email: string | null | undefined): boolean {
   return Boolean(e && e === PUB_DIRECTORY_ADMIN_EMAIL.toLowerCase());
 }
 
-/** Brand stroke for pub surfaces (replaces light / white-leaning borders). */
-const pubStroke = "border-[#372C16]";
-const pubPanel = `rounded-2xl border ${pubStroke} bg-guinness-brown/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-5`;
+/** Brand stroke for pub surfaces (dark brown — no light/white borders). */
+const pubStroke = "border-[#322914]";
+const pubPanel = `rounded-2xl border ${pubStroke} bg-guinness-brown/25 p-4 shadow-[inset_0_1px_0_rgba(212,175,55,0.05)] sm:p-5`;
 const pubPanelMuted = `rounded-xl border ${pubStroke} bg-guinness-black/30 px-3 py-3 sm:px-4 sm:py-3.5`;
 const pubDivider = `border-t ${pubStroke}`;
 
@@ -304,7 +304,7 @@ function PubOpeningHoursReadOnly({
 }) {
   if (googleOpeningHoursLines && googleOpeningHoursLines.length > 0) {
     return (
-      <ul className="list-none space-y-2 border-t border-guinness-gold/10 pt-3">
+      <ul className={`list-none space-y-2 border-t ${pubStroke} pt-3`}>
         {googleOpeningHoursLines.map((line, i) => (
           <li
             key={`${i}-${line}`}

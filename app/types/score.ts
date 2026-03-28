@@ -17,6 +17,8 @@ export interface Score {
   country_code?: string;
   bar_name?: string;
   bar_address?: string;
+  /** From Places when the pourer picked a suggestion. */
+  google_place_id?: string | null;
   pour_rating?: number;
   /** Optional amount paid for the pint (local currency). */
   pint_price?: number | null;

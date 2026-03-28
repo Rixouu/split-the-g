@@ -1,6 +1,13 @@
 import { Link, useLoaderData } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   PageHeader,
   pageHeaderActionButtonClass,
@@ -13,6 +20,8 @@ export type BarStat = {
   bar_key: string;
   display_name: string;
   sample_address: string | null;
+  /** Aggregated from scores when pourers chose a Places suggestion. */
+  google_place_id?: string | null;
   avg_pour_rating: number | null;
   rating_count: number;
   submission_count: number;
@@ -23,6 +32,7 @@ function aggregateFromScores(
     bar_name: string | null;
     bar_address: string | null;
     pour_rating: number | null;
+    google_place_id?: string | null;
   }[],
 ): BarStat[] {
   const map = new Map<
@@ -30,6 +40,7 @@ function aggregateFromScores(
     {
       display_name: string;
       sample_address: string | null;
+      google_place_id: string | null;
       sum: number;
       rating_n: number;
       submissions: number;
@@ -44,10 +55,13 @@ function aggregateFromScores(
     const pr = r.pour_rating;
     const hasRating = pr != null && Number.isFinite(Number(pr));
 
+    const rowPid = r.google_place_id?.trim() || null;
+
     if (!prev) {
       map.set(key, {
         display_name: raw,
         sample_address: r.bar_address?.trim() || null,
+        google_place_id: rowPid,
         sum: hasRating ? Number(pr) : 0,
         rating_n: hasRating ? 1 : 0,
         submissions: 1,
@@ -63,6 +77,9 @@ function aggregateFromScores(
     if (!prev.sample_address && r.bar_address?.trim()) {
       prev.sample_address = r.bar_address.trim();
     }
+    if (!prev.google_place_id && rowPid) {
+      prev.google_place_id = rowPid;
+    }
   }
 
   return [...map.entries()]
@@ -70,6 +87,7 @@ function aggregateFromScores(
       bar_key,
       display_name: v.display_name,
       sample_address: v.sample_address,
+      google_place_id: v.google_place_id,
       avg_pour_rating:
         v.rating_n > 0
           ? Math.round((v.sum / v.rating_n) * 100) / 100
@@ -85,8 +103,89 @@ function mapsSearchUrl(b: BarStat): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
-const selectFieldClass =
-  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none";
+function IconPubMark({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 21s7-4.35 7-10a7 7 0 1 0-14 0c0 5.65 7 10 7 10Z" />
+      <path d="M12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+    </svg>
+  );
+}
+
+function IconPour({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M8 2h8l-1 14a4 4 0 0 1-6 0L8 2Z" />
+      <path d="M10 22h4" />
+    </svg>
+  );
+}
+
+function IconStar({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" />
+    </svg>
+  );
+}
+
+function IconChevronRight({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+/** Dark brown stroke — no light/white borders on pub list UI. */
+const PUB_LIST_STROKE = "border-[#322914]";
+
+function StatPill({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-black/45 px-2.5 py-1 text-xs font-medium text-guinness-tan/90 tabular-nums`}
+    >
+      <span className="text-guinness-gold/80 [&>svg]:h-3.5 [&>svg]:w-3.5">
+        {icon}
+      </span>
+      {children}
+    </span>
+  );
+}
+
+const selectFieldClass = `w-full min-h-11 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none`;
 
 export async function loader(_args: LoaderFunctionArgs) {
   const { data, error } = await supabase
@@ -101,7 +200,7 @@ export async function loader(_args: LoaderFunctionArgs) {
 
   const { data: scores, error: scoresError } = await supabase
     .from("scores")
-    .select("bar_name, bar_address, pour_rating")
+    .select("bar_name, bar_address, pour_rating, google_place_id")
     .not("bar_name", "is", null);
 
   if (scoresError) throw scoresError;
@@ -262,7 +361,9 @@ export default function Pubs() {
           </p>
         ) : null}
 
-        <div className="mb-6 rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-4">
+        <div
+          className={`mb-6 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-brown/40 p-4`}
+        >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="type-label text-guinness-gold">Filters</span>
             <div className="flex items-center gap-2">
@@ -273,7 +374,7 @@ export default function Pubs() {
                 type="button"
                 aria-expanded={filtersOpen}
                 onClick={() => setFiltersOpen((o) => !o)}
-                className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
+                className={`rounded-lg border ${PUB_LIST_STROKE} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
               >
                 {filtersOpen ? "Hide" : "Show"}
               </button>
@@ -333,47 +434,95 @@ export default function Pubs() {
         ) : null}
 
         {bars.length === 0 ? (
-          <p className="type-meta rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-6 text-center text-guinness-tan/75">
+          <p
+            className={`type-meta rounded-lg border ${PUB_LIST_STROKE} bg-guinness-brown/40 p-6 text-center text-guinness-tan/75`}
+          >
             No bar names saved yet. Rate a pour on a score page to add one.
           </p>
         ) : filteredBars.length === 0 ? (
-          <p className="type-meta rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-6 text-center text-guinness-tan/75">
+          <p
+            className={`type-meta rounded-lg border ${PUB_LIST_STROKE} bg-guinness-brown/40 p-6 text-center text-guinness-tan/75`}
+          >
             No pubs match your filters.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="grid gap-3 sm:gap-4">
             {filteredBars.map((b) => {
               const isFav = Boolean(favIdByBarKey[b.bar_key]);
               const busy = favBusyKey === b.bar_key;
 
               const detailTo = `/pubs/${encodeURIComponent(b.bar_key)}`;
+              const pourLabel =
+                b.submission_count === 1 ? "1 pour" : `${b.submission_count} pours`;
 
               return (
                 <li
                   key={b.bar_key}
-                  className="rounded-lg border border-guinness-gold/15 bg-guinness-brown/35"
+                  className={`group relative overflow-hidden rounded-2xl border ${PUB_LIST_STROKE} bg-gradient-to-br from-guinness-brown/50 via-guinness-brown/35 to-guinness-black/40 shadow-[inset_0_1px_0_rgba(212,175,55,0.04)] transition-[border-color,box-shadow] duration-200 hover:border-guinness-gold/25 hover:shadow-[inset_0_1px_0_rgba(212,175,55,0.07)]`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
+                  <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-guinness-gold/[0.06] blur-2xl" />
+                  <div className="relative flex flex-col sm:flex-row sm:items-stretch">
                     <Link
                       to={detailTo}
                       viewTransition
-                      className="min-w-0 flex-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-guinness-gold/50"
+                      className="flex min-w-0 flex-1 gap-3 p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-guinness-gold/45 sm:gap-4 sm:p-5"
                     >
-                      <p className="font-semibold text-guinness-gold hover:underline">
-                        {b.display_name}
-                      </p>
-                      {b.sample_address ? (
-                        <p className="type-meta mt-0.5 text-guinness-tan/60">
-                          {b.sample_address}
+                      <div className="relative flex shrink-0 flex-col items-center">
+                        <div
+                          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border ${PUB_LIST_STROKE} bg-guinness-gold/[0.08] text-guinness-gold sm:h-16 sm:w-16`}
+                        >
+                          <IconPubMark className="h-7 w-7 sm:h-8 sm:w-8" />
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 flex-1 pr-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h2 className="text-lg font-semibold leading-snug text-guinness-gold transition-colors group-hover:text-guinness-tan sm:text-xl">
+                            {b.display_name}
+                          </h2>
+                          <IconChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-guinness-gold/45 transition-transform group-hover:translate-x-0.5 group-hover:text-guinness-gold/70 sm:hidden" />
+                        </div>
+                        {b.sample_address ? (
+                          <p className="type-meta mt-1 line-clamp-2 text-guinness-tan/65">
+                            {b.sample_address}
+                          </p>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <StatPill icon={<IconPour />}>{pourLabel}</StatPill>
+                          {b.rating_count > 0 && b.avg_pour_rating != null ? (
+                            <StatPill icon={<IconStar />}>
+                              <span className="text-guinness-gold">
+                                {b.avg_pour_rating.toFixed(1)}
+                              </span>
+                              <span className="text-guinness-tan/55">/ 5</span>
+                              <span className="text-guinness-tan/45">
+                                · {b.rating_count}{" "}
+                                {b.rating_count === 1 ? "rating" : "ratings"}
+                              </span>
+                            </StatPill>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center rounded-lg border border-dashed ${PUB_LIST_STROKE} bg-guinness-black/25 px-2.5 py-1 text-xs text-guinness-tan/50`}
+                            >
+                              No ratings yet
+                            </span>
+                          )}
+                        </div>
+                        <p className="type-meta mt-3 hidden items-center gap-1 text-guinness-gold/70 sm:flex">
+                          Pub page
+                          <IconChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </p>
-                      ) : null}
+                      </div>
                     </Link>
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+
+                    <div
+                      className={`flex shrink-0 flex-row gap-2 border-t ${PUB_LIST_STROKE} p-4 pt-3 sm:w-auto sm:flex-col sm:justify-center sm:border-l sm:border-t-0 sm:py-5 sm:pl-4 sm:pr-5`}
+                    >
                       <a
                         href={mapsSearchUrl(b)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="type-meta rounded-full border border-guinness-gold/25 px-2.5 py-1 text-xs font-medium text-guinness-gold hover:bg-guinness-gold/10"
+                        className={`inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border ${PUB_LIST_STROKE} bg-guinness-black/50 px-3 text-xs font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/35 hover:bg-guinness-gold/10 sm:flex-none sm:min-w-[5.75rem]`}
                       >
                         Maps
                       </a>
@@ -381,36 +530,16 @@ export default function Pubs() {
                         type="button"
                         disabled={busy}
                         onClick={() => void toggleFavorite(b)}
-                        className={`type-meta rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                        className={`inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border px-3 text-xs font-semibold transition-colors disabled:opacity-50 sm:flex-none sm:min-w-[5.75rem] ${
                           isFav
-                            ? "border-guinness-gold/50 bg-guinness-gold/15 text-guinness-gold"
-                            : "border-guinness-gold/25 text-guinness-tan hover:text-guinness-cream"
+                            ? "border-guinness-gold/40 bg-guinness-gold/12 text-guinness-gold"
+                            : `${PUB_LIST_STROKE} bg-guinness-black/35 text-guinness-tan hover:border-guinness-gold/30 hover:text-guinness-cream`
                         }`}
                       >
                         {busy ? "…" : isFav ? "Saved" : "Favorite"}
                       </button>
                     </div>
                   </div>
-                  <Link
-                    to={detailTo}
-                    viewTransition
-                    className="block px-4 pb-3 pt-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-guinness-gold/40"
-                  >
-                    <div className="type-meta flex flex-wrap gap-x-3 gap-y-1 text-guinness-tan/70">
-                      <span>{b.submission_count} pour(s)</span>
-                      {b.rating_count > 0 && b.avg_pour_rating != null ? (
-                        <span className="text-guinness-gold">
-                          Avg rating {b.avg_pour_rating.toFixed(1)} / 5 (
-                          {b.rating_count})
-                        </span>
-                      ) : (
-                        <span>No pour ratings yet</span>
-                      )}
-                      <span className="text-guinness-tan/50">
-                        View details →
-                      </span>
-                    </div>
-                  </Link>
                 </li>
               );
             })}

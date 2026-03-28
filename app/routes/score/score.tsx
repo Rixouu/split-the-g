@@ -160,6 +160,9 @@ export default function Score() {
   const [barAddress, setBarAddress] = useState(score.bar_address || "");
   /** Parsed from Google when user picks a suggestion; cleared when they type. */
   const [placeGeo, setPlaceGeo] = useState<ParsedPlaceGeo | null>(null);
+  const [googlePlaceId, setGooglePlaceId] = useState<string | null>(
+    score.google_place_id?.trim() || null,
+  );
   const [pourRating, setPourRating] = useState(
     score.pour_rating != null ? String(score.pour_rating) : "2.5",
   );
@@ -214,6 +217,7 @@ export default function Score() {
   useEffect(() => {
     setBarName(score.bar_name || "");
     setBarAddress(score.bar_address || "");
+    setGooglePlaceId(score.google_place_id?.trim() || null);
     setPourRating(
       score.pour_rating != null ? String(score.pour_rating) : "2.5",
     );
@@ -408,13 +412,14 @@ export default function Score() {
         .update({
           bar_name: nameTrim,
           bar_address: barAddress.trim() || null,
+          google_place_id: googlePlaceId?.trim() || null,
           pour_rating: ratingVal,
           pint_price: pintPriceVal,
           ...geoPatch,
         })
         .eq("id", score.id)
         .select(
-          "id, bar_name, bar_address, pour_rating, pint_price, city, region, country, country_code",
+          "id, bar_name, bar_address, google_place_id, pour_rating, pint_price, city, region, country, country_code",
         )
         .single();
 
@@ -725,11 +730,13 @@ export default function Score() {
                       onChangeText={(v) => {
                         setBarName(v);
                         setPlaceGeo(null);
+                        setGooglePlaceId(null);
                       }}
                       onSelect={(data) => {
                         setBarName(data.name);
                         setBarAddress(data.address);
                         setPlaceGeo(data.geo);
+                        setGooglePlaceId(data.placeId?.trim() || null);
                       }}
                     />
                   </div>
