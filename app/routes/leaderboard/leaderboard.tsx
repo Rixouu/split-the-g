@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   PageHeader,
   leaderboardPageDescription,
-  pageHeaderActionButtonClass,
+  homePourButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
 import { supabase } from "~/utils/supabase";
@@ -336,9 +336,9 @@ export default function Leaderboard() {
           )}
         </div>
 
-        <div className="mt-8 flex justify-center">
-          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
-            Back to Split
+        <div className="mt-10 flex justify-center pb-6">
+          <Link to="/" viewTransition className={homePourButtonClass}>
+            New Pour
           </Link>
         </div>
       </div>

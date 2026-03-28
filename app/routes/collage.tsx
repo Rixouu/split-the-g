@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { supabase } from "~/utils/supabase";
 import {
   PageHeader,
-  pageHeaderActionButtonClass,
+  homePourButtonClass,
   pageShellClass,
   wallPageDescription,
 } from "~/components/PageHeader";
@@ -185,9 +185,6 @@ export default function Collage() {
             description={wallPageDescription}
           >
             <LeaderboardButton />
-            <Link to="/" className={pageHeaderActionButtonClass}>
-              Back to Split
-            </Link>
           </PageHeader>
 
           <div className="rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-4 sm:p-5">
@@ -360,11 +357,8 @@ export default function Collage() {
         )}
 
         <div className="mt-10 flex justify-center pb-6">
-          <Link
-            to="/"
-            className="inline-flex min-h-11 w-full max-w-xs items-center justify-center rounded-lg border border-guinness-gold/25 bg-guinness-brown/50 px-6 py-3 text-sm font-medium text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/70 sm:w-auto"
-          >
-            Back to Split
+          <Link to="/" viewTransition className={homePourButtonClass}>
+            New Pour
           </Link>
         </div>
       </div>

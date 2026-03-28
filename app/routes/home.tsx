@@ -18,7 +18,7 @@ import { uploadImage } from "~/utils/imageStorage";
 import { supabase } from "~/utils/supabase";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { getLocationData } from "~/utils/locationService";
-import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
+import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import {
   extractDetectionsFromWorkflow,
   extractWorkflowOutputImageByNames,
@@ -963,7 +963,7 @@ export default function Home() {
                 <p className="text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-guinness-tan/42">
                   Score your pour
                 </p>
-                <BuyCreatorsABeer variant="compact" className="shrink-0 text-sm" />
+                <BuyCreatorABeer variant="compact" className="shrink-0 text-sm" />
               </div>
 
               {isCameraActive && (
@@ -1084,7 +1084,7 @@ export default function Home() {
               </div>
 
               <div className="flex justify-center pt-1 max-lg:pt-2 lg:hidden">
-                <BuyCreatorsABeer variant="compact" className="text-xs" />
+                <BuyCreatorABeer variant="compact" className="text-xs" />
               </div>
 
               <input

@@ -871,7 +871,7 @@ export default function ProfileLayout() {
       <div className={pageShellClass}>
         <PageHeader title="Profile" description={profilePageDescription}>
           <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
-            New pour
+            Pour
           </Link>
         </PageHeader>
 

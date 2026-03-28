@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { LeaderboardNavigation } from "~/components/leaderboard/LeaderboardNavigation";
 import { CountryStatsTable } from "~/components/leaderboard/CountryStatsTable";
+import { homePourButtonClass } from "~/components/PageHeader";
 
 interface CountryStats {
   country: string;
@@ -27,11 +28,8 @@ export function CountryLeaderboardLayout({
           <h1 className="type-display text-2xl md:text-4xl mb-4 px-2">
             The world&apos;s largest Split the G contest
           </h1>
-          <Link
-            to="/"
-            className="text-guinness-gold hover:text-guinness-tan transition-colors inline-block"
-          >
-            ← Back to Split
+          <Link to="/" viewTransition className={`${homePourButtonClass} mx-auto`}>
+            New Pour
           </Link>
         </div>
         <div className="flex justify-center gap-4 mb-4 md:mb-8">
@@ -40,12 +38,9 @@ export function CountryLeaderboardLayout({
 
         <CountryStatsTable title={tableTitle} submissions={submissions} />
 
-        <div className="mt-4 md:mt-8 text-center">
-          <Link
-            to="/"
-            className="inline-block px-4 md:px-6 py-2 md:py-3 bg-guinness-gold/10 hover:bg-guinness-gold/20 text-guinness-gold border border-guinness-gold/20 rounded-lg transition-colors text-sm md:text-base"
-          >
-            Back to Split
+        <div className="mt-10 flex justify-center pb-6 md:mt-10">
+          <Link to="/" viewTransition className={homePourButtonClass}>
+            New Pour
           </Link>
         </div>
       </div>

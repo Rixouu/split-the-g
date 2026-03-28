@@ -1,20 +1,20 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
+import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import {
   PageHeader,
   faqPageDescription,
-  pageHeaderActionButtonClass,
+  homePourButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
 
 export function meta() {
   return [
-    { title: "FAQ — Split the G App" },
+    { title: "FAQ — Split the G" },
     {
       name: "description",
       content:
-        "Frequently asked questions about the Split the G app and challenge",
+        "Frequently asked questions about Split the G: scoring your pour, pubs, competitions, accounts, and supporting the project.",
     },
   ];
 }
@@ -24,20 +24,36 @@ const faqItems: { question: string; answer: ReactNode }[] = [
     question: 'What is "Split the G"?',
     answer: (
       <>
-        &quot;Split the G&quot; is a popular drinking challenge where you try to
-        sip your pint of Guinness so that the foam line stops exactly in the
-        middle of the &quot;G&quot; in the Guinness logo. It takes precision,
-        patience, and a bit of luck.
+        &quot;Split the G&quot; is the Guinness challenge where you sip your pint
+        so the foam line lands in the middle of the &quot;G&quot; in the harp
+        logo. It&apos;s part skill, part steady hands, and part luck.
       </>
     ),
   },
   {
-    question: "What does the Split the G app do?",
+    question: "What does this app do?",
     answer: (
       <>
-        Our app lets you snap a photo of your Guinness pint and uses computer
-        vision to score how well you split the G. It&apos;s a fun way to compete
-        with friends, settle debates, and track your perfect pours.
+        Split the G is a web app for scoring that pour. You take a photo on the
+        home screen; the app estimates how close you are to a perfect split and
+        gives you a score from 0 to 5. You can browse the{" "}
+        <Link to="/feed" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+          feed
+        </Link>
+        , open any pour for details, explore{" "}
+        <Link to="/pubs" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+          pubs
+        </Link>{" "}
+        (with a wall of pours per venue), check{" "}
+        <Link to="/leaderboard" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+          leaderboards
+        </Link>
+        , and join{" "}
+        <Link to="/competitions" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+          competitions
+        </Link>
+        . Sign in with Google from Profile when you want a saved profile,
+        friends, favorites, and competition invites.
       </>
     ),
   },
@@ -45,10 +61,11 @@ const faqItems: { question: string; answer: ReactNode }[] = [
     question: "How does the app score my pint?",
     answer: (
       <>
-        We analyze your photo to detect the Guinness glass and logo, then
-        measure how close the foam line is to the center of the
-        &quot;G&quot;. You&apos;ll get a score from 0 to 5 — the closer to a
-        perfect split, the higher the score.
+        The app looks for a Guinness pint glass and logo in your photo, then
+        compares where the foam line sits relative to the center of the
+        &quot;G&quot;. That becomes a score from 0 (way off) to 5 (as close as the
+        model can tell). Results depend on lighting, angle, and image quality —
+        it&apos;s a fun guide, not a lab measurement.
       </>
     ),
   },
@@ -56,8 +73,8 @@ const faqItems: { question: string; answer: ReactNode }[] = [
     question: "Do I have to drink Guinness to use the app?",
     answer: (
       <>
-        Yes — the app is specifically built to detect the Guinness glass and
-        logo. Other drinks or glassware won&apos;t work (yet!).
+        Yes. Scoring is built around the standard Guinness glass and harp logo.
+        Other beers or glass shapes aren&apos;t supported.
       </>
     ),
   },
@@ -65,29 +82,29 @@ const faqItems: { question: string; answer: ReactNode }[] = [
     question: "Is the app free?",
     answer: (
       <>
-        Yep! The app is entirely free to use, with no ads. Premium features may
-        come in the future, but the core &quot;Split the G&quot; experience is
-        always free.
+        Yes. There are no paywalls for pouring, browsing, or competitions, and
+        no ads in the app today.
       </>
     ),
   },
   {
-    question: "Can I use the app with older Guinness glasses?",
+    question: "Can I use older or non-standard Guinness glasses?",
     answer: (
       <>
-        The app works best with the modern Guinness pint glass with a clear
-        &quot;G&quot; logo. Older or worn glasses might not be recognized as
-        accurately, but we&apos;re always improving the model.
+        The model is trained on the familiar curved pint with a clear
+        &quot;G&quot;. Etched, faded, or unusual glassware may score less
+        reliably. Better photos usually help more than a perfect glass.
       </>
     ),
   },
   {
-    question: "Do I need to take the photo at a certain angle?",
+    question: "How should I take the photo?",
     answer: (
       <>
-        Try to take the photo straight-on, with the full logo and foam line
-        visible. Good lighting helps too. We&apos;ll guide you with tips in the
-        app before snapping a pic.
+        Face the glass straight-on so the full harp and foam line are visible.
+        Avoid harsh glare and very dark corners. The home screen uses your
+        device camera with an overlay to help you line things up before you
+        capture.
       </>
     ),
   },
@@ -95,32 +112,33 @@ const faqItems: { question: string; answer: ReactNode }[] = [
     question: "Can I share my score?",
     answer: (
       <>
-        Yes! After getting your score, you can share to Instagram, TikTok, or
-        group chat — let the bragging begin. Feel free to tag us on Instagram
-        or X with your score.
+        Each pour has its own page you can link to. Copy the URL from the
+        address bar after you submit, or screenshot your result — share it
+        anywhere you like (group chat, socials, etc.).
       </>
     ),
   },
   {
-    question: "How can I improve my Split the G score?",
+    question: "How can I get a higher score?",
     answer: (
       <>
-        Steady hands, a well-poured pint, and a bit of practice. Take your time
-        and aim for that clean, precise sip. We believe in you.
+        Start with a well-poured pint, then sip slowly and stop when the line
+        looks centered on the &quot;G&quot;. Small adjustments beat big gulps.
+        If the model seems off, try a clearer, straighter photo next time.
       </>
     ),
   },
   {
-    question: "How can I support the creators?",
+    question: "How can I support the creator?",
     answer: (
       <>
         <p className="mb-4">
-          This app is completely free, but if you&apos;re enjoying Split the G
-          and want to show your appreciation, you can buy the creators a beer.
-          Your support helps us keep the app running and develop new features.
+          Split the G is a solo project and free to use. If it&apos;s been fun
+          for you and you&apos;d like to say thanks, you can buy the creator a
+          beer — it helps cover hosting, APIs, and time spent improving the app.
         </p>
         <div className="flex justify-center pt-2">
-          <BuyCreatorsABeer />
+          <BuyCreatorABeer />
         </div>
       </>
     ),
@@ -134,11 +152,7 @@ export default function FAQ() {
         <PageHeader
           title="Frequently asked questions"
           description={faqPageDescription}
-        >
-          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
-            Back to Split
-          </Link>
-        </PageHeader>
+        />
 
         <div className="flex flex-col gap-3 pb-4">
           {faqItems.map((item) => (
@@ -175,13 +189,9 @@ export default function FAQ() {
           ))}
         </div>
 
-        <div className="mt-12 flex justify-center pb-8">
-          <Link
-            to="/"
-            viewTransition
-            className={`${pageHeaderActionButtonClass} w-full max-w-xs sm:w-auto`}
-          >
-            Back to Split
+        <div className="mt-10 flex justify-center pb-6">
+          <Link to="/" viewTransition className={homePourButtonClass}>
+            New Pour
           </Link>
         </div>
       </div>

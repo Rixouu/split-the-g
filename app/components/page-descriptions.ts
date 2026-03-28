@@ -26,7 +26,7 @@ export const pubsPageDescription =
   "Explore venues behind community pours worldwide. Search names, cities, or countries to find great bars.";
 
 export const faqPageDescription =
-  "Answers about pouring, scoring, competitions, and accounts. Read this before messaging support or asking friends.";
+  "How scoring works, what the app includes (feed, pubs, competitions), accounts, and how to support the project.";
 
 export const wallPageDescription =
   "Sort, filter scores and dates across pours. Tap tiles for venues, photos, and split results.";

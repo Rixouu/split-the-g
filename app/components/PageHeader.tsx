@@ -60,3 +60,10 @@ export const pageShellClass =
  */
 export const pageHeaderActionButtonClass =
   "inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-guinness-gold px-4 py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan sm:px-6 sm:text-base";
+
+/**
+ * Footer / end-of-page CTA to home for a new score — ghost outline. Use “New Pour” as label.
+ * Feed & Profile headers use {@link pageHeaderActionButtonClass} + “Pour” to match bottom nav.
+ */
+export const homePourButtonClass =
+  "inline-flex min-h-11 w-full max-w-xs items-center justify-center rounded-lg border-2 border-guinness-gold/45 bg-transparent px-6 py-3 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold hover:bg-guinness-gold/[0.08] sm:w-auto";

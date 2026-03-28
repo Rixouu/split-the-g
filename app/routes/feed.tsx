@@ -69,7 +69,7 @@ export default function Feed() {
       <div className={pageShellClass}>
         <PageHeader title="Feed" description={feedPageDescription}>
           <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
-            New pour
+            Pour
           </Link>
         </PageHeader>
 

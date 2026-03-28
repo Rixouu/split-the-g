@@ -19,7 +19,7 @@ import { type Score } from "~/types/score";
 import { supabase } from "~/utils/supabase";
 import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
 import { useEffect, useState } from "react";
-import { BuyCreatorsABeer } from "~/components/BuyCreatorsABeer";
+import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import type { ParsedPlaceGeo } from "~/utils/placeGeoFromComponents";
 import { isScoreUuidRef, scorePourPath } from "~/utils/scorePath";
@@ -913,7 +913,7 @@ export default function Score() {
             <span className="type-meta text-guinness-tan/55">
               Enjoying Split the G?
             </span>
-            <BuyCreatorsABeer variant="compact" />
+            <BuyCreatorABeer variant="compact" />
           </div>
         </section>
       </div>

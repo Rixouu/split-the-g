@@ -258,7 +258,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
           </button>
         </div>
       ) : (
-        <ul className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(11.5rem,1fr))] sm:gap-4">
+        <ul className="grid w-full min-w-0 grid-cols-2 gap-2.5 sm:gap-4">
           {pageSlice.map((row) => (
             <li key={row.id} className="min-w-0">
               <Link
