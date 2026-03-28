@@ -15,6 +15,10 @@ import {
   pageShellClass,
 } from "~/components/PageHeader";
 import { PubGoogleMapEmbed } from "~/components/pub/PubGoogleMapEmbed";
+import {
+  PubWallTab,
+  type PubWallRow,
+} from "~/components/pub/PubWallTab";
 import { supabase } from "~/utils/supabase";
 import {
   fetchPlaceDetailsForDirectoryImport,
@@ -34,7 +38,9 @@ function isPubDirectoryAdmin(email: string | null | undefined): boolean {
 
 /** Brand stroke for pub surfaces (dark brown — no light/white borders). */
 const pubStroke = "border-[#322914]";
-const pubPanel = `rounded-2xl border ${pubStroke} bg-guinness-brown/25 p-4 shadow-[inset_0_1px_0_rgba(212,175,55,0.05)] sm:p-5`;
+/** Panel shell without inset top highlight (avoids a faux “divider” above first content). */
+const pubPanelShell = `rounded-2xl border ${pubStroke} bg-guinness-brown/25 p-4 sm:p-5`;
+const pubPanel = `${pubPanelShell} shadow-[inset_0_1px_0_rgba(212,175,55,0.05)]`;
 const pubPanelMuted = `rounded-xl border ${pubStroke} bg-guinness-black/30 px-3 py-3 sm:px-4 sm:py-3.5`;
 const pubDivider = `border-t ${pubStroke}`;
 
@@ -92,6 +98,27 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
   const bar = stat as BarStat;
 
+  let wallPours: PubWallRow[] = [];
+  let wallError: string | null = null;
+  const wallRes = await supabase.rpc("pub_wall_scores", {
+    p_bar_key: barKey,
+  });
+  if (wallRes.error) {
+    const msg = `${wallRes.error.message ?? ""} ${wallRes.error.code ?? ""}`.toLowerCase();
+    if (
+      wallRes.error.code === "42883" ||
+      msg.includes("pub_wall_scores") ||
+      msg.includes("function")
+    ) {
+      wallError =
+        "Wall requires migration 20260328300000_pub_wall_scores_rpc (run Supabase migrations).";
+    } else {
+      wallError = wallRes.error.message ?? "Could not load wall.";
+    }
+  } else {
+    wallPours = (wallRes.data ?? []) as PubWallRow[];
+  }
+
   const { data: extraRows, error: extraError } = await supabase.rpc(
     "pub_extra_stats_for_bar",
     { p_bar_key: barKey },
@@ -110,6 +137,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
       placeDetails: null as PubPlaceRow | null,
       linkedCompetitions: [] as LinkedCompetition[],
       googleOpeningHoursLines: null as string[] | null,
+      wallPours,
+      wallError,
     };
   }
 
@@ -169,6 +198,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
     placeDetails: placeDetailsTyped,
     linkedCompetitions: !compErr ? ((comps ?? []) as LinkedCompetition[]) : [],
     googleOpeningHoursLines,
+    wallPours,
+    wallError,
   };
 }
 
@@ -338,6 +369,8 @@ export default function PubDetail() {
     placeDetails,
     linkedCompetitions,
     googleOpeningHoursLines,
+    wallPours,
+    wallError,
   } = useLoaderData<typeof loader>();
   const revalidator = useRevalidator();
   const importFetcher = useFetcher<ImportGoogleActionData>();
@@ -370,6 +403,10 @@ export default function PubDetail() {
     placeDetails?.google_place_id ?? "",
   );
   const [directoryBusy, setDirectoryBusy] = useState(false);
+
+  const [pubTab, setPubTab] = useState<"promos" | "competitions" | "wall">(
+    "promos",
+  );
 
   useEffect(() => {
     if (importFetcher.state !== "idle" || importFetcher.data == null) return;
@@ -610,9 +647,9 @@ export default function PubDetail() {
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-8 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-10 lg:gap-y-8">
-          {/* Mobile: map & location first; desktop: left column */}
-          <aside className="order-1 space-y-5 lg:order-none lg:sticky lg:top-24 lg:col-span-5 lg:self-start">
+        <div className="flex flex-col gap-8 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-8 lg:gap-y-8 xl:gap-x-10">
+          {/* Mobile: map & location first; desktop: narrower sidebar, more room for wall/tabs */}
+          <aside className="order-1 space-y-5 lg:order-none lg:sticky lg:top-24 lg:col-span-4 lg:self-start">
             <section className={pubPanel} aria-labelledby="pub-location-heading">
               <h2
                 id="pub-location-heading"
@@ -681,46 +718,9 @@ export default function PubDetail() {
                 googleOpeningHoursLines={googleOpeningHoursLines}
               />
             </section>
-
-            <section
-              className={pubPanel}
-              aria-labelledby="pub-comps-aside-heading"
-            >
-              <h2
-                id="pub-comps-aside-heading"
-                className="type-card-title mb-3 text-guinness-gold"
-              >
-                Competitions
-              </h2>
-              {linkedCompetitions.length === 0 ? (
-                <p className="type-meta text-guinness-tan/65">
-                  No active competition linked. Organizers can attach this pub
-                  when creating or editing a comp.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {linkedCompetitions.map((c) => (
-                    <li key={c.id}>
-                      <Link
-                        to={`/competitions/${c.id}`}
-                        viewTransition
-                        className={`block rounded-xl border ${pubStroke} bg-guinness-black/25 px-3 py-2.5 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 sm:px-4 sm:py-3`}
-                      >
-                        <span className="font-semibold text-guinness-gold">
-                          {c.title}
-                        </span>
-                        <span className="type-meta mt-0.5 block text-guinness-tan/65">
-                          Ends {new Date(c.ends_at).toLocaleString()}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
           </aside>
 
-          <div className="order-2 space-y-8 lg:order-none lg:col-span-7 lg:min-w-0">
+          <div className="order-2 min-w-0 space-y-8 lg:order-none lg:col-span-8">
             <section
               className={pubPanel}
               aria-labelledby="pub-stats-heading"
@@ -801,201 +801,291 @@ export default function PubDetail() {
               </div>
             </section>
 
-            <section
-              className={pubPanel}
-              aria-labelledby="pub-directory-heading"
-            >
-              <h2
-                id="pub-directory-heading"
-                className="type-card-title mb-1 text-guinness-gold"
+            <div className={`${pubPanelShell} min-w-0`}>
+              <div
+                className="mb-5 w-full min-w-0 border-b border-[#322914] pb-4"
+                role="tablist"
+                aria-label="Pub sections"
               >
-                Guinness & promos
-              </h2>
-              <p className="type-meta mb-4 text-guinness-tan/70">
-                Community notes — visible to everyone.
-                {canEditPubDirectory
-                  ? " Edit notes below. Listing hours appear in the left column when Google is linked."
-                  : " Updates are managed by the team."}
-              </p>
+                <div className="grid w-full min-w-0 grid-cols-3 gap-2 sm:gap-3">
+                  {(
+                    [
+                      ["promos", "Promos"],
+                      ["competitions", "Competitions"],
+                      ["wall", "Wall"],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={pubTab === id}
+                      className={`min-h-11 w-full min-w-0 rounded-lg px-2 py-2.5 text-center text-xs font-semibold leading-tight transition-colors sm:min-h-12 sm:px-3 sm:text-sm ${
+                        pubTab === id
+                          ? "bg-guinness-gold text-guinness-black shadow-[0_0_0_1px_rgba(212,175,55,0.35)]"
+                          : `border ${pubStroke} bg-guinness-black/30 text-guinness-tan/90 hover:border-guinness-gold/30 hover:bg-guinness-brown/35 hover:text-guinness-cream`
+                      }`}
+                      onClick={() => setPubTab(id)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              <DirectorySection title="Guinness">
-                {placeDetails?.guinness_info?.trim() ? (
-                  <p className="whitespace-pre-wrap">
-                    {placeDetails.guinness_info.trim()}
+              {pubTab === "promos" ? (
+                <>
+                <section aria-labelledby="pub-directory-heading">
+                  <h2
+                    id="pub-directory-heading"
+                    className="type-card-title mb-1 text-guinness-gold"
+                  >
+                    Guinness & promos
+                  </h2>
+                  <p className="type-meta mb-4 text-guinness-tan/70">
+                    Community notes — visible to everyone.
+                    {canEditPubDirectory
+                      ? " Edit notes below. Listing hours appear in the left column when Google is linked."
+                      : " Updates are managed by the team."}
                   </p>
-                ) : (
-                  <p className="text-guinness-tan/55">
-                    Taps, pour quality, nitro — add below.
-                  </p>
-                )}
-              </DirectorySection>
-              <div className={`${pubDivider} mt-5 pt-5`}>
-                <DirectorySection title="Promotions & drinks">
-                  {placeDetails?.alcohol_promotions?.trim() ? (
-                    <p className="whitespace-pre-wrap">
-                      {placeDetails.alcohol_promotions.trim()}
+
+                  <DirectorySection title="Guinness">
+                    {placeDetails?.guinness_info?.trim() ? (
+                      <p className="whitespace-pre-wrap">
+                        {placeDetails.guinness_info.trim()}
+                      </p>
+                    ) : (
+                      <p className="text-guinness-tan/55">
+                        Taps, pour quality, nitro — add below.
+                      </p>
+                    )}
+                  </DirectorySection>
+                  <div className={`${pubDivider} mt-5 pt-5`}>
+                    <DirectorySection title="Promotions & drinks">
+                      {placeDetails?.alcohol_promotions?.trim() ? (
+                        <p className="whitespace-pre-wrap">
+                          {placeDetails.alcohol_promotions.trim()}
+                        </p>
+                      ) : (
+                        <p className="text-guinness-tan/55">Nothing added yet.</p>
+                      )}
+                    </DirectorySection>
+                  </div>
+                </section>
+                {canEditPubDirectory ? (
+                  <form
+                    onSubmit={(ev) => void saveDirectory(ev)}
+                    className={`mt-6 ${pubPanel}`}
+                  >
+                    <h3 className="type-card-title mb-1 text-guinness-gold">
+                      Update pub details
+                    </h3>
+                    <p className="type-meta mb-6 text-guinness-tan/65">
+                      Admin only. The left column shows Google listing hours when a Place
+                      is linked; import fills Place ID, map link, and hours.
+                    </p>
+
+                    <div className="space-y-8">
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="pub-admin-opening-hours"
+                          className="type-meta block text-guinness-tan/80"
+                        >
+                          Opening hours (admin backup)
+                        </label>
+                        <p className="type-meta text-guinness-tan/45">
+                          Not shown on the public page — visitors only see Google listing
+                          hours. Use for internal notes or when Google has no hours.
+                        </p>
+                        <textarea
+                          id="pub-admin-opening-hours"
+                          value={openingHours}
+                          onChange={(e) => setOpeningHours(e.target.value)}
+                          rows={5}
+                          className={fieldTextareaClass}
+                          placeholder="e.g. Mon–Thu 4pm–12am, Fri–Sun 2pm–1am"
+                        />
+                      </div>
+
+                      <div
+                        className={`grid gap-5 border-t ${pubStroke} pt-6 sm:grid-cols-2 sm:gap-6`}
+                      >
+                        <div className="space-y-2 sm:min-w-0">
+                          <label
+                            htmlFor="pub-admin-guinness"
+                            className="type-meta block text-guinness-tan/80"
+                          >
+                            Guinness & pour notes
+                          </label>
+                          <textarea
+                            id="pub-admin-guinness"
+                            value={guinnessInfo}
+                            onChange={(e) => setGuinnessInfo(e.target.value)}
+                            rows={4}
+                            className={fieldTextareaClass}
+                            placeholder="How’s the Guinness here?"
+                          />
+                        </div>
+                        <div className="space-y-2 sm:min-w-0">
+                          <label
+                            htmlFor="pub-admin-promos"
+                            className="type-meta block text-guinness-tan/80"
+                          >
+                            Promotions & other drinks
+                          </label>
+                          <textarea
+                            id="pub-admin-promos"
+                            value={promotions}
+                            onChange={(e) => setPromotions(e.target.value)}
+                            rows={4}
+                            className={fieldTextareaClass}
+                            placeholder="Happy hour, other stouts, etc."
+                          />
+                        </div>
+                      </div>
+
+                      <div
+                        className={`space-y-4 rounded-xl border ${pubStroke} bg-guinness-black/25 p-4 sm:p-5`}
+                      >
+                        <div>
+                          <p className="type-label text-guinness-gold">
+                            Google listing & import
+                          </p>
+                          <p className="type-meta mt-1 text-guinness-tan/50">
+                            Link the business profile for hours on the left. Classic
+                            Places API + server key required for import.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="pub-admin-place-id"
+                            className="type-meta block text-guinness-tan/80"
+                          >
+                            Google Place ID or Maps URL
+                          </label>
+                          <input
+                            id="pub-admin-place-id"
+                            type="text"
+                            value={directoryGooglePlaceId}
+                            onChange={(e) =>
+                              setDirectoryGooglePlaceId(e.target.value)
+                            }
+                            className={fieldInputClass}
+                            placeholder="ChIJ… or paste a full google.com/maps/place/… link"
+                            autoComplete="off"
+                            spellCheck={false}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="pub-admin-maps-url"
+                            className="type-meta block text-guinness-tan/80"
+                          >
+                            Custom Maps URL (optional)
+                          </label>
+                          <input
+                            id="pub-admin-maps-url"
+                            type="url"
+                            value={mapsPlaceUrl}
+                            onChange={(e) => setMapsPlaceUrl(e.target.value)}
+                            className={fieldInputClass}
+                            placeholder="https://maps.app.goo.gl/…"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                          <button
+                            type="button"
+                            disabled={
+                              importFetcher.state !== "idle" || directoryBusy
+                            }
+                            onClick={() => void submitImportFromGoogle()}
+                            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border ${pubStroke} bg-guinness-black/40 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/40 disabled:opacity-50`}
+                          >
+                            {importFetcher.state !== "idle"
+                              ? "Importing…"
+                              : "Import from Google Maps"}
+                          </button>
+                          <p className="type-meta max-w-xl text-guinness-tan/50 sm:text-right">
+                            Uses Place ID field, custom URL, or pub name. Then{" "}
+                            <span className="text-guinness-tan/70">Save pub details</span>
+                            .
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={directoryBusy}
+                      className="mt-8 w-full rounded-lg bg-guinness-gold px-4 py-3 text-sm font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
+                    >
+                      {directoryBusy ? "Saving…" : "Save pub details"}
+                    </button>
+                  </form>
+                ) : null}
+                </>
+              ) : null}
+
+              {pubTab === "competitions" ? (
+                <section aria-labelledby="pub-comps-tab-heading">
+                  <h2
+                    id="pub-comps-tab-heading"
+                    className="type-card-title mb-3 text-guinness-gold"
+                  >
+                    Competitions
+                  </h2>
+                  {linkedCompetitions.length === 0 ? (
+                    <p className="type-meta text-guinness-tan/65">
+                      No active competition linked. Organizers can attach this
+                      pub when creating or editing a comp.
                     </p>
                   ) : (
-                    <p className="text-guinness-tan/55">Nothing added yet.</p>
+                    <ul className="space-y-2">
+                      {linkedCompetitions.map((c) => (
+                        <li key={c.id}>
+                          <Link
+                            to={`/competitions/${c.id}`}
+                            viewTransition
+                            className={`block rounded-xl border ${pubStroke} bg-guinness-black/25 px-3 py-2.5 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 sm:px-4 sm:py-3`}
+                          >
+                            <span className="font-semibold text-guinness-gold">
+                              {c.title}
+                            </span>
+                            <span className="type-meta mt-0.5 block text-guinness-tan/65">
+                              Ends {new Date(c.ends_at).toLocaleString()}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                </DirectorySection>
-              </div>
-            </section>
+                </section>
+              ) : null}
 
-            {canEditPubDirectory ? (
-              <form
-                onSubmit={(ev) => void saveDirectory(ev)}
-                className={pubPanel}
-              >
-                <h3 className="type-card-title mb-1 text-guinness-gold">
-                  Update pub details
-                </h3>
-                <p className="type-meta mb-6 text-guinness-tan/65">
-                  Admin only. The left column shows Google listing hours when a Place
-                  is linked; import fills Place ID, map link, and hours.
-                </p>
-
-                <div className="space-y-8">
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="pub-admin-opening-hours"
-                      className="type-meta block text-guinness-tan/80"
-                    >
-                      Opening hours (admin backup)
-                    </label>
-                    <p className="type-meta text-guinness-tan/45">
-                      Not shown on the public page — visitors only see Google listing
-                      hours. Use for internal notes or when Google has no hours.
+              {pubTab === "wall" ? (
+                <section className="min-w-0" aria-labelledby="pub-wall-heading">
+                  <h2
+                    id="pub-wall-heading"
+                    className="type-card-title mb-1 text-guinness-gold"
+                  >
+                    Wall
+                  </h2>
+                  <p className="type-meta mb-4 text-guinness-tan/70">
+                    Pours tagged with this pub — same filters as the main Wall.
+                    Showing up to 300 most recent.
+                  </p>
+                  {wallError ? (
+                    <p className="type-meta mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100/90">
+                      {wallError}
                     </p>
-                    <textarea
-                      id="pub-admin-opening-hours"
-                      value={openingHours}
-                      onChange={(e) => setOpeningHours(e.target.value)}
-                      rows={5}
-                      className={fieldTextareaClass}
-                      placeholder="e.g. Mon–Thu 4pm–12am, Fri–Sun 2pm–1am"
-                    />
-                  </div>
-
-                  <div
-                    className={`grid gap-5 border-t ${pubStroke} pt-6 sm:grid-cols-2 sm:gap-6`}
-                  >
-                    <div className="space-y-2 sm:min-w-0">
-                      <label
-                        htmlFor="pub-admin-guinness"
-                        className="type-meta block text-guinness-tan/80"
-                      >
-                        Guinness & pour notes
-                      </label>
-                      <textarea
-                        id="pub-admin-guinness"
-                        value={guinnessInfo}
-                        onChange={(e) => setGuinnessInfo(e.target.value)}
-                        rows={4}
-                        className={fieldTextareaClass}
-                        placeholder="How’s the Guinness here?"
-                      />
-                    </div>
-                    <div className="space-y-2 sm:min-w-0">
-                      <label
-                        htmlFor="pub-admin-promos"
-                        className="type-meta block text-guinness-tan/80"
-                      >
-                        Promotions & other drinks
-                      </label>
-                      <textarea
-                        id="pub-admin-promos"
-                        value={promotions}
-                        onChange={(e) => setPromotions(e.target.value)}
-                        rows={4}
-                        className={fieldTextareaClass}
-                        placeholder="Happy hour, other stouts, etc."
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    className={`space-y-4 rounded-xl border ${pubStroke} bg-guinness-black/25 p-4 sm:p-5`}
-                  >
-                    <div>
-                      <p className="type-label text-guinness-gold">
-                        Google listing & import
-                      </p>
-                      <p className="type-meta mt-1 text-guinness-tan/50">
-                        Link the business profile for hours on the left. Classic
-                        Places API + server key required for import.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="pub-admin-place-id"
-                        className="type-meta block text-guinness-tan/80"
-                      >
-                        Google Place ID or Maps URL
-                      </label>
-                      <input
-                        id="pub-admin-place-id"
-                        type="text"
-                        value={directoryGooglePlaceId}
-                        onChange={(e) =>
-                          setDirectoryGooglePlaceId(e.target.value)
-                        }
-                        className={fieldInputClass}
-                        placeholder="ChIJ… or paste a full google.com/maps/place/… link"
-                        autoComplete="off"
-                        spellCheck={false}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="pub-admin-maps-url"
-                        className="type-meta block text-guinness-tan/80"
-                      >
-                        Custom Maps URL (optional)
-                      </label>
-                      <input
-                        id="pub-admin-maps-url"
-                        type="url"
-                        value={mapsPlaceUrl}
-                        onChange={(e) => setMapsPlaceUrl(e.target.value)}
-                        className={fieldInputClass}
-                        placeholder="https://maps.app.goo.gl/…"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
-                      <button
-                        type="button"
-                        disabled={
-                          importFetcher.state !== "idle" || directoryBusy
-                        }
-                        onClick={() => void submitImportFromGoogle()}
-                        className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border ${pubStroke} bg-guinness-black/40 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/40 disabled:opacity-50`}
-                      >
-                        {importFetcher.state !== "idle"
-                          ? "Importing…"
-                          : "Import from Google Maps"}
-                      </button>
-                      <p className="type-meta max-w-xl text-guinness-tan/50 sm:text-right">
-                        Uses Place ID field, custom URL, or pub name. Then{" "}
-                        <span className="text-guinness-tan/70">Save pub details</span>
-                        .
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={directoryBusy}
-                  className="mt-8 w-full rounded-lg bg-guinness-gold px-4 py-3 text-sm font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
-                >
-                  {directoryBusy ? "Saving…" : "Save pub details"}
-                </button>
-              </form>
-            ) : null}
+                  ) : null}
+                  <PubWallTab items={wallPours} pubStroke={pubStroke} />
+                </section>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
