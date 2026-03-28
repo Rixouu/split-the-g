@@ -47,6 +47,7 @@ import {
 
 const profileNavItems = [
   { to: "/profile/progress", label: "Progress" },
+  { to: "/profile/expenses", label: "Expenses" },
   { to: "/profile/scores", label: "Scores" },
   { to: "/profile/favorites", label: "Favorite bars" },
   { to: "/profile/friends", label: "Friends" },
@@ -936,7 +937,7 @@ export default function ProfileLayout() {
               }}
             >
               <nav
-                className={`grid w-full grid-cols-2 lg:grid-cols-4 ${segmentedTabGroupChromeClass}`}
+                className={`grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 ${segmentedTabGroupChromeClass}`}
                 aria-label="Profile sections"
               >
                 {profileNavItems.map(({ to, label }) => (

@@ -18,23 +18,12 @@ export default function ProfileProgressPage() {
     <div className="space-y-8">
       {scores.length > 0 ? (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { label: "Pours", value: String(progressStats.count) },
               { label: "Best", value: progressStats.best.toFixed(2) },
               { label: "Avg / 5", value: progressStats.avg.toFixed(2) },
               { label: "Last 7d", value: String(progressStats.last7) },
-              {
-                label: "Spend tracked",
-                value:
-                  progressStats.totalSpend > 0
-                    ? progressStats.totalSpend.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
-                    : "—",
-                hint: "Sum of pint prices you entered on pours",
-              },
             ].map((item) => (
               <div
                 key={item.label}
@@ -44,9 +33,6 @@ export default function ProfileProgressPage() {
                 <p className="mt-1 text-3xl font-bold tabular-nums text-guinness-gold">
                   {item.value}
                 </p>
-                {"hint" in item && item.hint ? (
-                  <p className="type-meta mt-2 text-guinness-tan/50">{item.hint}</p>
-                ) : null}
               </div>
             ))}
           </div>

@@ -45,7 +45,7 @@ function endOfLocalDay(ymd: string): number {
 }
 
 const selectFieldClass =
-  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none sm:min-w-[10.5rem]";
+  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2.5 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none";
 
 interface PubWallTabProps {
   items: PubWallRow[];
@@ -157,9 +157,9 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
   return (
     <div className="w-full min-w-0 space-y-5">
       <div
-        className={`w-full min-w-0 rounded-xl border ${pubStroke} bg-guinness-brown/30 p-4 sm:p-5`}
+        className={`w-full min-w-0 rounded-xl border ${pubStroke} bg-guinness-brown/30 p-5 sm:p-6`}
       >
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <span className="type-label text-guinness-gold">Filters</span>
           <div className="flex items-center gap-2">
             <span className="text-xs text-guinness-tan/60 sm:text-sm">
@@ -177,9 +177,9 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
           </div>
         </div>
         <div
-          className={`grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 ${filtersOpen ? "" : "hidden md:grid"}`}
+          className={`grid w-full min-w-0 grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-6 xl:grid-cols-4 ${filtersOpen ? "" : "hidden md:grid"}`}
         >
-          <label className="flex min-w-0 flex-col gap-1.5">
+          <label className="flex min-w-0 flex-col gap-2">
             <span className="type-meta text-guinness-tan/80">Sort by</span>
             <select
               className={selectFieldClass}
@@ -193,7 +193,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
               <option value="score_low">Lowest score</option>
             </select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1.5">
+          <label className="flex min-w-0 flex-col gap-2">
             <span className="type-meta text-guinness-tan/80">Minimum score</span>
             <select
               className={selectFieldClass}
@@ -209,7 +209,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
               <option value="4.5">4.5+</option>
             </select>
           </label>
-          <div className="min-w-0">
+          <div className="min-w-0 sm:min-w-[12rem]">
             <WallDateRangeField
               dateFrom={dateFrom}
               dateTo={dateTo}
@@ -219,7 +219,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
               }}
             />
           </div>
-          <label className="flex min-w-0 flex-col gap-1.5">
+          <label className="flex min-w-0 flex-col gap-2">
             <span className="type-meta text-guinness-tan/80">Country</span>
             <select
               className={selectFieldClass}
@@ -286,7 +286,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
                     <span className="line-clamp-2 text-xs font-semibold text-guinness-cream sm:text-sm">
                       {flagEmojiFromIso2(row.country_code) ? (
                         <span
-                          className="mr-1 inline-block shrink-0"
+                          className="mr-1.5 inline-block shrink-0 text-[1.2em] leading-none align-middle"
                           title={
                             row.country_code?.trim().toUpperCase() ?? undefined
                           }
