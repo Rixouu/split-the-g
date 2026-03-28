@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 const embedBorder =
   "rounded-xl border border-[#322914] bg-guinness-black/40 shadow-[inset_0_1px_0_rgba(212,175,55,0.04)]";
 
+/** Maps Embed API has no dark style; invert + hue-rotate approximates a dark theme. */
+const mapDarkFilterClass =
+  "[filter:invert(88%)_hue-rotate(180deg)_saturate(0.78)_contrast(1.06)_brightness(0.97)]";
+
 /**
  * Embedded map via Google Maps Embed API (Search mode).
  * Requires `VITE_GOOGLE_MAPS_API_KEY` and Maps Embed API enabled for the key.
@@ -80,14 +84,18 @@ export function PubGoogleMapEmbed({
 
   return (
     <div className={`overflow-hidden ${embedBorder}`}>
-      <iframe
-        title={title}
-        src={iframeSrc}
-        className="aspect-[4/3] max-h-[min(22rem,50vh)] min-h-[12rem] w-full border-0"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        allowFullScreen
-      />
+      <div
+        className={`relative aspect-[4/3] max-h-[min(22rem,50vh)] min-h-[12rem] w-full ${mapDarkFilterClass}`}
+      >
+        <iframe
+          title={title}
+          src={iframeSrc}
+          className="absolute inset-0 h-full w-full min-h-[12rem] border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+        />
+      </div>
     </div>
   );
 }

@@ -717,7 +717,6 @@ export default function PubDetail() {
   }
 
   const mapsHref = useMemo(() => mapsSearchUrl(bar), [bar]);
-  const customMapsHref = mapsPlaceUrl.trim();
   const mapSearchQuery = useMemo(
     () => [bar.display_name, bar.sample_address].filter(Boolean).join(", "),
     [bar.display_name, bar.sample_address],
@@ -814,16 +813,6 @@ export default function PubDetail() {
                 >
                   Open in Google Maps
                 </a>
-                {customMapsHref ? (
-                  <a
-                    href={customMapsHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex min-h-11 items-center justify-center rounded-lg border ${pubStroke} bg-guinness-black/30 px-4 py-2 text-sm font-semibold text-guinness-gold hover:bg-guinness-brown/40`}
-                  >
-                    Community link
-                  </a>
-                ) : null}
               </div>
             </section>
 
