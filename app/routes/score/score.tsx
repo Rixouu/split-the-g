@@ -74,43 +74,39 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     return redirect(`/pour/${encodeURIComponent(row.slug.trim())}`);
   }
 
-  // Calculate date 7 days ago
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const weekStart = oneWeekAgo.toISOString();
 
-  // Get count of all-time higher scores
-  const { count: higherScoresCount, error: higherScoresError } = await supabase
-    .from("scores")
-    .select("*", { count: "exact", head: true })
-    .gt("split_score", score.split_score);
-
-  if (higherScoresError)
-    console.error("Error getting higher scores:", higherScoresError);
-
-  // Get count of weekly higher scores
-  const { count: weeklyHigherScoresCount, error: weeklyHigherScoresError } =
-    await supabase
+  const [
+    { count: higherScoresCount, error: higherScoresError },
+    { count: weeklyHigherScoresCount, error: weeklyHigherScoresError },
+    { count: totalSplits },
+    { count: weeklyTotalSplits },
+  ] = await Promise.all([
+    supabase
+      .from("scores")
+      .select("*", { count: "exact", head: true })
+      .gt("split_score", score.split_score),
+    supabase
       .from("scores")
       .select("*", { count: "exact", head: true })
       .gt("split_score", score.split_score)
-      .gte("created_at", oneWeekAgo.toISOString());
+      .gte("created_at", weekStart),
+    supabase.from("scores").select("*", { count: "exact", head: true }),
+    supabase
+      .from("scores")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", weekStart),
+  ]);
 
+  if (higherScoresError)
+    console.error("Error getting higher scores:", higherScoresError);
   if (weeklyHigherScoresError)
     console.error(
       "Error getting weekly higher scores:",
-      weeklyHigherScoresError
+      weeklyHigherScoresError,
     );
-
-  // Get total splits (all-time)
-  const { count: totalSplits } = await supabase
-    .from("scores")
-    .select("*", { count: "exact", head: true });
-
-  // Get total splits this week
-  const { count: weeklyTotalSplits } = await supabase
-    .from("scores")
-    .select("*", { count: "exact", head: true })
-    .gte("created_at", oneWeekAgo.toISOString());
 
   const allTimeRank = (higherScoresCount ?? 0) + 1;
   const weeklyRank = (weeklyHigherScoresCount ?? 0) + 1;

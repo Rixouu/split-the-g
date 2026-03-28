@@ -405,20 +405,24 @@ export default function Home() {
   const submit = useSubmit();
   const actionData = useActionData<typeof action>();
 
-  // Dynamically import and initialize inference engine
+  // Load inferencejs only when the user turns the camera on — keeps first paint / upload-only path light.
   const [inferEngine, setInferEngine] =
     useState<RoboflowInferenceEngine | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !isCameraActive) return;
+    if (inferEngine) return;
 
-    async function initInference() {
-      const { InferenceEngine } = await import("inferencejs");
+    let cancelled = false;
+    void import("inferencejs").then(({ InferenceEngine }) => {
+      if (cancelled) return;
       setInferEngine(new InferenceEngine());
-    }
+    });
 
-    initInference();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [isCameraActive, inferEngine]);
 
   const [modelWorkerId, setModelWorkerId] = useState<string | null>(null);
   const [modelLoading, setModelLoading] = useState(false);
@@ -523,7 +527,7 @@ export default function Home() {
     variant: BrandedNoticeVariant;
   } | null>(null);
 
-  // Update the detection loop with feedback logic
+  // Detection loop: import inferencejs once per interval (not every 500ms tick).
   useEffect(() => {
     if (
       !isClient ||
@@ -534,94 +538,102 @@ export default function Home() {
     )
       return;
 
-    const detectFrame = async () => {
-      if (!modelWorkerId || !videoRef.current) return;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    let cancelled = false;
 
-      try {
-        const { CVImage } = await import("inferencejs");
-        const img = new CVImage(videoRef.current);
-        const predictions: InferencePrediction[] = await inferEngine.infer(
-          modelWorkerId,
-          img
-        );
+    void import("inferencejs").then(({ CVImage }) => {
+      if (cancelled) return;
 
-        const hasGlass = predictions.some((pred: InferencePrediction) => pred.class === "glass");
-        const hasG = predictions.some((pred: InferencePrediction) => pred.class === "G");
+      const detectFrame = async () => {
+        if (!modelWorkerId || !videoRef.current) return;
 
-        if (hasGlass && hasG) {
-          setConsecutiveDetections((prev) => prev + 1);
+        try {
+          const img = new CVImage(videoRef.current);
+          const predictions: InferencePrediction[] = await inferEngine.infer(
+            modelWorkerId,
+            img,
+          );
 
-          if (consecutiveDetections >= 4) {
-            setFeedbackMessage("Perfect! Processing your pour...");
-            setIsProcessing(true);
-            setIsSubmitting(true);
+          const hasGlass = predictions.some(
+            (pred: InferencePrediction) => pred.class === "glass",
+          );
+          const hasG = predictions.some(
+            (pred: InferencePrediction) => pred.class === "G",
+          );
 
-            if (videoRef.current && canvasRef.current) {
-              const canvas = canvasRef.current;
-              const context = canvas.getContext("2d");
+          if (hasGlass && hasG) {
+            setConsecutiveDetections((prev) => {
+              if (prev >= 4) return prev;
+              const next = prev + 1;
+              if (next === 4) {
+                setFeedbackMessage("Perfect! Processing your pour...");
+                setIsProcessing(true);
+                setIsSubmitting(true);
 
-              canvas.width = videoRef.current.videoWidth;
-              canvas.height = videoRef.current.videoHeight;
-              context?.drawImage(
-                videoRef.current,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-              );
+                const vid = videoRef.current;
+                const canvas = canvasRef.current;
+                if (vid && canvas) {
+                  const context = canvas.getContext("2d");
+                  canvas.width = vid.videoWidth;
+                  canvas.height = vid.videoHeight;
+                  context?.drawImage(vid, 0, 0, canvas.width, canvas.height);
 
-              const imageData = canvas.toDataURL("image/jpeg");
-              const base64Image = imageData.replace(
-                /^data:image\/\w+;base64,/,
-                ""
-              );
+                  const imageData = canvas.toDataURL("image/jpeg");
+                  const base64Image = imageData.replace(
+                    /^data:image\/\w+;base64,/,
+                    "",
+                  );
 
-              stopCameraTracks();
-              setIsCameraActive(false);
+                  stopCameraTracks();
+                  setIsCameraActive(false);
 
-              // Submit form data to action
-              const formData = new FormData();
-              formData.append("image", base64Image);
-              if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
-                formData.append("competition", competitionIdParam);
+                  const formData = new FormData();
+                  formData.append("image", base64Image);
+                  if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
+                    formData.append("competition", competitionIdParam);
+                  }
+
+                  submit(formData, {
+                    method: "post",
+                    action: "/?index",
+                    encType: "multipart/form-data",
+                  });
+                }
+              } else if (next >= 2) {
+                setFeedbackMessage("Hold still...");
+              } else {
+                setFeedbackMessage("Keep the glass centered...");
               }
-
-              submit(formData, {
-                method: "post",
-                action: "/?index",
-                encType: "multipart/form-data",
-              });
-            }
-            return; // Exit the detection loop
-          }
-          if (consecutiveDetections >= 1) {
-            setFeedbackMessage("Hold still...");
+              return next;
+            });
           } else {
-            setFeedbackMessage("Keep the glass centered...");
+            setConsecutiveDetections(0);
+            if (!hasGlass) {
+              setFeedbackMessage("Show your pint glass");
+            } else if (!hasG) {
+              setFeedbackMessage("Make sure the G pattern is visible");
+            }
           }
-        } else {
-          setConsecutiveDetections(0);
-          if (!hasGlass) {
-            setFeedbackMessage("Show your pint glass");
-          } else if (!hasG) {
-            setFeedbackMessage("Make sure the G pattern is visible");
-          }
+        } catch (error) {
+          console.error("Detection error:", error);
         }
-      } catch (error) {
-        console.error("Detection error:", error);
-      }
-    };
+      };
 
-    const intervalId = setInterval(detectFrame, 500);
-    return () => clearInterval(intervalId);
+      intervalId = setInterval(detectFrame, 500);
+    });
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [
     modelWorkerId,
     isCameraActive,
     inferEngine,
     isVideoReady,
-    consecutiveDetections,
     submit,
     stopCameraTracks,
+    competitionIdParam,
   ]);
 
   // Update the effect that handles action response
