@@ -82,8 +82,8 @@ export default function App() {
           id="root"
           className={
             padForShellNav
-              ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-0 md:pb-0 md:pt-[3.75rem]"
-              : "min-h-dvh"
+              ? "stg-route-surface min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-0 md:pb-0 md:pt-[3.75rem]"
+              : "stg-route-surface min-h-dvh"
           }
         >
           <Outlet />
@@ -146,7 +146,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <Links />
       </head>
       <body suppressHydrationWarning>
-        <div id="root">
+        <div id="root" className="stg-route-surface min-h-dvh">
           <main className="pt-16 p-4 container mx-auto text-guinness-cream">
             <h1 className="type-display text-3xl">{message}</h1>
             <p className="type-body-muted mt-2">{details}</p>

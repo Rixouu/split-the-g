@@ -14,6 +14,7 @@ import {
   pageShellClass,
   pubsPageDescription,
 } from "~/components/PageHeader";
+import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
 import { supabase } from "~/utils/supabase";
 import { pubDetailPath } from "~/utils/pubPath";
 
@@ -366,7 +367,11 @@ export default function Pubs() {
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
         <PageHeader title="Pubs" description={pubsPageDescription}>
-          <Link to="/feed" className={pageHeaderActionButtonClass}>
+          <Link
+            to="/feed"
+            {...routeViewTransitionLinkProps}
+            className={pageHeaderActionButtonClass}
+          >
             Browse feed
           </Link>
         </PageHeader>

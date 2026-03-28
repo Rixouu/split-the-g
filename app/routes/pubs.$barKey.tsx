@@ -541,7 +541,7 @@ export default function PubDetail() {
       setToastOk(true);
       setToast("Pub details saved. Thanks for helping the community.");
       if (newBarKey !== barKey) {
-        navigate(pubDetailPath(newBarKey), { replace: true });
+        navigate(pubDetailPath(newBarKey), { replace: true, viewTransition: true });
       }
       revalidator.revalidate();
     } finally {
@@ -598,7 +598,7 @@ export default function PubDetail() {
       setToastOk(true);
       setToast("Merged into target pub. Redirecting…");
       setMergeTargetBarKey("");
-      navigate(pubDetailPath(tgt), { replace: true });
+      navigate(pubDetailPath(tgt), { replace: true, viewTransition: true });
       revalidator.revalidate();
     } finally {
       setMergeBusy(false);

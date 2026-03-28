@@ -1,0 +1,76 @@
+/**
+ * Route transitions — View Transitions API + React Router (`viewTransition` on Link/NavLink).
+ * Chromium / Edge; Safari 18+. Degrades to instant navigation when unsupported.
+ *
+ * Layers:
+ * - `stg-main` — #root outlet (animates)
+ * - `stg-chrome-desk` / `stg-chrome-mob` — fixed nav (held static; names must be unique)
+ */
+
+#root.stg-route-surface {
+  view-transition-name: stg-main;
+}
+
+.vt-chrome-desk {
+  view-transition-name: stg-chrome-desk;
+}
+
+.vt-chrome-mob {
+  view-transition-name: stg-chrome-mob;
+}
+
+@supports (view-transition-name: none) {
+  /* Fixed chrome: no motion so the dock/top bar feel native */
+  ::view-transition-old(stg-chrome-desk),
+  ::view-transition-new(stg-chrome-desk),
+  ::view-transition-old(stg-chrome-mob),
+  ::view-transition-new(stg-chrome-mob) {
+    animation: none !important;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(stg-main),
+    ::view-transition-new(stg-main) {
+      animation-duration: 240ms;
+      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Slightly longer on coarse pointers (phones) for a clearer “screen” change */
+    @media (pointer: coarse) {
+      ::view-transition-old(stg-main),
+      ::view-transition-new(stg-main) {
+        animation-duration: 300ms;
+        animation-timing-function: cubic-bezier(0.25, 0.9, 0.32, 1);
+      }
+    }
+
+    ::view-transition-old(stg-main) {
+      animation-name: stg-route-out;
+    }
+
+    ::view-transition-new(stg-main) {
+      animation-name: stg-route-in;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(stg-main),
+    ::view-transition-new(stg-main) {
+      animation-duration: 1ms !important;
+    }
+  }
+}
+
+@keyframes stg-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes stg-route-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}

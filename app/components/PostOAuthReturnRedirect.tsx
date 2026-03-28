@@ -22,7 +22,7 @@ export function PostOAuthReturnRedirect() {
         if (!session) return;
         const target = peekAndConsumePostOAuthReturnPath(here);
         if (!target) return;
-        navigate(target, { replace: true });
+        navigate(target, { replace: true, viewTransition: true });
       });
     }
 

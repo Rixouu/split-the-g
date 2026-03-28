@@ -1,3 +1,5 @@
+@import "./styles/view-transitions.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -93,37 +95,6 @@ body {
 
 .animate-branded-toast-in {
   animation: branded-toast-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-/* SPA route transitions (View Transitions API + React Router) */
-@supports (view-transition-name: none) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: 0.24s;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  ::view-transition-old(root) {
-    animation-name: stg-route-out;
-  }
-
-  ::view-transition-new(root) {
-    animation-name: stg-route-in;
-  }
-}
-
-@keyframes stg-route-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
-@keyframes stg-route-out {
-  to {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
 }
 
 .profile-progress-shell {

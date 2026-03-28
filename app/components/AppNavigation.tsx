@@ -157,7 +157,7 @@ export function AppNavigation() {
     <>
       {/* Desktop — glass strip + pill cluster */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 hidden md:block pointer-events-none"
+        className="vt-chrome-desk fixed top-0 left-0 right-0 z-50 hidden md:block pointer-events-none"
         aria-label="Main"
       >
         <div className="pointer-events-auto border-b border-guinness-gold/10 bg-gradient-to-b from-guinness-brown/95 via-guinness-brown/90 to-guinness-brown/70 backdrop-blur-xl">
@@ -233,7 +233,7 @@ export function AppNavigation() {
 
       {/* Mobile — floating dock + center Pour FAB */}
       <nav
-        className="fixed bottom-3 left-3 right-3 z-50 md:hidden"
+        className="vt-chrome-mob fixed bottom-3 left-3 right-3 z-50 md:hidden"
         aria-label="Main"
       >
         <div className="relative mx-auto w-full max-w-md min-w-0">
