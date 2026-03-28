@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { supabase } from "~/utils/supabase";
 import {
   PageHeader,
-  homePourButtonClass,
+  EndPageNewPourFooter,
   pageShellClass,
   wallPageDescription,
 } from "~/components/PageHeader";
@@ -356,11 +356,7 @@ export default function Collage() {
           </ul>
         )}
 
-        <div className="mt-10 flex justify-center pb-6">
-          <Link to="/" viewTransition className={homePourButtonClass}>
-            New Pour
-          </Link>
-        </div>
+        <EndPageNewPourFooter />
       </div>
     </main>
   );

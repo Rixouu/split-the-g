@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from "react-router";
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  EndPageNewPourFooter,
   PageHeader,
   pageHeaderActionButtonClass,
   pageShellClass,
@@ -1076,15 +1077,7 @@ export default function ProfileLayout() {
           }}
         />
 
-        <div className="mt-10 flex justify-center">
-          <Link
-            to="/"
-            viewTransition
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-guinness-gold/25 px-5 py-2.5 text-sm font-medium text-guinness-gold hover:bg-guinness-brown/50"
-          >
-            Back to pour
-          </Link>
-        </div>
+        <EndPageNewPourFooter />
       </div>
     </main>
   );

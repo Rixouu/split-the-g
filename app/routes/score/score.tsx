@@ -21,6 +21,7 @@ import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
 import { useEffect, useState } from "react";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
+import { ScoreSharePanel } from "~/components/score/ScoreSharePanel";
 import type { ParsedPlaceGeo } from "~/utils/placeGeoFromComponents";
 import { isScoreUuidRef, scorePourPath } from "~/utils/scorePath";
 import {
@@ -164,7 +165,6 @@ export default function Score() {
   const competitionId = COMPETITION_UUID_RE.test(competitionIdParam)
     ? competitionIdParam
     : "";
-  const [shareSuccess, setShareSuccess] = useState(false);
   const [displayUsername, setDisplayUsername] = useState(
     score.username || "Anonymous Pourer"
   );
@@ -459,37 +459,6 @@ export default function Score() {
     return "The perfect split awaits. Try again.";
   };
 
-  const getShareMessage = () => {
-    const scoreUrl = `${window.location.origin}${scorePourPath(score)}`;
-
-    return (
-      `Split G score: ${score.split_score.toFixed(2)}/5.0\n` +
-      `All-time rank: #${allTimeRank} of ${totalSplits}\n` +
-      `Weekly rank: #${weeklyRank} of ${weeklyTotalSplits}\n` +
-      `${scoreUrl}`
-    );
-  };
-
-  const handleShare = async () => {
-    const shareText = getShareMessage();
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          text: shareText,
-        });
-        setShareSuccess(true);
-      } else {
-        // Fallback to clipboard
-        await navigator.clipboard.writeText(shareText);
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-      }
-    } catch (error) {
-      console.error("Error sharing:", error);
-    }
-  };
-
   const geoFallbackLine = [score.city, score.region, score.country]
     .filter((p): p is string => Boolean(p?.trim()))
     .join(", ");
@@ -702,100 +671,93 @@ export default function Score() {
         </section>
 
         {isOwner && (
-          <div className="mx-auto mt-8 max-w-lg rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-5">
-            <h2 className="type-card-title mb-2">Claim this split</h2>
-            <p className="type-meta mb-4">
-              Sign in with Google to claim this score to your email. If you set a
-              nickname under Profile, that name is used on the feed; otherwise we
-              use your Google name.
-            </p>
+          <div className="mx-auto mt-8 max-w-3xl md:grid md:grid-cols-2 md:items-start md:gap-x-10 lg:gap-x-14">
+            <section className="border-b border-guinness-gold/15 pb-8 md:border-b-0 md:border-r md:border-guinness-gold/15 md:pb-0 md:pr-8 lg:pr-10">
+              <h2 className="type-card-title">Claim this split</h2>
+              <p className="type-meta mt-2">
+                Sign in with Google to claim this score to your email. If you set a
+                nickname under Profile, that name is used on the feed; otherwise we
+                use your Google name.
+              </p>
 
-            {claimedEmail ? (
-              <div className="space-y-3">
-                <p className="type-label text-guinness-gold">
-                  Claimed by: {claimedEmail}
-                </p>
-                {canUnclaim ? (
+              <div className="mt-5 space-y-3">
+                {claimedEmail ? (
+                  <>
+                    <p className="type-label text-guinness-gold">
+                      Claimed by: {claimedEmail}
+                    </p>
+                    {canUnclaim ? (
+                      <button
+                        type="button"
+                        disabled={isUnclaiming}
+                        onClick={() => setUnclaimConfirmOpen(true)}
+                        className="w-full rounded-lg border border-red-400/40 bg-red-950/20 px-4 py-2.5 text-sm font-semibold text-red-300/95 transition-colors hover:bg-red-950/35 disabled:opacity-50"
+                      >
+                        {isUnclaiming ? "Working…" : "Unclaim this split"}
+                      </button>
+                    ) : null}
+                  </>
+                ) : authUser ? (
+                  <>
+                    <p className="type-meta text-guinness-tan/70">Signed in as: {authUser.email}</p>
+                    <button
+                      type="button"
+                      onClick={handleClaimWithGoogle}
+                      disabled={isClaiming}
+                      className="w-full rounded-lg bg-guinness-gold px-4 py-2.5 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isClaiming ? "Claiming..." : "Claim with Google"}
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
-                    disabled={isUnclaiming}
-                    onClick={() => setUnclaimConfirmOpen(true)}
-                    className="w-full rounded-lg border border-red-400/50 bg-transparent px-4 py-2 text-sm font-semibold text-red-400/95 transition-colors hover:bg-red-950/30 disabled:opacity-50"
+                    onClick={handleGoogleSignIn}
+                    disabled={isAuthLoading}
+                    className="w-full rounded-lg bg-white px-4 py-2.5 font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isUnclaiming ? "Working…" : "Unclaim this split"}
+                    {isAuthLoading ? "Checking sign-in..." : "Sign in with Google"}
                   </button>
-                ) : null}
+                )}
               </div>
-            ) : authUser ? (
-              <div className="space-y-3">
-                <p className="type-meta">Signed in as: {authUser.email}</p>
-                <button
-                  type="button"
-                  onClick={handleClaimWithGoogle}
-                  disabled={isClaiming}
-                  className="w-full rounded-lg bg-guinness-gold px-4 py-2 font-medium text-guinness-black transition-colors hover:bg-guinness-tan disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isClaiming ? "Claiming..." : "Claim with Google"}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={isAuthLoading}
-                className="w-full rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isAuthLoading ? "Checking sign-in..." : "Sign in with Google"}
-              </button>
-            )}
+            </section>
 
-          </div>
-        )}
-
-        {isOwner && (
-          <div className="mx-auto mt-8 max-w-lg">
-            {hasSavedRating ? (
-              <div className="rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-6 backdrop-blur-sm">
-                <h2 className="type-section mb-4">Your rating</h2>
-                <div className="space-y-4">
-                  <div>
-                    <span className="type-label mb-1 block">Bar name</span>
-                    <div className="w-full rounded-lg border border-guinness-gold/20 bg-guinness-black/50 px-4 py-2 text-guinness-tan">
-                      {score.bar_name}
+            <section className="pt-8 md:pt-0">
+              {hasSavedRating ? (
+                <>
+                  <h2 className="type-card-title">Your rating</h2>
+                  <dl className="mt-4 divide-y divide-guinness-gold/10">
+                    <div className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-4">
+                      <dt className="type-label text-guinness-tan/75">Bar name</dt>
+                      <dd className="text-guinness-cream">{score.bar_name}</dd>
                     </div>
-                  </div>
-                  <div>
-                    <span className="type-label mb-1 block">Pour rating</span>
-                    <div className="w-full rounded-lg border border-guinness-gold/20 bg-guinness-black/50 px-4 py-2 text-guinness-tan">
-                      {Number(score.pour_rating).toFixed(1)} / 5
+                    <div className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-4">
+                      <dt className="type-label text-guinness-tan/75">Pour rating</dt>
+                      <dd className="tabular-nums text-guinness-cream">
+                        {Number(score.pour_rating).toFixed(1)} / 5
+                      </dd>
                     </div>
-                  </div>
-                  <div>
-                    <span className="type-label mb-1 block">Pint price</span>
-                    <div className="w-full rounded-lg border border-guinness-gold/20 bg-guinness-black/50 px-4 py-2 text-guinness-tan">
-                      {pintPriceSavedLabel != null
-                        ? pintPriceSavedLabel
-                        : "—"}
-                      {pintPriceSavedLabel != null ? (
-                        <span className="type-meta ml-2 text-guinness-tan/55">
-                          (your local currency)
-                        </span>
-                      ) : null}
+                    <div className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-4">
+                      <dt className="type-label text-guinness-tan/75">Pint price</dt>
+                      <dd className="text-guinness-cream">
+                        {pintPriceSavedLabel != null ? pintPriceSavedLabel : "—"}
+                        {pintPriceSavedLabel != null ? (
+                          <span className="type-meta ml-2 text-guinness-tan/50">
+                            (your local currency)
+                          </span>
+                        ) : null}
+                      </dd>
                     </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <form
-                onSubmit={handleSubmit}
-                className="rounded-lg border border-guinness-gold/20 bg-guinness-gold/10 p-6 backdrop-blur-sm"
-              >
-                <h2 className="type-section mb-1">Rate the pour</h2>
-                <p className="type-meta mb-4">
-                  Search for the venue or type its name, set your rating, and
-                  optionally log what you paid for expense tracking.
-                </p>
-                <div className="space-y-5">
+                  </dl>
+                </>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <h2 className="type-card-title">Rate the pour</h2>
+                  <p className="type-meta">
+                    Search for the venue or type its name, set your rating, and
+                    optionally log what you paid for expense tracking.
+                  </p>
+                  <div className="space-y-5 pt-1">
                   <div>
                     <label htmlFor="barName" className="type-label mb-1 block">
                       Bar or venue
@@ -880,36 +842,38 @@ export default function Score() {
                   </button>
                 </div>
               </form>
-            )}
+              )}
+            </section>
           </div>
         )}
 
         {/* Actions + support — single panel */}
         <section
-          className="mx-auto mt-8 w-full max-w-xl rounded-2xl border border-[#312814] bg-guinness-brown/25 px-4 py-4 sm:px-5 sm:py-5 md:max-w-3xl"
+          className="mx-auto mt-8 w-full max-w-xl rounded-2xl bg-guinness-brown/20 px-5 py-6 shadow-[inset_0_1px_0_rgba(212,175,55,0.06)] ring-1 ring-guinness-gold/10 sm:px-6 sm:py-7 md:max-w-3xl"
           aria-label="Share, pour again, and leaderboard"
         >
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-            <button
-              onClick={handleShare}
-              type="button"
-              className="flex min-h-11 w-full items-center justify-center rounded-lg border border-[#312814] bg-guinness-black/20 px-4 py-2.5 text-sm font-semibold text-guinness-tan/90 transition-colors hover:bg-[#312814]/40 hover:text-guinness-cream sm:min-h-12 sm:text-base"
-            >
-              {shareSuccess ? "Copied" : "Share score"}
-            </button>
+          <ScoreSharePanel
+            sharePath={scorePourPath(score)}
+            splitScore={score.split_score}
+            allTimeRank={allTimeRank}
+            totalSplits={totalSplits}
+            weeklyRank={weeklyRank}
+            weeklyTotalSplits={weeklyTotalSplits}
+          />
 
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-3">
             <Link
               to="/"
               viewTransition
-              className="flex min-h-11 w-full items-center justify-center rounded-lg bg-guinness-gold px-4 py-2.5 text-center text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan sm:min-h-12 sm:text-base"
+              className="flex min-h-12 w-full items-center justify-center rounded-lg bg-guinness-gold px-4 py-3 text-center text-sm font-semibold text-guinness-black shadow-[0_0_0_1px_rgba(212,175,55,0.2)] transition-colors hover:bg-guinness-tan sm:text-base"
             >
               Try again
             </Link>
 
-            <LeaderboardButton className="flex min-h-11 w-full items-center justify-center px-4 py-2.5 text-sm sm:min-h-12 sm:text-base" />
+            <LeaderboardButton className="flex min-h-12 w-full items-center justify-center px-4 py-3 text-sm sm:text-base" />
           </div>
 
-          <div className="mt-4 flex flex-col items-center justify-center gap-1 border-t border-[#312814] pt-4 text-center sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1">
+          <div className="mt-5 flex flex-col items-center justify-center gap-1 border-t border-guinness-gold/10 pt-5 text-center sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1">
             <span className="type-meta text-guinness-tan/55">
               Enjoying Split the G?
             </span>

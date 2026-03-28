@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  EndPageNewPourFooter,
   PageHeader,
   pageHeaderActionButtonClass,
   pageShellClass,
@@ -98,11 +99,6 @@ function aggregateFromScores(
       submission_count: v.submissions,
     }))
     .sort((a, b) => b.submission_count - a.submission_count);
-}
-
-function mapsSearchUrl(b: BarStat): string {
-  const q = [b.display_name, b.sample_address].filter(Boolean).join(" ");
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
 function IconPubMark({ className }: { className?: string }) {
@@ -529,24 +525,20 @@ export default function Pubs() {
                             </span>
                           )}
                         </div>
-                        <p className="type-meta mt-3 hidden items-center gap-1 text-guinness-gold/70 sm:flex">
-                          Pub page
-                          <IconChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                        </p>
                       </div>
                     </Link>
 
                     <div
                       className={`flex shrink-0 flex-row gap-2 border-t ${PUB_LIST_STROKE} p-4 pt-3 sm:w-auto sm:flex-col sm:justify-center sm:border-l sm:border-t-0 sm:py-5 sm:pl-4 sm:pr-5`}
                     >
-                      <a
-                        href={mapsSearchUrl(b)}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <Link
+                        to={detailTo}
+                        viewTransition
+                        prefetch="intent"
                         className={`inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border ${PUB_LIST_STROKE} bg-guinness-black/50 px-3 text-xs font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/35 hover:bg-guinness-gold/10 sm:flex-none sm:min-w-[5.75rem]`}
                       >
-                        Maps
-                      </a>
+                        View
+                      </Link>
                       <button
                         type="button"
                         disabled={busy}
@@ -567,15 +559,7 @@ export default function Pubs() {
           </ul>
         )}
 
-        <div className="mt-10 flex justify-center pb-6">
-          <Link
-            to="/feed"
-            {...routeViewTransitionLinkProps}
-            className={`${pageHeaderActionButtonClass} w-full max-w-xs sm:w-auto`}
-          >
-            Browse feed
-          </Link>
-        </div>
+        <EndPageNewPourFooter />
       </div>
     </main>
   );

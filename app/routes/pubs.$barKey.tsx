@@ -288,6 +288,41 @@ function PubOpeningHoursReadOnly({
   );
 }
 
+function IconPubFavoriteHeart({
+  className = "",
+  filled,
+}: {
+  className?: string;
+  filled: boolean;
+}) {
+  if (filled) {
+    return (
+      <svg
+        className={className}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.35l7.78-8.49 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
 export default function PubDetail() {
   const {
     barKey,
@@ -645,14 +680,20 @@ export default function PubDetail() {
             <button
               type="button"
               disabled={favBusy}
+              aria-busy={favBusy}
+              aria-pressed={Boolean(favId)}
               onClick={() => void toggleFavorite()}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50 ${
+              className={`inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition-[color,background-color,border-color,box-shadow] duration-200 disabled:pointer-events-none disabled:opacity-60 sm:w-auto ${
                 favId
-                  ? "border-guinness-gold/50 bg-guinness-gold/15 text-guinness-gold"
-                  : `${pubStroke} text-guinness-tan hover:border-guinness-gold/35 hover:text-guinness-cream`
+                  ? "border-guinness-gold/70 bg-guinness-gold/20 text-guinness-gold shadow-[inset_0_1px_0_rgba(212,175,55,0.14)] hover:border-guinness-gold hover:bg-guinness-gold/28 active:scale-[0.98]"
+                  : `border-guinness-gold/45 bg-guinness-black/50 text-guinness-cream hover:border-guinness-gold hover:bg-guinness-gold/10 hover:text-guinness-gold active:scale-[0.98]`
               }`}
             >
-              {favBusy ? "…" : favId ? "Saved" : "Favorite"}
+              <IconPubFavoriteHeart
+                filled={Boolean(favId)}
+                className="h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem]"
+              />
+              <span>{favBusy ? "…" : favId ? "Saved" : "Favorite"}</span>
             </button>
             <Link
               to="/pubs"
