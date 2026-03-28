@@ -747,14 +747,23 @@ export default function ProfileLayout() {
     setBusy(true);
     setMessage(null);
     try {
-      const { error } = await supabase
+      const { data: deleted, error } = await supabase
         .from("friend_requests")
         .delete()
         .eq("id", row.id)
         .eq("from_user_id", user.id)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .select("id");
       if (error) {
         setMessage(error.message);
+        return;
+      }
+      // Without RLS delete + grant, PostgREST returns 0 rows and no error — detect that here.
+      if (!deleted?.length) {
+        setMessage(
+          "Couldn’t cancel that invite—nothing was removed. Refresh and try again. If it keeps happening, apply the latest Supabase migrations (friend invite delete policy).",
+        );
+        await loadSocial(user);
         return;
       }
       const socialRows = await loadSocial(user);

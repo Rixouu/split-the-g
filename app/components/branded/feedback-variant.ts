@@ -12,7 +12,8 @@ export function feedbackVariantFromMessage(message: string): BrandedNoticeVarian
     lower.includes("you're now friends") ||
     lower.includes("you’re now friends") ||
     lower.includes("favorite saved") ||
-    lower.includes("friend request accepted")
+    lower.includes("friend request accepted") ||
+    lower.includes("invite cancelled")
   ) {
     return "success";
   }
