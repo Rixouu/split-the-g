@@ -9,6 +9,7 @@ import {
 import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_LIST_COLUMNS } from "~/utils/scoresListColumns";
+import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 
 type FeedRow = {
   id: string;
@@ -26,13 +27,27 @@ type FeedRow = {
 };
 
 export async function loader(_args: LoaderFunctionArgs) {
-  const { data, error } = await supabase
-    .from("scores")
-    .select(SCORES_LIST_COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(48);
+  const { data, error } = await supabase.rpc("feed_scores_recent", {
+    p_limit: 48,
+  });
 
-  if (error) throw error;
+  if (error) {
+    const hint = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
+    if (
+      error.code === "42883" ||
+      hint.includes("feed_scores_recent") ||
+      hint.includes("function")
+    ) {
+      const fb = await supabase
+        .from("scores")
+        .select(SCORES_LIST_COLUMNS)
+        .order("created_at", { ascending: false })
+        .limit(48);
+      if (fb.error) throw fb.error;
+      return { items: (fb.data ?? []) as FeedRow[] };
+    }
+    throw error;
+  }
 
   return { items: (data ?? []) as FeedRow[] };
 }
@@ -89,10 +104,19 @@ export default function Feed() {
                   <div className="space-y-1 p-2.5 sm:p-3">
                     <div className="flex items-start justify-between gap-1">
                       <span className="line-clamp-2 text-xs font-semibold text-guinness-cream sm:text-sm">
+                        {flagEmojiFromIso2(row.country_code) ? (
+                          <span
+                            className="mr-1 inline-block shrink-0"
+                            title={row.country_code?.trim().toUpperCase() ?? undefined}
+                            aria-hidden
+                          >
+                            {flagEmojiFromIso2(row.country_code)}
+                          </span>
+                        ) : null}
                         {row.username}
                       </span>
                       <span className="shrink-0 tabular-nums text-sm font-semibold text-guinness-gold">
-                        {row.split_score.toFixed(2)}
+                        {Number(row.split_score).toFixed(2)}
                       </span>
                     </div>
                     <p className="text-[10px] text-guinness-tan/55 sm:text-xs">

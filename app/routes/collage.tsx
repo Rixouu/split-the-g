@@ -11,6 +11,8 @@ import {
 import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_COLLAGE_COLUMNS } from "~/utils/scoresListColumns";
+import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
+import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
 
 type Submission = {
   id: string;
@@ -19,34 +21,50 @@ type Submission = {
   split_image_url: string;
   pint_image_url: string;
   created_at: string;
-  city?: string;
-  region?: string;
-  country?: string;
-  country_code?: string;
+  city?: string | null;
+  region?: string | null;
+  country?: string | null;
+  country_code?: string | null;
   split_score: number;
-  bar_name?: string;
-  bar_address?: string;
+  bar_name?: string | null;
+  bar_address?: string | null;
 };
 
 type SortOption = "newest" | "oldest" | "score_high" | "score_low";
 
 export const loader: LoaderFunction = async () => {
-  const { data, error } = await supabase
-    .from("scores")
-    .select(SCORES_COLLAGE_COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(120);
+  const { data, error } = await supabase.rpc("wall_scores_recent", {
+    p_limit: 120,
+  });
 
-  if (error) throw error;
+  if (error) {
+    const hint = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
+    if (
+      error.code === "42883" ||
+      hint.includes("wall_scores_recent") ||
+      hint.includes("function")
+    ) {
+      const fb = await supabase
+        .from("scores")
+        .select(SCORES_COLLAGE_COLUMNS)
+        .order("created_at", { ascending: false })
+        .limit(120);
+      if (fb.error) throw fb.error;
+      return { submissions: (fb.data ?? []) as Submission[] };
+    }
+    throw error;
+  }
 
-  return { submissions: data ?? [] };
+  return { submissions: (data ?? []) as Submission[] };
 };
 
 function formatLocation(submission: Submission) {
   const parts: string[] = [];
   if (submission.city) parts.push(submission.city);
   if (submission.region) parts.push(submission.region);
-  if (submission.country_code) parts.push(submission.country_code);
+  if (submission.country?.trim()) parts.push(submission.country.trim());
+  else if (submission.country_code?.trim())
+    parts.push(submission.country_code.trim().toUpperCase());
   return parts.length > 0 ? parts.join(", ") : "";
 }
 
@@ -83,6 +101,7 @@ export default function Collage() {
   const [minScore, setMinScore] = useState<string>("0");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [countryFilter, setCountryFilter] = useState<string>("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useLayoutEffect(() => {
@@ -95,17 +114,37 @@ export default function Collage() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  const wallCountrySelectOptions = useMemo(() => {
+    const codes = new Set<string>();
+    for (const s of submissions) {
+      const c = s.country_code?.trim().toUpperCase();
+      if (c && /^[A-Z]{2}$/.test(c)) codes.add(c);
+    }
+    const nameByCode = new Map(
+      getCountryOptions().map((o) => [o.code.toUpperCase(), o.name] as const),
+    );
+    return [...codes].sort().map((code) => ({
+      code,
+      name: nameByCode.get(code) ?? code,
+    }));
+  }, [submissions]);
+
   const filtered = useMemo(() => {
     const min = parseFloat(minScore);
     const minOk = Number.isFinite(min) ? min : 0;
     const fromTs = dateFrom ? startOfLocalDay(dateFrom) : null;
     const toTs = dateTo ? endOfLocalDay(dateTo) : null;
+    const countryWant = countryFilter.trim().toUpperCase();
 
     let list = submissions.filter((s) => {
-      if (s.split_score < minOk) return false;
+      if (Number(s.split_score) < minOk) return false;
       const t = new Date(s.created_at).getTime();
       if (fromTs != null && Number.isFinite(fromTs) && t < fromTs) return false;
       if (toTs != null && Number.isFinite(toTs) && t > toTs) return false;
+      if (countryWant) {
+        const got = s.country_code?.trim().toUpperCase() ?? "";
+        if (got !== countryWant) return false;
+      }
       return true;
     });
 
@@ -118,10 +157,14 @@ export default function Collage() {
         );
         break;
       case "score_high":
-        sorted.sort((a, b) => b.split_score - a.split_score);
+        sorted.sort(
+          (a, b) => Number(b.split_score) - Number(a.split_score),
+        );
         break;
       case "score_low":
-        sorted.sort((a, b) => a.split_score - b.split_score);
+        sorted.sort(
+          (a, b) => Number(a.split_score) - Number(b.split_score),
+        );
         break;
       case "newest":
       default:
@@ -131,7 +174,7 @@ export default function Collage() {
         );
     }
     return sorted;
-  }, [submissions, sort, minScore, dateFrom, dateTo]);
+  }, [submissions, sort, minScore, dateFrom, dateTo, countryFilter]);
 
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
@@ -199,25 +242,31 @@ export default function Collage() {
                   <option value="4.5">4.5+</option>
                 </select>
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="type-meta text-guinness-tan/80">From date</span>
-                <input
-                  type="date"
-                  className={selectFieldClass}
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  aria-label="Filter pours from this date"
+              <div className="min-w-0">
+                <WallDateRangeField
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  onChange={(from, to) => {
+                    setDateFrom(from);
+                    setDateTo(to);
+                  }}
                 />
-              </label>
+              </div>
               <label className="flex flex-col gap-1.5">
-                <span className="type-meta text-guinness-tan/80">To date</span>
-                <input
-                  type="date"
+                <span className="type-meta text-guinness-tan/80">Country</span>
+                <select
                   className={selectFieldClass}
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  aria-label="Filter pours until this date"
-                />
+                  value={countryFilter}
+                  onChange={(e) => setCountryFilter(e.target.value)}
+                  aria-label="Filter by country"
+                >
+                  <option value="">Any country</option>
+                  {wallCountrySelectOptions.map(({ code, name }) => (
+                    <option key={code} value={code}>
+                      {flagEmojiFromIso2(code)} {name}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
           </div>
@@ -227,7 +276,8 @@ export default function Collage() {
           <div className="rounded-lg border border-guinness-gold/20 bg-guinness-brown/30 py-16 text-center">
             <p className="type-section text-xl">No pours match your filters</p>
             <p className="type-meta mx-auto mt-2 max-w-sm">
-              Try lowering the minimum score or widening the date range.
+              Try lowering the minimum score, widening the date range, or setting
+              Country to Any country.
             </p>
             <button
               type="button"
@@ -235,6 +285,7 @@ export default function Collage() {
                 setMinScore("0");
                 setDateFrom("");
                 setDateTo("");
+                setCountryFilter("");
                 setSort("newest");
               }}
               className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-guinness-gold px-6 py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan"
@@ -265,10 +316,22 @@ export default function Collage() {
                     <div className="mt-3 space-y-1.5 rounded-lg bg-guinness-black/50 p-3">
                       <div className="flex items-start justify-between gap-2">
                         <span className="line-clamp-2 text-base font-semibold text-guinness-cream">
+                          {flagEmojiFromIso2(submission.country_code) ? (
+                            <span
+                              className="mr-1 inline-block shrink-0"
+                              title={
+                                submission.country_code?.trim().toUpperCase() ??
+                                undefined
+                              }
+                              aria-hidden
+                            >
+                              {flagEmojiFromIso2(submission.country_code)}
+                            </span>
+                          ) : null}
                           {submission.username}
                         </span>
                         <span className="shrink-0 tabular-nums text-guinness-gold font-semibold">
-                          {submission.split_score.toFixed(2)}
+                          {Number(submission.split_score).toFixed(2)}
                           <span className="text-guinness-tan/70 font-normal text-sm">
                             /5
                           </span>

@@ -1,0 +1,88 @@
+/* react-day-picker sets --rdp-accent-color: blue on .rdp-root, which wins over parent
+   inline vars. Scope overrides to .wall-rdp so chevrons, today, and range use Guinness gold. */
+
+.wall-rdp.rdp-root {
+  max-width: 100%;
+  /* Compact desktop layout: smaller cells + nav than react-day-picker defaults */
+  --rdp-day-height: 30px;
+  --rdp-day-width: 30px;
+  --rdp-day_button-height: 28px;
+  --rdp-day_button-width: 28px;
+  --rdp-day_button-border-radius: 6px;
+  --rdp-nav-height: 2rem;
+  --rdp-nav_button-height: 1.625rem;
+  --rdp-nav_button-width: 1.625rem;
+  --rdp-weekday-padding: 0.2rem 0;
+  --rdp-months-gap: 0.75rem;
+  --rdp-accent-color: #d4af37;
+  --rdp-accent-background-color: rgba(212, 175, 55, 0.2);
+  --rdp-today-color: #d4af37;
+  --rdp-selected-border: 1px solid #d4af37;
+  --rdp-range_start-color: #0a0a0a;
+  --rdp-range_end-color: #0a0a0a;
+  --rdp-range_start-date-background-color: #d4af37;
+  --rdp-range_end-date-background-color: #d4af37;
+  --rdp-range_middle-background-color: rgba(212, 175, 55, 0.16);
+  --rdp-range_middle-color: #fdfbf3;
+  --rdp-outside-opacity: 0.35;
+  color: #fdfbf3;
+  font-size: 0.8125rem;
+}
+
+.wall-rdp.rdp-root .rdp-months {
+  max-width: 100%;
+  justify-content: center;
+}
+
+.wall-rdp.rdp-root .rdp-chevron {
+  fill: #d4af37;
+}
+
+.wall-rdp.rdp-root .rdp-button_next,
+.wall-rdp.rdp-root .rdp-button_previous {
+  color: #d4af37;
+  border-radius: 0.375rem;
+}
+
+.wall-rdp.rdp-root .rdp-button_next:hover,
+.wall-rdp.rdp-root .rdp-button_previous:hover {
+  background-color: rgba(212, 175, 55, 0.12);
+}
+
+.wall-rdp.rdp-root .rdp-day_button:focus-visible {
+  outline: 2px solid #d4af37;
+  outline-offset: 1px;
+}
+
+.wall-rdp.rdp-root .rdp-button_next:focus-visible,
+.wall-rdp.rdp-root .rdp-button_previous:focus-visible {
+  outline: 2px solid #d4af37;
+  outline-offset: 2px;
+}
+
+.wall-rdp.rdp-root .rdp-month_caption {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.wall-rdp.rdp-root .rdp-weekday {
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.wall-rdp.rdp-root .rdp-day_button {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Library uses font-size: large on .rdp-selected — too tall on desktop */
+.wall-rdp.rdp-root .rdp-selected {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.wall-rdp.rdp-root .rdp-dropdown:focus-visible ~ .rdp-caption_label {
+  outline: 2px solid #d4af37;
+  outline-offset: 2px;
+}
