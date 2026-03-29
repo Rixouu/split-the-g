@@ -1,4 +1,5 @@
-import { Link, Outlet, useLocation } from "react-router";
+import { Outlet, useLocation } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -51,6 +52,7 @@ import {
 } from "~/utils/countryDisplay";
 import { signOutToastCopy } from "~/utils/auth-toast-messages";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import { useIsDesktopMd } from "~/utils/useDesktopMd";
 
 const profileNavItemsAuth = [
@@ -66,12 +68,12 @@ const profileNavItemFaq = { to: "/profile/faq", label: "FAQ" } as const;
 
 const profileNavItemsWithFaq = [...profileNavItemsAuth, profileNavItemFaq] as const;
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Profile",
     description:
       "Manage your Split the G profile, progress, scores, favorites, expenses, and friends.",
-    path: "/profile/progress",
+    path: seoPath(params, "/profile/progress"),
     keywords: ["split the g profile", "pour progress", "friends leaderboard"],
   });
 }
@@ -979,13 +981,13 @@ export default function ProfileLayout() {
               <span className="block truncate">{mobileSubsectionTitle}</span>
             </h1>
             <div className="relative z-10 flex justify-end">
-              <Link
+              <AppLink
                 to="/profile"
                 viewTransition
                 className={profileMobileBackTopClass}
               >
                 Back
-              </Link>
+              </AppLink>
             </div>
           </header>
         ) : null}
@@ -996,17 +998,17 @@ export default function ProfileLayout() {
           description={profileHeaderDescription}
         >
           {showProfileHeaderPour ? (
-            <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
+            <AppLink to="/" viewTransition className={pageHeaderActionButtonClass}>
               Pour
-            </Link>
+            </AppLink>
           ) : (
-            <Link
+            <AppLink
               to="/profile"
               viewTransition
               className={profileHeaderBackButtonClass}
             >
               Back
-            </Link>
+            </AppLink>
           )}
         </PageHeader>
 
@@ -1026,14 +1028,14 @@ export default function ProfileLayout() {
               Sign in with Google
             </button>
             <p className="type-meta mt-5 text-center text-guinness-tan/75">
-              <Link
+              <AppLink
                 to="/profile/faq"
                 prefetch="intent"
                 viewTransition
                 className="font-semibold text-guinness-gold underline decoration-guinness-gold/35 underline-offset-2 hover:text-guinness-tan"
               >
                 FAQ
-              </Link>
+              </AppLink>
               <span className="text-guinness-tan/55"> — answers without signing in</span>
             </p>
           </div>
@@ -1074,7 +1076,7 @@ export default function ProfileLayout() {
                   <ul className="space-y-2">
                     {profileNavItemsWithFaq.map(({ to, label }) => (
                       <li key={to}>
-                        <Link
+                        <AppLink
                           to={to}
                           prefetch="intent"
                           viewTransition
@@ -1095,7 +1097,7 @@ export default function ProfileLayout() {
                               />
                             </svg>
                           </span>
-                        </Link>
+                        </AppLink>
                       </li>
                     ))}
                   </ul>
@@ -1274,13 +1276,13 @@ export default function ProfileLayout() {
         {showMobileProfileSubHeader ? (
           <>
             <div className="mt-10 flex justify-center pb-6 md:hidden">
-              <Link
+              <AppLink
                 to="/profile"
                 viewTransition
                 className={homePourButtonClass}
               >
                 Back
-              </Link>
+              </AppLink>
             </div>
             {!hideEndPageNewPourFooter ? (
               <div className="hidden md:block">

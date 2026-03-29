@@ -1,4 +1,5 @@
-import { Link, useLoaderData } from "react-router";
+import { useLoaderData } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import type { LoaderFunctionArgs } from "react-router";
 import {
   useCallback,
@@ -19,6 +20,7 @@ import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import {
   PubVenueCard,
   PUB_VENUE_CARD_STROKE as PUB_LIST_STROKE,
@@ -38,11 +40,11 @@ export type BarStat = {
   submission_count: number;
 };
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Pubs",
     description: "Find pubs, compare average pour ratings, and open each pub wall.",
-    path: "/pubs",
+    path: seoPath(params, "/pubs"),
     keywords: ["guinness pubs", "pub leaderboard", "split the g pubs"],
   });
 }
@@ -309,13 +311,13 @@ export default function Pubs() {
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
         <PageHeader title="Pubs" description={pubsPageDescription}>
-          <Link
+          <AppLink
             to="/feed"
             {...routeViewTransitionLinkProps}
             className={pageHeaderActionButtonClass}
           >
             Browse feed
-          </Link>
+          </AppLink>
         </PageHeader>
         {source === "fallback" ? (
           <p className="type-meta -mt-2 mb-6 text-guinness-tan/55">
@@ -426,14 +428,14 @@ export default function Pubs() {
                   ratingCount={b.rating_count}
                   actions={
                     <>
-                      <Link
+                      <AppLink
                         to={detailTo}
                         viewTransition
                         prefetch="intent"
                         className={pubVenueCardActionOutlineClass}
                       >
                         View
-                      </Link>
+                      </AppLink>
                       <button
                         type="button"
                         disabled={busy}

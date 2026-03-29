@@ -1,13 +1,14 @@
-import { NavLink } from "react-router";
+import { AppNavLink } from "~/i18n/app-link";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import { normalizeEmail } from "./profile-shared";
 import { useProfileOutlet } from "./profile-context";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Profile Friends",
     description: "Manage friend requests and compare your Split the G scores.",
-    path: "/profile/friends",
+    path: seoPath(params, "/profile/friends"),
     keywords: ["split the g friends", "friend invites"],
   });
 }
@@ -77,7 +78,7 @@ export default function ProfileFriendsPage() {
               to: "/profile/friends#pending-sent",
             },
           ].map((item) => (
-            <NavLink
+            <AppNavLink
               key={item.label}
               to={item.to}
               viewTransition
@@ -90,7 +91,7 @@ export default function ProfileFriendsPage() {
               <p className="mt-0.5 text-xl font-bold tabular-nums text-guinness-gold sm:mt-1 sm:text-2xl">
                 {item.value}
               </p>
-            </NavLink>
+            </AppNavLink>
           ))}
         </div>
       </section>

@@ -6,14 +6,15 @@ import {
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { pubDetailPath } from "~/utils/pubPath";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import { barKey, favoriteMapsUrl } from "./profile-shared";
 import { useProfileOutlet } from "./profile-context";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Profile Favorite Bars",
     description: "Save and manage your favorite pubs in Split the G.",
-    path: "/profile/favorites",
+    path: seoPath(params, "/profile/favorites"),
     keywords: ["favorite pubs", "profile favorites"],
   });
 }

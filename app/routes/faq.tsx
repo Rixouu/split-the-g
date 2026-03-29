@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Link, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import type { ProfileLayoutOutletContext } from "~/routes/profile/route-outlet-context";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import {
@@ -8,13 +9,14 @@ import {
   pageShellClass,
 } from "~/components/PageHeader";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "FAQ",
     description:
       "Answers about scoring, sharing pours, pubs, competitions, and profile features in Split the G.",
-    path: "/profile/faq",
+    path: seoPath(params, "/profile/faq"),
     keywords: ["split the g faq", "guinness app questions"],
   });
 }
@@ -37,21 +39,21 @@ const faqItems: { question: string; answer: ReactNode }[] = [
         Split the G is a web app for scoring that pour. You take a photo on the
         home screen; the app estimates how close you are to a perfect split and
         gives you a score from 0 to 5. You can browse the{" "}
-        <Link to="/feed" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+        <AppLink to="/feed" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
           feed
-        </Link>
+        </AppLink>
         , open any pour for details, explore{" "}
-        <Link to="/pubs" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+        <AppLink to="/pubs" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
           pubs
-        </Link>{" "}
+        </AppLink>{" "}
         (with a wall of pours per venue), check{" "}
-        <Link to="/leaderboard" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+        <AppLink to="/leaderboard" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
           leaderboards
-        </Link>
+        </AppLink>
         , and join{" "}
-        <Link to="/competitions" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
+        <AppLink to="/competitions" viewTransition className="text-guinness-gold underline decoration-guinness-gold/40 underline-offset-2 hover:text-guinness-tan">
           competitions
-        </Link>
+        </AppLink>
         . Sign in with Google from Profile when you want a saved profile,
         friends, favorites, and competition invites.
       </>

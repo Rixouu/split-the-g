@@ -1,14 +1,15 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { useMemo } from "react";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import { useProfileOutlet } from "./profile-context";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Profile Expenses",
     description: "See pint spend totals and price trends from your linked Split the G pours.",
-    path: "/profile/expenses",
+    path: seoPath(params, "/profile/expenses"),
     keywords: ["pint spend", "beer expenses", "split the g prices"],
   });
 }
@@ -138,7 +139,7 @@ export default function ProfileExpensesPage() {
           <ul className="mt-4 space-y-2">
             {pricedPours.map((s) => (
               <li key={s.id}>
-                <Link
+                <AppLink
                   to={scorePourPathFromFields(s)}
                   prefetch="intent"
                   viewTransition
@@ -173,7 +174,7 @@ export default function ProfileExpensesPage() {
                       year: "numeric",
                     })}
                   </span>
-                </Link>
+                </AppLink>
               </li>
             ))}
           </ul>

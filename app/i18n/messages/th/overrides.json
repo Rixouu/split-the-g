@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "pour": "เท",
+    "feed": "ฟีด",
+    "compete": "แข่ง",
+    "pubs": "ผับ",
+    "me": "ฉัน",
+    "wall": "วอลล์",
+    "leaderboard": "จัดอันดับ",
+    "browseFeed": "ดูฟีด"
+  },
+  "seo": {
+    "defaultTitle": "Split The G",
+    "defaultDescription": "ให้คะแนนไกเนสส์ด้วย AI แชร์การ split และไต่อันดับผับ เพื่อน และรายสัปดาห์"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "pour": "Versa",
+    "feed": "Feed",
+    "compete": "Sfida",
+    "pubs": "Pub",
+    "me": "Io",
+    "wall": "Muro",
+    "leaderboard": "Classifica",
+    "browseFeed": "Apri il feed"
+  },
+  "seo": {
+    "defaultTitle": "Split The G",
+    "defaultDescription": "Valuta la tua pinta di Guinness con l’IA, condividi lo split e scala le classifiche pub, amici e settimanali."
+  }
+}

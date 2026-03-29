@@ -5,8 +5,8 @@ import {
   useRevalidator,
   useSearchParams,
   type LoaderFunctionArgs,
-  Link,
 } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import type { User } from "@supabase/supabase-js";
 import { BrandedNotice } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
@@ -31,7 +31,10 @@ import {
 } from "~/utils/post-oauth-return";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { pubDetailPath } from "~/utils/pubPath";
+import { langFromParams } from "~/i18n/lang-param";
+import { localizePath } from "~/i18n/paths";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
 const COMPETITION_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -47,6 +50,7 @@ function emailsMatchClaim(
 
 export function meta({
   data,
+  params,
 }: {
   data?: {
     score?: Score;
@@ -55,13 +59,14 @@ export function meta({
     weeklyRank?: number;
     weeklyTotalSplits?: number;
   };
+  params?: { lang?: string };
 }) {
   const score = data?.score;
   if (!score) {
     return seoMeta({
       title: "Pour Result",
       description: "Open this Split the G pour result and challenge your friends.",
-      path: "/",
+      path: seoPath(params, "/"),
       keywords: ["split the g result", "guinness pour score"],
     });
   }
@@ -77,7 +82,7 @@ export function meta({
   return seoMeta({
     title: `${scoreValue}/5 Split by ${username}`,
     description: `${username} scored ${scoreValue}/5 on Split the G. All-time #${allTimeRank} of ${totalSplits}, weekly #${weeklyRank} of ${weeklyTotalSplits}.`,
-    path: scorePourPath(score),
+    path: seoPath(params, scorePourPath(score)),
     image,
     imageAlt: `Guinness pint from ${username}'s pour on Split the G`,
     type: "article",
@@ -86,6 +91,7 @@ export function meta({
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
+  const lang = langFromParams(params);
   const { supabase } = await import("~/utils/supabase");
   const ref = params.pourRef?.trim();
   if (!ref) {
@@ -115,7 +121,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const row = score as Score;
   if (isScoreUuidRef(ref) && row.slug?.trim()) {
-    return redirect(`/pour/${encodeURIComponent(row.slug.trim())}`);
+    return redirect(
+      localizePath(
+        `/pour/${encodeURIComponent(row.slug.trim())}`,
+        lang,
+      ),
+    );
   }
 
   const oneWeekAgo = new Date();
@@ -565,13 +576,13 @@ export default function Score() {
           <div className="mx-auto mt-4 max-w-lg rounded-lg border border-guinness-gold/30 bg-guinness-gold/10 px-4 py-3 text-center text-sm text-guinness-cream">
             <p>
               This pour is linked to a{" "}
-              <Link
+              <AppLink
                 to={`/competitions/${competitionId}`}
                 viewTransition
                 className="font-semibold text-guinness-gold underline hover:text-guinness-tan"
               >
                 competition
-              </Link>
+              </AppLink>
               . Join the comp (if needed), claim with Google, then save your bar
               &amp; rating; we&apos;ll add this score automatically.
             </p>
@@ -621,13 +632,13 @@ export default function Score() {
                 <div className="text-center md:text-left">
                   <p className="type-meta mb-2 text-guinness-tan/55">Venue</p>
                   {pubPageBarKey ? (
-                    <Link
+                    <AppLink
                       to={pubDetailPath(pubPageBarKey)}
                       viewTransition
                       className="inline-block text-base font-medium text-guinness-gold underline decoration-guinness-gold/35 underline-offset-2 transition-colors hover:text-guinness-tan hover:decoration-guinness-gold/60 sm:text-lg"
                     >
                       {score.bar_name.trim()}
-                    </Link>
+                    </AppLink>
                   ) : (
                     <p className="text-base font-medium text-guinness-cream sm:text-lg">
                       {score.bar_name.trim()}
@@ -916,13 +927,13 @@ export default function Score() {
           />
 
           <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-3">
-            <Link
+            <AppLink
               to="/"
               viewTransition
               className="flex min-h-12 w-full items-center justify-center rounded-lg bg-guinness-gold px-4 py-3 text-center text-sm font-semibold text-guinness-black shadow-[0_0_0_1px_rgba(212,175,55,0.2)] transition-colors hover:bg-guinness-tan sm:text-base"
             >
               Try again
-            </Link>
+            </AppLink>
 
             <LeaderboardButton className="flex min-h-12 w-full items-center justify-center px-4 py-3 text-sm sm:text-base" />
           </div>

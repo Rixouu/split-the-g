@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
 
 type Props = {
@@ -8,7 +8,7 @@ type Props = {
 export function LeaderboardNavigation({ activePage }: Props) {
   return (
     <div className="flex justify-center gap-2 mb-4 md:mb-8">
-      <Link
+      <AppLink
         to="/past24hrleaderboard"
         {...routeViewTransitionLinkProps}
         className={`flex-1 md:flex-none inline-flex items-center justify-center px-3 md:px-4 py-2 rounded-lg transition-colors duration-300 text-xs md:text-base ${
@@ -34,8 +34,8 @@ export function LeaderboardNavigation({ activePage }: Props) {
         </svg>
         <span className="hidden md:inline">Past 24 Hours</span>
         <span className="inline md:hidden ml-1">24h</span>
-      </Link>
-      <Link
+      </AppLink>
+      <AppLink
         to="/countryleaderboard"
         {...routeViewTransitionLinkProps}
         className={`flex-1 md:flex-none inline-flex items-center justify-center px-3 md:px-4 py-2 rounded-lg transition-colors duration-300 text-xs md:text-base ${
@@ -61,7 +61,7 @@ export function LeaderboardNavigation({ activePage }: Props) {
         </svg>
         <span className="hidden md:inline">All Time</span>
         <span className="inline md:hidden ml-1">All</span>
-      </Link>
+      </AppLink>
     </div>
   );
 }

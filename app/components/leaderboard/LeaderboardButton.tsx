@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { pageHeaderActionButtonClass } from "~/components/PageHeader";
 
 interface LeaderboardButtonProps {
@@ -7,13 +7,13 @@ interface LeaderboardButtonProps {
 
 export function LeaderboardButton({ className = "" }: LeaderboardButtonProps) {
   return (
-    <Link
+    <AppLink
       to="/leaderboard"
       prefetch="intent"
       viewTransition
       className={`${pageHeaderActionButtonClass} ${className}`}
     >
       View Top Splits
-    </Link>
+    </AppLink>
   );
 }

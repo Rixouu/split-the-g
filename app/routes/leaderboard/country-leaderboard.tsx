@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { supabase } from "~/utils/supabase";
 import { CountryLeaderboardLayout } from "~/components/leaderboard/CountryLeaderboardLayout";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
 type CountryStats = {
   country: string;
@@ -20,11 +21,11 @@ export const loader: LoaderFunction = async () => {
   return { submissions: data || [] };
 };
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Country Leaderboard",
     description: "All-time country rankings by submission count and average Split the G score.",
-    path: "/countryleaderboard",
+    path: seoPath(params, "/countryleaderboard"),
     keywords: ["country leaderboard", "split the g countries"],
   });
 }

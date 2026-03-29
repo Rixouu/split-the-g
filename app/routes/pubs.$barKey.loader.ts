@@ -1,4 +1,6 @@
 import { redirect, type LoaderFunctionArgs } from "react-router";
+import { langFromParams } from "~/i18n/lang-param";
+import { localizePath } from "~/i18n/paths";
 import type { PubWallRow } from "~/components/pub/PubWallTab";
 import type { BarStat } from "~/routes/pubs";
 import {
@@ -41,6 +43,7 @@ function loadDeferredGoogleOpeningHours(
 }
 
 export async function loader({ params }: LoaderFunctionArgs) {
+  const lang = langFromParams(params);
   const raw = params.barKey?.trim();
   if (!raw) throw new Response("Not found", { status: 404 });
 
@@ -50,7 +53,9 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const prettySeg = barKeyToPubPathSegment(barKey);
   if (isPrettyPubPathSegment(prettySeg)) {
     const incoming = decodePubUrlSegment(raw).trim().toLowerCase();
-    if (incoming !== prettySeg) return redirect(pubDetailPath(barKey), { status: 301 });
+    if (incoming !== prettySeg) {
+      return redirect(localizePath(pubDetailPath(barKey), lang), { status: 301 });
+    }
   }
 
   let statQuery = await supabase

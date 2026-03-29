@@ -1,4 +1,5 @@
-import { Link, useLoaderData, useRevalidator } from "react-router";
+import { useLoaderData, useRevalidator } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import {
   useEffect,
   useLayoutEffect,
@@ -29,6 +30,7 @@ import {
 } from "~/utils/competitionLeaderboard";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import type { loader as competitionsLoader } from "./competitions.loader";
 import {
   COMPETITION_ROW_SELECT,
@@ -47,11 +49,11 @@ import {
 
 export { loader } from "./competitions.loader";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Competitions",
     description: "Create or join Split the G competitions with friends and live leaderboards.",
-    path: "/competitions",
+    path: seoPath(params, "/competitions"),
     keywords: ["split the g competitions", "guinness challenge", "friends leaderboard"],
   });
 }
@@ -734,13 +736,13 @@ export default function Competitions() {
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
         <PageHeader title="Competitions" description={competitionsPageDescription}>
-          <Link
+          <AppLink
             to="/profile"
             viewTransition
             className={pageHeaderActionButtonClass}
           >
             Profile & friends
-          </Link>
+          </AppLink>
         </PageHeader>
 
         {invitedTitles.length > 0 ? (
@@ -1207,13 +1209,13 @@ export default function Competitions() {
                           </div>
 
                           <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[20rem] sm:flex-row sm:flex-wrap sm:justify-end">
-                            <Link
+                            <AppLink
                               to={competitionDetailPath(c)}
                               viewTransition
                               className={`${pageHeaderActionButtonClass} w-full justify-center text-xs sm:w-auto sm:min-w-[5.5rem] sm:text-sm`}
                             >
                               View
-                            </Link>
+                            </AppLink>
                             {isOwner ? (
                               <>
                                 <button

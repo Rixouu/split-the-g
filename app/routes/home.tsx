@@ -9,6 +9,8 @@ import {
 import { PintGlassOverlay } from "~/components/PintGlassOverlay";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { langFromParams } from "~/i18n/lang-param";
+import { localizePath } from "~/i18n/paths";
 import type {
   InferenceEngine as RoboflowInferenceEngine,
   InferencePrediction,
@@ -18,6 +20,7 @@ import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
 const isClient = typeof window !== "undefined";
 
@@ -84,11 +87,11 @@ export async function loader(_args: LoaderFunctionArgs) {
   return {};
 }
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Split the G Scorer",
     description: "Snap your pint and get an AI Split the G score in seconds.",
-    path: "/",
+    path: seoPath(params, "/"),
     keywords: ["split the g scorer", "guinness score app", "pour analyzer"],
   });
 }
@@ -96,7 +99,8 @@ export function meta() {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, params }: ActionFunctionArgs) {
+  const lang = langFromParams(params);
   const formData = await request.formData();
   const base64Image = formData.get("image") as string;
   const competitionRaw = formData.get("competition");
@@ -388,9 +392,10 @@ export async function action({ request }: ActionFunctionArgs) {
     );
 
     const path = scorePourPath(score);
+    const localized = localizePath(path, lang);
     const dest = competitionId
-      ? `${path}${path.includes("?") ? "&" : "?"}competition=${encodeURIComponent(competitionId)}`
-      : path;
+      ? `${localized}${localized.includes("?") ? "&" : "?"}competition=${encodeURIComponent(competitionId)}`
+      : localized;
     return redirect(dest, {
       headers,
     });
@@ -635,7 +640,7 @@ export default function Home() {
 
                     submit(formData, {
                       method: "post",
-                      action: "/?index",
+                      action: ".",
                       encType: "multipart/form-data",
                     });
                   }
@@ -762,7 +767,7 @@ export default function Home() {
       }
       submit(formData, {
         method: "post",
-        action: "/?index",
+        action: ".",
         encType: "multipart/form-data",
       });
     };

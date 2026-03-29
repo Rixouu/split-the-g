@@ -1,4 +1,6 @@
 import { redirect, type LoaderFunctionArgs } from "react-router";
+import { langFromParams } from "~/i18n/lang-param";
+import { localizePath, stripLocalePrefix } from "~/i18n/paths";
 import { isCompetitionUuidParam } from "~/utils/competitionPath";
 import { supabase } from "~/utils/supabase";
 import {
@@ -32,12 +34,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const expectedTail = row.path_segment?.trim() || row.id;
+  const pathSansLang = stripLocalePrefix(url.pathname);
   const currentTail = decodeURIComponent(
-    url.pathname.replace(/^\/competitions\//i, "").replace(/\/+$/, ""),
+    pathSansLang.replace(/^\/competitions\//i, "").replace(/\/+$/, ""),
   );
   if (currentTail !== expectedTail) {
+    const lang = langFromParams(params);
     throw redirect(
-      `/competitions/${encodeURIComponent(expectedTail)}${url.search}`,
+      `${localizePath(`/competitions/${encodeURIComponent(expectedTail)}`, lang)}${url.search}`,
     );
   }
 

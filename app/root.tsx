@@ -19,6 +19,10 @@ import {
 } from "~/components/AppNavigation";
 import { GoogleMapsScript } from "~/components/GoogleMapsScript";
 import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
+import { htmlLangAttribute, DEFAULT_LOCALE } from "~/i18n/config";
+import { seoPath } from "~/utils/seo-path";
+import { getLocaleFromPathname } from "~/i18n/paths";
+import { hreflangDescriptors } from "~/utils/hreflang";
 import { seoMeta, SITE_URL } from "~/utils/seo";
 
 declare global {
@@ -55,7 +59,7 @@ export function meta() {
     title: "Split The G",
     description:
       "Score your Guinness pour with AI, share your split, and climb pub, friend, and weekly leaderboards.",
-    path: "/",
+    path: seoPath({ lang: DEFAULT_LOCALE }, "/"),
     keywords: ["AI beer scoring", "pub leaderboard", "pour challenge"],
   });
 }
@@ -93,13 +97,16 @@ export default function App() {
   const { pathname } = useLocation();
   const navigation = useNavigation();
   const padForShellNav = shouldShowAppNav(pathname);
+  const documentLang =
+    htmlLangAttribute(getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE);
+  const hreflangs = hreflangDescriptors(env.SITE_ORIGIN, pathname);
   const mapsKey = env.GOOGLE_PLACES_API_KEY ?? "";
   const mapsScriptActive =
     Boolean(mapsKey) && pathnameNeedsGoogleMapsScript(pathname);
   const isNavigating = navigation.state !== "idle";
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={documentLang} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -108,6 +115,9 @@ export default function App() {
         <meta name="apple-mobile-web-app-title" content="Split the G" />
         <Meta />
         <link rel="canonical" href={`${env.SITE_ORIGIN}${pathname || "/"}`} />
+        {hreflangs.map(({ hrefLang, href }) => (
+          <link key={hrefLang} rel="alternate" hrefLang={hrefLang} href={href} />
+        ))}
         <Links />
       </head>
       <body suppressHydrationWarning>

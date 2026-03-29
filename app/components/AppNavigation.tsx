@@ -1,5 +1,8 @@
-import { NavLink, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import { useHasActiveCompetitionParticipation } from "~/components/competition/hooks/useCompeteParticipation";
+import { AppNavLink } from "~/i18n/app-link";
+import { useOptionalLang } from "~/i18n/context";
+import { localizePath, stripLocalePrefix } from "~/i18n/paths";
 
 /** Prefetch loader payloads and lazy chunks on hover, focus, or touch (before click). */
 const LINK_PREFETCH = "intent" as const;
@@ -101,26 +104,27 @@ const mobSecondaryItem =
   `relative z-0 flex min-h-[2rem] min-w-0 flex-1 flex-col items-center justify-center gap-0 overflow-visible px-1 pt-1 text-[9px] font-semibold uppercase leading-none tracking-wide outline-none focus-visible:ring-2 focus-visible:ring-guinness-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-guinness-black sm:min-h-[2.1rem] sm:px-1.5 sm:py-1 sm:pt-1.5 ${mobUnderlineBase}`;
 
 export function shouldShowAppNav(pathname: string): boolean {
-  if (pathname === "/") return true;
+  const p = stripLocalePrefix(pathname);
+  if (p === "/") return true;
   if (
-    pathname === "/feed" ||
-    pathname === "/competitions" ||
-    pathname.startsWith("/competitions/") ||
-    pathname === "/profile" ||
-    pathname.startsWith("/profile/") ||
-    pathname === "/pubs" ||
-    pathname.startsWith("/pubs/") ||
-    pathname === "/faq"
+    p === "/feed" ||
+    p === "/competitions" ||
+    p.startsWith("/competitions/") ||
+    p === "/profile" ||
+    p.startsWith("/profile/") ||
+    p === "/pubs" ||
+    p.startsWith("/pubs/") ||
+    p === "/faq"
   ) {
     return true;
   }
-  if (pathname.startsWith("/pour/")) return true;
-  if (pathname.startsWith("/score/")) return true;
-  if (pathname === "/wall" || pathname === "/collage") return true;
+  if (p.startsWith("/pour/")) return true;
+  if (p.startsWith("/score/")) return true;
+  if (p === "/wall" || p === "/collage") return true;
   if (
-    pathname === "/leaderboard" ||
-    pathname === "/countryleaderboard" ||
-    pathname === "/past24hrleaderboard"
+    p === "/leaderboard" ||
+    p === "/countryleaderboard" ||
+    p === "/past24hrleaderboard"
   ) {
     return true;
   }
@@ -132,8 +136,11 @@ export const shouldShowMobileNav = shouldShowAppNav;
 
 export function AppNavigation() {
   const { pathname } = useLocation();
+  const lang = useOptionalLang();
   const hasCompeteParticipation = useHasActiveCompetitionParticipation();
-  const isHome = pathname === "/";
+  const homePath = localizePath("/", lang);
+  const isHome =
+    pathname === homePath || pathname === `${homePath}/` || pathname === "/";
 
   if (!shouldShowAppNav(pathname)) return null;
 
@@ -146,7 +153,7 @@ export function AppNavigation() {
       >
         <div className="pointer-events-auto border-b border-guinness-gold/10 bg-gradient-to-b from-guinness-brown/95 via-guinness-brown/90 to-guinness-brown/70 backdrop-blur-xl">
           <div className="mx-auto flex h-[3.75rem] max-w-6xl items-center gap-4 px-4 lg:px-8">
-            <NavLink
+            <AppNavLink
               to="/"
               prefetch={LINK_PREFETCH}
               title={isHome ? "Split the G — home" : undefined}
@@ -154,7 +161,7 @@ export function AppNavigation() {
               className="group shrink-0 text-[0.8125rem] font-bold uppercase tracking-[0.12em] text-guinness-cream transition-colors hover:text-guinness-gold"
             >
               {isHome ? "The scorer" : "Split the G"}
-            </NavLink>
+            </AppNavLink>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1 sm:gap-1.5">
               <nav
@@ -165,7 +172,7 @@ export function AppNavigation() {
                   const isCompete = to === "/competitions";
                   const showCompeteDot = isCompete && hasCompeteParticipation;
                   return (
-                    <NavLink
+                    <AppNavLink
                       key={to}
                       to={to}
                       end={end}
@@ -186,7 +193,7 @@ export function AppNavigation() {
                         />
                       ) : null}
                       {label}
-                    </NavLink>
+                    </AppNavLink>
                   );
                 })}
               </nav>
@@ -195,7 +202,7 @@ export function AppNavigation() {
                 aria-label="More"
               >
                 {secondaryItems.map(({ to, label }) => (
-                  <NavLink
+                  <AppNavLink
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
@@ -204,7 +211,7 @@ export function AppNavigation() {
                     }
                   >
                     {label}
-                  </NavLink>
+                  </AppNavLink>
                 ))}
               </nav>
             </div>
@@ -218,7 +225,7 @@ export function AppNavigation() {
         aria-label="Main"
       >
         <div className="relative mx-auto w-full max-w-md min-w-0">
-          <NavLink
+          <AppNavLink
             to="/"
             end
             title="Pour"
@@ -234,12 +241,12 @@ export function AppNavigation() {
             }
           >
             <MobileNavIcon name="pour" className="h-8 w-8" />
-          </NavLink>
+          </AppNavLink>
           <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)]">
             <ul className="flex list-none items-stretch gap-0.5">
               <li className="flex min-w-0 flex-1 gap-0.5">
                 {mobileDockItems.slice(0, 2).map(({ to, label }) => (
-                  <NavLink
+                  <AppNavLink
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
@@ -250,7 +257,7 @@ export function AppNavigation() {
                     }
                   >
                     {label}
-                  </NavLink>
+                  </AppNavLink>
                 ))}
               </li>
               <li
@@ -259,7 +266,7 @@ export function AppNavigation() {
               />
               <li className="flex min-w-0 flex-1 gap-0.5">
                 {mobileDockItems.slice(2, 4).map(({ to, label }) => (
-                  <NavLink
+                  <AppNavLink
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
@@ -268,7 +275,7 @@ export function AppNavigation() {
                     }
                   >
                     {label}
-                  </NavLink>
+                  </AppNavLink>
                 ))}
               </li>
             </ul>
@@ -277,7 +284,7 @@ export function AppNavigation() {
                 const showCompeteDot =
                   to === "/competitions" && hasCompeteParticipation;
                 return (
-                  <NavLink
+                  <AppNavLink
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
@@ -300,7 +307,7 @@ export function AppNavigation() {
                       />
                     ) : null}
                     <span className="w-full text-center leading-none">{label}</span>
-                  </NavLink>
+                  </AppNavLink>
                 );
               })}
             </div>

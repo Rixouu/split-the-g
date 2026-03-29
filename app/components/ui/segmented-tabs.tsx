@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { NavLink } from "react-router";
+import { AppNavLink } from "~/i18n/app-link";
 import { segmentedTabGroupChromeClass } from "./segmented-tabs-shared";
 
 export type SegmentedTabItem = {
@@ -212,7 +212,7 @@ export type SegmentedTabsNavProps = {
 };
 
 /**
- * Same segmented UI as {@link SegmentedTabs}, using {@link NavLink} per segment.
+ * Same segmented UI as {@link SegmentedTabs}, using {@link AppNavLink} per segment.
  */
 export function SegmentedTabsNav({
   items,
@@ -254,7 +254,7 @@ export function SegmentedTabsNav({
             ref={(el) => assignCellRef(cellRefs, index, el)}
             className={`relative z-[1] min-w-0 ${cellEqual}`.trim()}
           >
-            <NavLink
+            <AppNavLink
               to={item.to}
               end={item.end}
               prefetch="intent"
@@ -264,7 +264,7 @@ export function SegmentedTabsNav({
               }
             >
               {item.label}
-            </NavLink>
+            </AppNavLink>
           </div>
         );
       })}

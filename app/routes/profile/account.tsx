@@ -1,11 +1,12 @@
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Account",
     description:
       "Update your display name, leaderboard nickname, country flag, and sign-in for Split the G.",
-    path: "/profile/account",
+    path: seoPath(params, "/profile/account"),
     keywords: ["split the g account", "profile settings"],
   });
 }

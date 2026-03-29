@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { pageHeaderActionButtonClass } from "~/components/PageHeader";
 
 interface SubmissionsButtonProps {
@@ -7,13 +7,13 @@ interface SubmissionsButtonProps {
 
 export function SubmissionsButton({ className = "" }: SubmissionsButtonProps) {
   return (
-    <Link
+    <AppLink
       to="/wall"
       prefetch="intent"
       viewTransition
       className={`${pageHeaderActionButtonClass} ${className}`.trim()}
     >
       View Submissions
-    </Link>
+    </AppLink>
   );
 }

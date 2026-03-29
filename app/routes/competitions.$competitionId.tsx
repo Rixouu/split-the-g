@@ -21,6 +21,7 @@ import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import {
   buildLeaderboard,
   COMPETITION_SCORE_LIMIT,
@@ -46,13 +47,18 @@ export { loader } from "./competitions.$competitionId.loader";
 export function meta({
   params,
 }: {
-  params: { competitionId?: string };
+  params: { competitionId?: string; lang?: string };
 }) {
   const competitionId = params.competitionId?.trim();
   return seoMeta({
     title: "Competition Details",
     description: "Track standings, participants, and recent pours for this Split the G competition.",
-    path: competitionId ? `/competitions/${encodeURIComponent(competitionId)}` : "/competitions",
+    path: seoPath(
+      params,
+      competitionId
+        ? `/competitions/${encodeURIComponent(competitionId)}`
+        : "/competitions",
+    ),
     keywords: ["competition leaderboard", "split the g tournament"],
   });
 }

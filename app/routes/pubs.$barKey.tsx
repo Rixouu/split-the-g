@@ -1,12 +1,12 @@
 import {
   Await,
   data,
-  Link,
   useFetcher,
   useLoaderData,
   useNavigate,
   useRevalidator,
 } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import type { ActionFunctionArgs } from "react-router";
 import {
   lazy,
@@ -37,6 +37,7 @@ import {
   resolveBarKeyFromPubPathSegment,
 } from "~/utils/pubPath";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import type { loader as pubDetailLoader } from "./pubs.$barKey.loader";
 import {
   PUB_WALL_PAGE_LIMIT,
@@ -54,13 +55,16 @@ export { loader } from "./pubs.$barKey.loader";
 export function meta({
   params,
 }: {
-  params: { barKey?: string };
+  params: { barKey?: string; lang?: string };
 }) {
   const barKey = params.barKey?.trim();
   return seoMeta({
     title: "Pub Details",
     description: "View a pub profile, map, and latest Split the G pours for that venue.",
-    path: barKey ? `/pubs/${encodeURIComponent(barKey)}` : "/pubs",
+    path: seoPath(
+      params,
+      barKey ? `/pubs/${encodeURIComponent(barKey)}` : "/pubs",
+    ),
     keywords: ["pub wall", "guinness pub scores"],
   });
 }
@@ -741,12 +745,12 @@ export default function PubDetail() {
               />
               <span>{favBusy ? "…" : favId ? "Saved" : "Favorite"}</span>
             </button>
-            <Link
+            <AppLink
               to="/pubs"
               className={pageHeaderActionButtonClass}
             >
               All pubs
-            </Link>
+            </AppLink>
           </div>
         </PageHeader>
 
@@ -1301,7 +1305,7 @@ export default function PubDetail() {
                     <ul className="space-y-2">
                       {linkedCompetitions.map((c) => (
                         <li key={c.id}>
-                          <Link
+                          <AppLink
                             to={competitionDetailPath(c)}
                             viewTransition
                             className={`block rounded-xl border ${pubStroke} bg-guinness-black/25 px-3 py-2.5 transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 sm:px-4 sm:py-3`}
@@ -1312,7 +1316,7 @@ export default function PubDetail() {
                             <span className="type-meta mt-0.5 block text-guinness-tan/65">
                               Ends {new Date(c.ends_at).toLocaleString()}
                             </span>
-                          </Link>
+                          </AppLink>
                         </li>
                       ))}
                     </ul>

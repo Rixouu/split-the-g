@@ -1,5 +1,6 @@
 import { type LoaderFunction } from "react-router";
-import { useLoaderData, Link } from "react-router";
+import { useLoaderData } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { useEffect, useMemo, useState } from "react";
 import {
   PageHeader,
@@ -15,6 +16,7 @@ import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { normalizeEmail } from "~/routes/profile/profile-shared";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
 type LeaderboardEntry = {
   id: string;
@@ -69,11 +71,11 @@ export const loader: LoaderFunction = async () => {
   return { entries: (data ?? []) as LeaderboardEntry[] };
 };
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Leaderboard",
     description: "See top Split the G scores across global, local, and friends tabs.",
-    path: "/leaderboard",
+    path: seoPath(params, "/leaderboard"),
     keywords: ["split the g leaderboard", "weekly guinness ranking"],
   });
 }
@@ -90,7 +92,7 @@ function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
   return (
     <div className="w-full">
       {entries.map((entry, index) => (
-        <Link
+        <AppLink
           key={entry.id}
           to={scorePourPathFromFields(entry)}
           prefetch="intent"
@@ -141,7 +143,7 @@ function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
               </div>
             </div>
           </div>
-        </Link>
+        </AppLink>
       ))}
     </div>
   );
@@ -347,9 +349,9 @@ export default function Leaderboard() {
         </div>
 
         <div className="mt-10 flex justify-center pb-6">
-          <Link to="/" viewTransition className={homePourButtonClass}>
+          <AppLink to="/" viewTransition className={homePourButtonClass}>
             New Pour
-          </Link>
+          </AppLink>
         </div>
       </div>
     </main>

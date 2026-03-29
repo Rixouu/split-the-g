@@ -1,13 +1,14 @@
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import { useProfileOutlet } from "./profile-context";
 import { progressRangeOptions, type ProgressRange } from "./profile-shared";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Profile Progress",
     description: "Track average score trends, best pours, and friend progress in Split the G.",
-    path: "/profile/progress",
+    path: seoPath(params, "/profile/progress"),
     keywords: ["split the g progress", "pour stats"],
   });
 }

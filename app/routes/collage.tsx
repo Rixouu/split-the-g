@@ -1,5 +1,6 @@
 import { type LoaderFunction } from "react-router";
-import { useLoaderData, Link } from "react-router";
+import { useLoaderData } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { useLayoutEffect, useMemo, useState } from "react";
 import { supabase } from "~/utils/supabase";
 import {
@@ -15,6 +16,7 @@ import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
 import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
 type Submission = {
   id: string;
@@ -60,11 +62,11 @@ export const loader: LoaderFunction = async () => {
   return { submissions: (data ?? []) as Submission[] };
 };
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Wall",
     description: "Explore the Split the G wall of recent pours and scores.",
-    path: "/wall",
+    path: seoPath(params, "/wall"),
     keywords: ["split the g wall", "guinness collage", "pour gallery"],
   });
 }
@@ -308,7 +310,7 @@ export default function Collage() {
               const loc = formatLocation(submission);
               return (
                 <li key={submission.id} className="min-w-0">
-                  <Link
+                  <AppLink
                     to={scorePourPathFromFields(submission)}
                     prefetch="intent"
                     viewTransition
@@ -361,7 +363,7 @@ export default function Collage() {
                         </p>
                       ) : null}
                     </div>
-                  </Link>
+                  </AppLink>
                 </li>
               );
             })}

@@ -1,13 +1,14 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 import { useProfileOutlet } from "./profile-context";
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Profile Scores",
     description: "Review your recent Split the G results and score history.",
-    path: "/profile/scores",
+    path: seoPath(params, "/profile/scores"),
     keywords: ["split the g history", "recent pours"],
   });
 }
@@ -21,7 +22,7 @@ export default function ProfileScoresPage() {
       <ul className="grid gap-3 sm:grid-cols-2">
         {scores.map((s) => (
           <li key={s.id}>
-            <Link
+            <AppLink
               to={scorePourPathFromFields(s)}
               prefetch="intent"
               viewTransition
@@ -47,7 +48,7 @@ export default function ProfileScoresPage() {
                   })}
                 </p>
               ) : null}
-            </Link>
+            </AppLink>
           </li>
         ))}
       </ul>

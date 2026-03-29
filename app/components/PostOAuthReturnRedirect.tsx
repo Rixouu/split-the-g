@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { isOAuthReturnLandingPath } from "~/i18n/paths";
 import { peekAndConsumePostOAuthReturnPath } from "~/utils/post-oauth-return";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 
@@ -13,7 +14,7 @@ export function PostOAuthReturnRedirect() {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.pathname !== "/") return;
+    if (!isOAuthReturnLandingPath(location.pathname)) return;
 
     const here = `${location.pathname}${location.search}`;
     let unsubscribe: (() => void) | null = null;

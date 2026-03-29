@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 
 export * from "./page-descriptions";
 
@@ -73,9 +73,9 @@ export const homePourButtonClass =
 export function EndPageNewPourFooter() {
   return (
     <div className="mt-10 flex justify-center pb-6">
-      <Link to="/" viewTransition className={homePourButtonClass}>
+      <AppLink to="/" viewTransition className={homePourButtonClass}>
         New Pour
-      </Link>
+      </AppLink>
     </div>
   );
 }

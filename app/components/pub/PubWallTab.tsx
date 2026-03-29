@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
 import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
@@ -263,7 +263,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
         <ul className="grid w-full min-w-0 grid-cols-2 gap-2.5 sm:gap-4">
           {pageSlice.map((row) => (
             <li key={row.id} className="min-w-0">
-              <Link
+              <AppLink
                 to={scorePourPathFromFields(row)}
                 viewTransition
                 className={`group block overflow-hidden rounded-lg border ${pubStroke} bg-guinness-brown/30 transition-colors hover:border-guinness-gold/35`}
@@ -315,7 +315,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
                     </p>
                   ) : null}
                 </div>
-              </Link>
+              </AppLink>
             </li>
           ))}
         </ul>

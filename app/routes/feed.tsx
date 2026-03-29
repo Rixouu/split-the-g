@@ -1,4 +1,5 @@
-import { Link, useLoaderData } from "react-router";
+import { useLoaderData } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import type { LoaderFunctionArgs } from "react-router";
 import {
   PageHeader,
@@ -11,6 +12,7 @@ import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_LIST_COLUMNS } from "~/utils/scoresListColumns";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
 type FeedRow = {
   id: string;
@@ -53,11 +55,11 @@ export async function loader(_args: LoaderFunctionArgs) {
   return { items: (data ?? []) as FeedRow[] };
 }
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Live Feed",
     description: "Browse recent Split the G pours, scores, and pub activity.",
-    path: "/feed",
+    path: seoPath(params, "/feed"),
     keywords: ["split the g feed", "recent guinness pours"],
   });
 }
@@ -78,9 +80,9 @@ export default function Feed() {
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
         <PageHeader title="Feed" description={feedPageDescription}>
-          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
+          <AppLink to="/" viewTransition className={pageHeaderActionButtonClass}>
             Pour
-          </Link>
+          </AppLink>
         </PageHeader>
 
         {items.length === 0 ? (
@@ -91,7 +93,7 @@ export default function Feed() {
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {items.map((row) => (
               <li key={row.id} className="min-w-0">
-                <Link
+                <AppLink
                   to={scorePourPathFromFields(row)}
                   prefetch="intent"
                   viewTransition
@@ -147,7 +149,7 @@ export default function Feed() {
                       </p>
                     ) : null}
                   </div>
-                </Link>
+                </AppLink>
               </li>
             ))}
           </ul>

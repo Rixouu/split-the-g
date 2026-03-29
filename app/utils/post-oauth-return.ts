@@ -1,3 +1,5 @@
+import { ensureLocalizedAppPath } from "~/i18n/paths";
+
 /** sessionStorage key — path to restore after Google OAuth when Supabase only redirects to site root. */
 export const POST_OAUTH_RETURN_KEY = "stg_post_oauth_path";
 
@@ -52,9 +54,10 @@ export function peekAndConsumePostOAuthReturnPath(here: string): string | null {
       sessionStorage.removeItem(POST_OAUTH_RETURN_KEY);
       return null;
     }
-    const target = parsed.path.startsWith("/")
+    const rawTarget = parsed.path.startsWith("/")
       ? parsed.path
       : `/${parsed.path}`;
+    const target = ensureLocalizedAppPath(rawTarget);
     sessionStorage.removeItem(POST_OAUTH_RETURN_KEY);
     if (target === here) return null;
     return target;

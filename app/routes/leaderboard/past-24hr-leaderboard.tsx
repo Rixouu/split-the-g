@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { supabase } from "~/utils/supabase";
 import { CountryLeaderboardLayout } from "~/components/leaderboard/CountryLeaderboardLayout";
 import { seoMeta } from "~/utils/seo";
+import { seoPath } from "~/utils/seo-path";
 
 type CountryStats = {
   country: string;
@@ -20,11 +21,11 @@ export const loader: LoaderFunction = async () => {
   return { submissions: data || [] };
 };
 
-export function meta() {
+export function meta({ params }: { params: { lang?: string } }) {
   return seoMeta({
     title: "Past 24 Hours Leaderboard",
     description: "Country rankings for the last 24 hours of Split the G pours.",
-    path: "/past24hrleaderboard",
+    path: seoPath(params, "/past24hrleaderboard"),
     keywords: ["24 hour leaderboard", "split the g daily ranking"],
   });
 }

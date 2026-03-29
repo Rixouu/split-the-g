@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { LeaderboardNavigation } from "~/components/leaderboard/LeaderboardNavigation";
 import { CountryStatsTable } from "~/components/leaderboard/CountryStatsTable";
 import { homePourButtonClass } from "~/components/PageHeader";
@@ -28,9 +28,9 @@ export function CountryLeaderboardLayout({
           <h1 className="type-display text-2xl md:text-4xl mb-4 px-2">
             The world&apos;s largest Split the G contest
           </h1>
-          <Link to="/" viewTransition className={`${homePourButtonClass} mx-auto`}>
+          <AppLink to="/" viewTransition className={`${homePourButtonClass} mx-auto`}>
             New Pour
-          </Link>
+          </AppLink>
         </div>
         <div className="flex justify-center gap-4 mb-4 md:mb-8">
           <LeaderboardNavigation activePage={activePage} />
@@ -39,9 +39,9 @@ export function CountryLeaderboardLayout({
         <CountryStatsTable title={tableTitle} submissions={submissions} />
 
         <div className="mt-10 flex justify-center pb-6 md:mt-10">
-          <Link to="/" viewTransition className={homePourButtonClass}>
+          <AppLink to="/" viewTransition className={homePourButtonClass}>
             New Pour
-          </Link>
+          </AppLink>
         </div>
       </div>
     </main>

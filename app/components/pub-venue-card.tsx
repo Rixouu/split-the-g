@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import type { ReactNode } from "react";
 
 /** Dark brown stroke — matches pub list / venue cards (no light borders). */
@@ -173,14 +173,14 @@ export function PubVenueCard({
       <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-guinness-gold/[0.06] blur-2xl" />
       <div className="relative flex flex-col sm:flex-row sm:items-stretch">
         {primaryTo ? (
-          <Link
+          <AppLink
             to={primaryTo}
             viewTransition
             prefetch="intent"
             className={mainTapClassName}
           >
             {body}
-          </Link>
+          </AppLink>
         ) : (
           <div className={`${mainTapClassName} cursor-default`}>{body}</div>
         )}
