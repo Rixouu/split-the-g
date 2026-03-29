@@ -20,6 +20,7 @@ import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { useI18n } from "~/i18n/context";
+import { localizePath } from "~/i18n/paths";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
 import {
   buildLeaderboard,
@@ -58,7 +59,7 @@ export function meta({
 }
 
 export default function CompetitionDetail() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { competitionId, competition: loaderComp, loadError } =
     useLoaderData<typeof competitionDetailLoader>();
   const params = useParams();
@@ -982,7 +983,7 @@ export default function CompetitionDetail() {
                         }`}
                       >
                         <Link
-                          to={r.pourPath}
+                          to={localizePath(r.pourPath, lang)}
                           viewTransition
                           className="flex min-w-0 flex-1 items-center gap-3 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold sm:gap-5 sm:p-5"
                         >
