@@ -21,6 +21,9 @@ import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
+import { scorePourPath } from "~/utils/scorePath";
+import { supabase } from "~/utils/supabase";
+import { generateBeerUsername } from "~/utils/usernameGenerator";
 
 const isClient = typeof window !== "undefined";
 
@@ -118,18 +121,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
       toLegacyScoringOutputs,
     },
     { generatePourSlug },
-    { scorePourPath },
-    { supabase },
-    { generateBeerUsername },
   ] = await Promise.all([
     import("~/utils/scoring"),
     import("~/utils/imageStorage"),
     import("~/utils/locationService"),
     import("~/utils/roboflowWorkflow"),
     import("~/utils/pourSlug"),
-    import("~/utils/scorePath"),
-    import("~/utils/supabase"),
-    import("~/utils/usernameGenerator"),
   ]);
   const username = generateBeerUsername();
   const sessionId = randomUUID();

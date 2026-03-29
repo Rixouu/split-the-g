@@ -27,6 +27,7 @@ import {
   pubVenueCardActionOutlineClass,
   pubVenueCardActionSavedClass,
 } from "~/components/pub-venue-card";
+import { supabase } from "~/utils/supabase";
 
 export type BarStat = {
   bar_key: string;
@@ -119,7 +120,6 @@ const filterInputClass = `${filterFieldShell} px-3`;
 const selectFieldClass = `${filterFieldShell} pl-3 ${NATIVE_SELECT_APPEARANCE_CLASS}`;
 
 export async function loader(_args: LoaderFunctionArgs) {
-  const { supabase } = await import("~/utils/supabase");
   const projection =
     "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
   const mv = await supabase

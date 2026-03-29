@@ -34,6 +34,7 @@ import { localizePath } from "~/i18n/paths";
 import { useI18n } from "~/i18n/context";
 import { createTranslator } from "~/i18n/load-messages";
 import { seoMetaForRoute, seoMetaForScoreDetail } from "~/i18n/seo-meta";
+import { supabase } from "~/utils/supabase";
 
 const COMPETITION_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -92,7 +93,6 @@ export function meta({
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const lang = langFromParams(params);
-  const { supabase } = await import("~/utils/supabase");
   const ref = params.pourRef?.trim();
   if (!ref) {
     throw new Response("Score not found", { status: 404 });
