@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from "react-router";
 import { AppLink } from "~/i18n/app-link";
+import { stripLocalePrefix } from "~/i18n/paths";
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -122,16 +123,17 @@ export default function ProfileLayout() {
     [],
   );
 
-  const pathNorm = location.pathname.replace(/\/+$/, "") || "/";
-  const isProfileHubPath = pathNorm === "/profile";
-  const isProfileFaqPath = pathNorm === "/profile/faq";
+  const pathTail =
+    stripLocalePrefix(location.pathname).replace(/\/\+$/, "") || "/";
+  const isProfileHubPath = pathTail === "/profile";
+  const isProfileFaqPath = pathTail === "/profile/faq";
   const hideEndPageNewPourFooter = isProfileHubPath || isProfileFaqPath;
 
   /** Hub path must not resolve to the first tab (Account); use Progress for data hints only. */
   const profileActiveSection = useMemo(() => {
     if (isProfileHubPath) return "/profile/progress";
-    return resolveProfileSectionTab(location.pathname, profileSectionPaths);
-  }, [location.pathname, profileSectionPaths, isProfileHubPath]);
+    return resolveProfileSectionTab(pathTail, profileSectionPaths);
+  }, [pathTail, profileSectionPaths, isProfileHubPath]);
 
   const isDesktop = useIsDesktopMd();
   const showProfileHeaderPour =
