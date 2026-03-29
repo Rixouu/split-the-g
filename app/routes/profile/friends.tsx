@@ -59,7 +59,7 @@ export default function ProfileFriendsPage() {
             </button>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
           {[
             {
               label: "Friends",
@@ -81,11 +81,15 @@ export default function ProfileFriendsPage() {
               key={item.label}
               to={item.to}
               viewTransition
-              className="rounded-xl border border-[#372C16] bg-guinness-black/30 px-4 py-3 text-left transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold"
+              className="min-w-0 rounded-xl border border-[#372C16] bg-guinness-black/30 px-2 py-2.5 text-center transition-colors hover:border-guinness-gold/35 hover:bg-guinness-brown/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-guinness-gold sm:px-4 sm:py-3 sm:text-left"
               aria-label={`${item.label}: ${item.value}. Jump to ${item.label} on this page.`}
             >
-              <p className="type-meta text-guinness-tan/65">{item.label}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-guinness-gold">{item.value}</p>
+              <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-guinness-tan/65 sm:type-meta sm:normal-case sm:tracking-normal">
+                {item.label}
+              </p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-guinness-gold sm:mt-1 sm:text-2xl">
+                {item.value}
+              </p>
             </NavLink>
           ))}
         </div>

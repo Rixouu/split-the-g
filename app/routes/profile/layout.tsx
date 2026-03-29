@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import {
   EndPageNewPourFooter,
   PageHeader,
+  homePourButtonClass,
   pageHeaderActionButtonClass,
   pageShellClass,
   profilePageDescription,
@@ -22,6 +23,7 @@ import {
   rememberPathBeforeGoogleOAuth,
 } from "~/utils/post-oauth-return";
 import { ProfilePageProvider } from "./profile-context";
+import type { ProfileLayoutOutletContext } from "./route-outlet-context";
 import {
   SegmentedTabsNav,
   resolveProfileSectionTab,
@@ -48,14 +50,20 @@ import {
   getCountryOptions,
 } from "~/utils/countryDisplay";
 import { seoMeta } from "~/utils/seo";
+import { useIsDesktopMd } from "~/utils/useDesktopMd";
 
-const profileNavItems = [
+const profileNavItemsAuth = [
+  { to: "/profile/account", label: "Account" },
   { to: "/profile/progress", label: "Progress" },
   { to: "/profile/expenses", label: "Expenses" },
   { to: "/profile/scores", label: "Scores" },
   { to: "/profile/favorites", label: "Favorite bars" },
   { to: "/profile/friends", label: "Friends" },
 ] as const;
+
+const profileNavItemFaq = { to: "/profile/faq", label: "FAQ" } as const;
+
+const profileNavItemsWithFaq = [...profileNavItemsAuth, profileNavItemFaq] as const;
 
 export function meta() {
   return seoMeta({
@@ -98,7 +106,7 @@ export default function ProfileLayout() {
 
   const profileNavLinkItems = useMemo(
     () =>
-      profileNavItems.map(({ to, label }) => ({
+      profileNavItemsWithFaq.map(({ to, label }) => ({
         value: to,
         to,
         label,
@@ -107,14 +115,38 @@ export default function ProfileLayout() {
   );
 
   const profileSectionPaths = useMemo(
-    () => profileNavItems.map((i) => i.to),
+    () => profileNavItemsWithFaq.map((i) => i.to),
     [],
   );
 
-  const profileActiveSection = useMemo(
-    () => resolveProfileSectionTab(location.pathname, profileSectionPaths),
-    [location.pathname, profileSectionPaths],
-  );
+  const pathNorm = location.pathname.replace(/\/+$/, "") || "/";
+  const isProfileHubPath = pathNorm === "/profile";
+  const isProfileFaqPath = pathNorm === "/profile/faq";
+  const hideEndPageNewPourFooter = isProfileHubPath || isProfileFaqPath;
+
+  /** Hub path must not resolve to the first tab (Account); use Progress for data hints only. */
+  const profileActiveSection = useMemo(() => {
+    if (isProfileHubPath) return "/profile/progress";
+    return resolveProfileSectionTab(location.pathname, profileSectionPaths);
+  }, [location.pathname, profileSectionPaths, isProfileHubPath]);
+
+  const isDesktop = useIsDesktopMd();
+  const showProfileHeaderPour =
+    !user || isDesktop || isProfileHubPath;
+  const mobileSubsectionTitle = useMemo(() => {
+    const hit = profileNavItemsWithFaq.find(({ to }) => to === profileActiveSection);
+    return hit?.label ?? "Profile";
+  }, [profileActiveSection]);
+  const profileHeaderTitle =
+    user && !showProfileHeaderPour
+      ? profileActiveSection === "/profile/faq"
+        ? "Frequently asked questions"
+        : mobileSubsectionTitle
+      : "Profile";
+  const profileHeaderDescription =
+    user && !showProfileHeaderPour ? undefined : profilePageDescription;
+  const showAccountFormSection =
+    Boolean(user) && profileActiveSection === "/profile/account";
   const activeLoadOptions = useMemo(
     () => ({
       includeScores:
@@ -895,19 +927,86 @@ export default function ProfileLayout() {
   const inputClass =
     "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
 
+  const profileHeaderBackButtonClass =
+    "inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg border border-guinness-gold/35 bg-guinness-black/50 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/55 hover:bg-guinness-brown/40 sm:w-auto sm:px-6 sm:text-base";
+
+  /** Mobile subsection: compact Back, top-right (not full-width). */
+  const profileMobileBackTopClass =
+    "inline-flex min-h-10 shrink-0 items-center rounded-lg border border-guinness-gold/40 bg-guinness-black/60 px-3.5 py-2 text-sm font-semibold text-guinness-gold shadow-[0_0_0_1px_rgba(212,175,55,0.08)] transition-colors hover:border-guinness-gold/60 hover:bg-guinness-gold/10";
+
   const countrySelectClass =
     "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 py-2 pl-3 text-guinness-cream focus:border-guinness-gold focus:outline-none " +
     NATIVE_SELECT_APPEARANCE_CLASS;
 
   const messageVariant = message ? feedbackVariantFromMessage(message) : "info";
 
+  const showMobileProfileSubHeader =
+    Boolean(user) && !showProfileHeaderPour;
+
+  if (isProfileFaqPath) {
+    if (loading) {
+      return (
+        <main className="min-h-screen bg-guinness-black text-guinness-cream">
+          <div className={pageShellClass}>
+            <p className="type-meta text-guinness-tan/70">Loading…</p>
+          </div>
+        </main>
+      );
+    }
+    if (!user) {
+      return (
+        <main className="min-h-screen bg-guinness-black text-guinness-cream">
+          <Outlet
+            context={
+              { faqHeaderMode: "full" } satisfies ProfileLayoutOutletContext
+            }
+          />
+        </main>
+      );
+    }
+  }
+
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Profile" description={profilePageDescription}>
-          <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
-            Pour
-          </Link>
+        {showMobileProfileSubHeader ? (
+          <header
+            className="relative mb-6 min-h-10 border-b border-guinness-gold/10 pb-4 md:hidden"
+            aria-label="Profile section"
+          >
+            <h1 className="type-display absolute left-1/2 top-1/2 z-0 max-w-[calc(100%-5.5rem)] -translate-x-1/2 -translate-y-1/2 text-center text-2xl leading-tight text-guinness-gold">
+              <span className="block truncate">{mobileSubsectionTitle}</span>
+            </h1>
+            <div className="relative z-10 flex justify-end">
+              <Link
+                to="/profile"
+                viewTransition
+                className={profileMobileBackTopClass}
+              >
+                Back
+              </Link>
+            </div>
+          </header>
+        ) : null}
+
+        <PageHeader
+          className={showMobileProfileSubHeader ? "hidden md:flex" : ""}
+          title={profileHeaderTitle}
+          description={profileHeaderDescription}
+        >
+          {showProfileHeaderPour ? (
+            <Link to="/" viewTransition className={pageHeaderActionButtonClass}>
+              Pour
+            </Link>
+          ) : (
+            <Link
+              to="/profile"
+              viewTransition
+              className={profileHeaderBackButtonClass}
+            >
+              Back
+            </Link>
+          )}
         </PageHeader>
 
         {loading ? (
@@ -925,117 +1024,20 @@ export default function ProfileLayout() {
             >
               Sign in with Google
             </button>
+            <p className="type-meta mt-5 text-center text-guinness-tan/75">
+              <Link
+                to="/profile/faq"
+                prefetch="intent"
+                viewTransition
+                className="font-semibold text-guinness-gold underline decoration-guinness-gold/35 underline-offset-2 hover:text-guinness-tan"
+              >
+                FAQ
+              </Link>
+              <span className="text-guinness-tan/55"> — answers without signing in</span>
+            </p>
           </div>
         ) : (
           <div className="space-y-8">
-            <section className="rounded-xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 sm:p-6">
-              <div className="flex flex-col gap-1 border-b border-guinness-gold/10 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                <div className="min-w-0">
-                  <p className="type-label text-guinness-gold">Signed in</p>
-                  <p className="mt-1 truncate text-sm text-guinness-tan/80">
-                    {user.email}
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-guinness-cream">
-                    {countryCode ? (
-                      <span className="mr-2" title={countryCode} aria-hidden>
-                        {flagEmojiFromIso2(countryCode)}
-                      </span>
-                    ) : null}
-                    {fullName || "—"}
-                  </p>
-                </div>
-              </div>
-
-              <form
-                onSubmit={(ev) => void saveProfile(ev)}
-                className="mt-4 space-y-4"
-              >
-                <div>
-                  <label
-                    htmlFor="profile-full-name"
-                    className="type-label mb-1.5 block text-guinness-tan/85"
-                  >
-                    Full name
-                  </label>
-                  <input
-                    id="profile-full-name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    autoComplete="name"
-                    className={inputClass}
-                    placeholder="Your name"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="profile-nickname"
-                    className="type-label mb-1.5 block text-guinness-tan/85"
-                  >
-                    Nickname (leaderboard)
-                  </label>
-                  <input
-                    id="profile-nickname"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className={inputClass}
-                    placeholder="Optional — shown instead of full name"
-                    maxLength={30}
-                    autoComplete="nickname"
-                  />
-                  <p className="type-meta mt-1.5 text-guinness-tan/60">
-                    Leave blank to use your full name on feeds and boards. Must
-                    be unique (letters, numbers, spaces, - or _). 2–30 characters.
-                  </p>
-                </div>
-                <div>
-                  <label
-                    htmlFor="profile-country"
-                    className="type-label mb-1.5 block text-guinness-tan/85"
-                  >
-                    Country
-                  </label>
-                  <select
-                    id="profile-country"
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className={countrySelectClass}
-                  >
-                    <option value="">Not set</option>
-                    {countryOptions.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {flagEmojiFromIso2(c.code)} {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="type-meta mt-1.5 text-guinness-tan/60">
-                    Shown as a flag next to your name.{" "}
-                    <strong className="font-medium text-guinness-tan/75">
-                      Local leaderboard
-                    </strong>{" "}
-                    lists top pours this week from everyone who chose this same
-                    country on their profile.
-                  </p>
-                </div>
-                <button
-                  type="submit"
-                  disabled={profileSaving}
-                  className="w-full rounded-lg bg-guinness-gold py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:px-8"
-                >
-                  {profileSaving ? "Saving…" : "Save profile"}
-                </button>
-              </form>
-
-              <div className="mt-5 border-t border-guinness-gold/10 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setSignOutConfirmOpen(true)}
-                  className="w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-3 text-sm font-semibold text-guinness-tan transition-colors hover:border-guinness-gold/50 hover:bg-guinness-brown/55 hover:text-guinness-cream"
-                >
-                  Sign out
-                </button>
-              </div>
-            </section>
-
             <ProfilePageProvider
               value={{
                 user,
@@ -1066,14 +1068,162 @@ export default function ProfileLayout() {
                 inputClass,
               }}
             >
+              {user && isProfileHubPath ? (
+                <nav className="md:hidden" aria-label="Profile sections">
+                  <ul className="space-y-2">
+                    {profileNavItemsWithFaq.map(({ to, label }) => (
+                      <li key={to}>
+                        <Link
+                          to={to}
+                          prefetch="intent"
+                          viewTransition
+                          className="flex min-h-[3.25rem] items-center justify-between gap-3 rounded-xl border border-guinness-gold/20 bg-guinness-brown/35 px-4 py-3 text-guinness-cream transition-colors active:bg-guinness-brown/50 hover:border-guinness-gold/40"
+                        >
+                          <span className="text-[15px] font-semibold">{label}</span>
+                          <span className="text-guinness-gold" aria-hidden>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="h-5 w-5 opacity-80"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M8.22 5.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 010-1.06z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              ) : null}
+
               <SegmentedTabsNav
                 items={profileNavLinkItems}
                 activeValue={profileActiveSection}
-                layoutClassName="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
+                layoutClassName="hidden md:grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7"
                 aria-label="Profile sections"
               />
-              <div className="mt-6">
-                <Outlet />
+
+              {showAccountFormSection ? (
+                <section className="mt-6 rounded-xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 sm:p-6">
+                  <div className="flex flex-col gap-1 border-b border-guinness-gold/10 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="min-w-0">
+                      <p className="type-label text-guinness-gold">Signed in</p>
+                      <p className="mt-1 truncate text-sm text-guinness-tan/80">
+                        {user.email}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-guinness-cream">
+                        {countryCode ? (
+                          <span className="mr-2" title={countryCode} aria-hidden>
+                            {flagEmojiFromIso2(countryCode)}
+                          </span>
+                        ) : null}
+                        {fullName || "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <form
+                    onSubmit={(ev) => void saveProfile(ev)}
+                    className="mt-4 space-y-4"
+                  >
+                    <div>
+                      <label
+                        htmlFor="profile-full-name"
+                        className="type-label mb-1.5 block text-guinness-tan/85"
+                      >
+                        Full name
+                      </label>
+                      <input
+                        id="profile-full-name"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        autoComplete="name"
+                        className={inputClass}
+                        placeholder="Your name"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="profile-nickname"
+                        className="type-label mb-1.5 block text-guinness-tan/85"
+                      >
+                        Nickname (leaderboard)
+                      </label>
+                      <input
+                        id="profile-nickname"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        className={inputClass}
+                        placeholder="Optional — shown instead of full name"
+                        maxLength={30}
+                        autoComplete="nickname"
+                      />
+                      <p className="type-meta mt-1.5 text-guinness-tan/60">
+                        Leave blank to use your full name on feeds and boards. Must
+                        be unique (letters, numbers, spaces, - or _). 2–30 characters.
+                      </p>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="profile-country"
+                        className="type-label mb-1.5 block text-guinness-tan/85"
+                      >
+                        Country
+                      </label>
+                      <select
+                        id="profile-country"
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                        className={countrySelectClass}
+                      >
+                        <option value="">Not set</option>
+                        {countryOptions.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {flagEmojiFromIso2(c.code)} {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="type-meta mt-1.5 text-guinness-tan/60">
+                        Shown as a flag next to your name.{" "}
+                        <strong className="font-medium text-guinness-tan/75">
+                          Local leaderboard
+                        </strong>{" "}
+                        lists top pours this week from everyone who chose this same
+                        country on their profile.
+                      </p>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={profileSaving}
+                      className="w-full rounded-lg bg-guinness-gold py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:px-8"
+                    >
+                      {profileSaving ? "Saving…" : "Save profile"}
+                    </button>
+                  </form>
+
+                  <div className="mt-5 border-t border-guinness-gold/10 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setSignOutConfirmOpen(true)}
+                      className="w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-3 text-sm font-semibold text-guinness-tan transition-colors hover:border-guinness-gold/50 hover:bg-guinness-brown/55 hover:text-guinness-cream"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+
+              <div className={isProfileHubPath ? "md:mt-6" : "mt-6"}>
+                <Outlet
+                  context={
+                    { faqHeaderMode: "compact" } satisfies ProfileLayoutOutletContext
+                  }
+                />
               </div>
             </ProfilePageProvider>
           </div>
@@ -1111,7 +1261,26 @@ export default function ProfileLayout() {
           }}
         />
 
-        <EndPageNewPourFooter />
+        {showMobileProfileSubHeader ? (
+          <>
+            <div className="mt-10 flex justify-center pb-6 md:hidden">
+              <Link
+                to="/profile"
+                viewTransition
+                className={homePourButtonClass}
+              >
+                Back
+              </Link>
+            </div>
+            {!hideEndPageNewPourFooter ? (
+              <div className="hidden md:block">
+                <EndPageNewPourFooter />
+              </div>
+            ) : null}
+          </>
+        ) : !hideEndPageNewPourFooter ? (
+          <EndPageNewPourFooter />
+        ) : null}
       </div>
     </main>
   );

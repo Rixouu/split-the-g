@@ -1,10 +1,14 @@
-import { redirect } from "react-router";
+import { Navigate } from "react-router";
+import { useIsDesktopMd } from "~/utils/useDesktopMd";
 
-export function loader() {
-  return redirect("/profile/progress");
-}
-
-/** Index URL `/profile` redirects in the loader; this is only a fallback. */
-export default function ProfileIndexFallback() {
+/**
+ * Mobile: stay on `/profile` (layout shows hub menu). Desktop: land on Progress.
+ * Server snapshot is mobile-first so SSR does not redirect small viewports away from the hub.
+ */
+export default function ProfileIndex() {
+  const isDesktop = useIsDesktopMd();
+  if (isDesktop) {
+    return <Navigate to="/profile/progress" replace />;
+  }
   return null;
 }

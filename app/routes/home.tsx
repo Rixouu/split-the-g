@@ -773,7 +773,7 @@ export default function Home() {
     <main className="flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden bg-guinness-black text-guinness-cream max-lg:overflow-y-auto lg:max-h-dvh lg:min-h-0 lg:overflow-y-auto">
       {/* FAQ Button — desktop only (mobile: use nav on other routes or /faq URL) */}
       <a
-        href="/faq"
+        href="/profile/faq"
         className="fixed left-4 top-4 z-40 hidden items-center gap-1.5 rounded-lg border border-[#312814] bg-guinness-brown/40 p-1.5 text-guinness-gold transition-colors hover:border-guinness-gold/35 hover:bg-[#312814]/50 md:inline-flex"
       >
         <svg

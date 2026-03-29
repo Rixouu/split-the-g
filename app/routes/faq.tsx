@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useOutletContext } from "react-router";
+import type { ProfileLayoutOutletContext } from "~/routes/profile/route-outlet-context";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import {
   PageHeader,
   faqPageDescription,
-  homePourButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
 import { seoMeta } from "~/utils/seo";
@@ -14,7 +14,7 @@ export function meta() {
     title: "FAQ",
     description:
       "Answers about scoring, sharing pours, pubs, competitions, and profile features in Split the G.",
-    path: "/faq",
+    path: "/profile/faq",
     keywords: ["split the g faq", "guinness app questions"],
   });
 }
@@ -146,15 +146,19 @@ const faqItems: { question: string; answer: ReactNode }[] = [
 ];
 
 export default function FAQ() {
-  return (
-    <main className="min-h-screen bg-guinness-black text-guinness-cream">
-      <div className={pageShellClass}>
+  const { faqHeaderMode } = useOutletContext<ProfileLayoutOutletContext>() ?? {};
+  const compact = faqHeaderMode === "compact";
+
+  const body = (
+    <>
+      {!compact ? (
         <PageHeader
           title="Frequently asked questions"
           description={faqPageDescription}
         />
+      ) : null}
 
-        <div className="flex flex-col gap-3 pb-4">
+      <div className="flex flex-col gap-3 pb-4">
           {faqItems.map((item) => (
             <details
               key={item.question}
@@ -188,13 +192,16 @@ export default function FAQ() {
             </details>
           ))}
         </div>
+    </>
+  );
 
-        <div className="mt-10 flex justify-center pb-6">
-          <Link to="/" viewTransition className={homePourButtonClass}>
-            New Pour
-          </Link>
-        </div>
-      </div>
-    </main>
+  if (compact) {
+    return <div className="space-y-6">{body}</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-guinness-black text-guinness-cream">
+      <div className={pageShellClass}>{body}</div>
+    </div>
   );
 }

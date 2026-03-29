@@ -15,11 +15,13 @@ export default [
   route("competitions/:competitionId", "./routes/competitions.$competitionId.tsx"),
   route("profile", "routes/profile/layout.tsx", [
     index("routes/profile/_index.tsx"),
+    route("account", "routes/profile/account.tsx"),
     route("progress", "routes/profile/progress.tsx"),
     route("expenses", "routes/profile/expenses.tsx"),
     route("scores", "routes/profile/scores.tsx"),
     route("favorites", "routes/profile/favorites.tsx"),
     route("friends", "routes/profile/friends.tsx"),
+    route("faq", "./routes/faq.tsx"),
   ]),
   route("pubs", "./routes/pubs.tsx"),
   route("pubs/:barKey", "./routes/pubs.$barKey.tsx"),
@@ -32,5 +34,5 @@ export default [
   route("collage", "./routes/collage-redirect.tsx"),
   route("countryleaderboard", "./routes/leaderboard/country-leaderboard.tsx"),
   route("past24hrleaderboard", "./routes/leaderboard/past-24hr-leaderboard.tsx"),
-  route("faq", "./routes/faq.tsx"),
+  route("faq", "./routes/faq-redirect.tsx"),
 ] satisfies RouteConfig;

@@ -16,20 +16,18 @@ const primaryItems: { to: string; label: string; end?: boolean }[] = [
 const secondaryItems: { to: string; label: string }[] = [
   { to: "/wall", label: "Wall" },
   { to: "/leaderboard", label: "Leaderboard" },
-  { to: "/faq", label: "FAQ" },
 ];
 
-/** Mobile dock row 2 — compact strip under main dock */
+/** Mobile dock row 2 — Compete · Leaderboard */
 const mobileSecondaryItems: { to: string; label: string }[] = [
-  { to: "/wall", label: "Wall" },
   { to: "/competitions", label: "Compete" },
-  { to: "/faq", label: "FAQ" },
+  { to: "/leaderboard", label: "Leaderboard" },
 ];
 
-/** Mobile dock row 1: Feed · Ranks · (Pour FAB) · Pubs · Me */
+/** Mobile dock row 1: Feed · Wall · (Pour FAB) · Pubs · Me */
 const mobileDockItems: { to: string; label: string }[] = [
   { to: "/feed", label: "Feed" },
-  { to: "/leaderboard", label: "Ranks" },
+  { to: "/wall", label: "Wall" },
   { to: "/pubs", label: "Pubs" },
   { to: "/profile", label: "Me" },
 ];
@@ -41,8 +39,7 @@ type MobileNavIconName =
   | "profile"
   | "pour"
   | "wall"
-  | "rank"
-  | "faq";
+  | "rank";
 
 /**
  * Raster SVGs from /public/icons/nav — masked with `currentColor` so active/idle
@@ -246,8 +243,8 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
-                    title={to === "/leaderboard" ? "Leaderboard" : undefined}
-                    aria-label={to === "/leaderboard" ? "Leaderboard" : undefined}
+                    title={to === "/wall" ? "Wall" : undefined}
+                    aria-label={to === "/wall" ? "Wall" : undefined}
                     className={({ isActive }) =>
                       `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
                     }
@@ -284,21 +281,13 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
-                    title={
-                      to === "/faq"
-                        ? "FAQ"
-                        : to === "/competitions"
-                          ? "Compete"
-                          : "Wall"
-                    }
+                    title={to === "/competitions" ? "Compete" : "Leaderboard"}
                     aria-label={
                       showCompeteDot
                         ? `${label} — you’re in an active competition`
-                        : to === "/faq"
-                          ? "FAQ"
-                          : to === "/competitions"
-                            ? "Compete"
-                            : "Wall"
+                        : to === "/competitions"
+                          ? "Compete"
+                          : "Leaderboard"
                     }
                     className={({ isActive }) =>
                       `${mobSecondaryItem} ${isActive ? mobActive : "text-guinness-tan/45 hover:text-guinness-tan/85"}`
