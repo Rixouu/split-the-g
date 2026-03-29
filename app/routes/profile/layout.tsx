@@ -15,6 +15,7 @@ import {
   toastAutoCloseForVariant,
 } from "~/components/branded/feedback-variant";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 import {
   clearPostOAuthReturnIfMatchesCurrentPath,
   googleOAuthRedirectToSiteRoot,
@@ -883,6 +884,10 @@ export default function ProfileLayout() {
   const inputClass =
     "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
 
+  const countrySelectClass =
+    "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 py-2 pl-3 text-guinness-cream focus:border-guinness-gold focus:outline-none " +
+    NATIVE_SELECT_APPEARANCE_CLASS;
+
   const messageVariant = message ? feedbackVariantFromMessage(message) : "info";
 
   return (
@@ -982,7 +987,7 @@ export default function ProfileLayout() {
                     id="profile-country"
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
-                    className={inputClass}
+                    className={countrySelectClass}
                   >
                     <option value="">Not set</option>
                     {countryOptions.map((c) => (

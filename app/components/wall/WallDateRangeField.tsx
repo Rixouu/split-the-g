@@ -6,8 +6,13 @@ import { DayPicker, type DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
 import "./wall-day-picker.css";
 
-const selectFieldClass =
-  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-left text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none sm:min-w-[10.5rem]";
+/**
+ * Match native filter `<select>` chevron placement: `.stg-native-select-chevron` draws at
+ * `right: 0.75rem`. Using `pr-10` + flex `justify-between` pinned the calendar to the inner
+ * edge of that padding (~40px) — misaligned vs dropdowns. Absolute `right-3` aligns the glyph.
+ */
+const dateRangeTriggerClass =
+  "relative flex w-full min-h-11 items-center rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-left text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none sm:min-w-[10.5rem]";
 
 function toLocalYmd(d: Date): string {
   const y = d.getFullYear();
@@ -190,23 +195,23 @@ export function WallDateRangeField({
       <button
         ref={btnRef}
         type="button"
-        className={`${selectFieldClass} flex items-center justify-between gap-2`}
+        className={dateRangeTriggerClass}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="truncate">{formatButtonLabel(dateFrom, dateTo)}</span>
-        <svg
-          className="h-4 w-4 shrink-0 text-guinness-gold/70"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
+        <span className="min-w-0 flex-1 truncate pr-9">
+          {formatButtonLabel(dateFrom, dateTo)}
+        </span>
+        <span
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-guinness-gold/70"
           aria-hidden
         >
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M16 2v4M8 2v4M3 10h18" />
-        </svg>
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+        </span>
       </button>
       {typeof document !== "undefined" && picker
         ? createPortal(picker, document.body)

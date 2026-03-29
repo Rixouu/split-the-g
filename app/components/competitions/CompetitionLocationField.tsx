@@ -40,7 +40,7 @@ export function CompetitionLocationField({
           }}
         />
         <p className="type-meta mt-1.5 text-guinness-tan/55">
-          Search with Google Maps — picking a result fills venue name and address. You
+          Search with Google Maps. Picking a result fills venue name and address. You
           can also type a name and confirm with &quot;Use this name&quot;.
         </p>
       </div>

@@ -10,7 +10,7 @@ import {
 
 export function meta() {
   return [
-    { title: "FAQ — Split the G" },
+    { title: "FAQ: Split the G" },
     {
       name: "description",
       content:
@@ -64,7 +64,7 @@ const faqItems: { question: string; answer: ReactNode }[] = [
         The app looks for a Guinness pint glass and logo in your photo, then
         compares where the foam line sits relative to the center of the
         &quot;G&quot;. That becomes a score from 0 (way off) to 5 (as close as the
-        model can tell). Results depend on lighting, angle, and image quality —
+        model can tell). Results depend on lighting, angle, and image quality;
         it&apos;s a fun guide, not a lab measurement.
       </>
     ),
@@ -113,7 +113,7 @@ const faqItems: { question: string; answer: ReactNode }[] = [
     answer: (
       <>
         Each pour has its own page you can link to. Copy the URL from the
-        address bar after you submit, or screenshot your result — share it
+        address bar after you submit, or screenshot your result and share it
         anywhere you like (group chat, socials, etc.).
       </>
     ),
@@ -122,7 +122,7 @@ const faqItems: { question: string; answer: ReactNode }[] = [
     question: "How can I get a higher score?",
     answer: (
       <>
-        Start with a well-poured pint, then sip slowly and stop when the line
+        Start with a well poured pint, then sip slowly and stop when the line
         looks centered on the &quot;G&quot;. Small adjustments beat big gulps.
         If the model seems off, try a clearer, straighter photo next time.
       </>
@@ -135,7 +135,7 @@ const faqItems: { question: string; answer: ReactNode }[] = [
         <p className="mb-4">
           Split the G is a solo project and free to use. If it&apos;s been fun
           for you and you&apos;d like to say thanks, you can buy the creator a
-          beer — it helps cover hosting, APIs, and time spent improving the app.
+          beer. It helps cover hosting, APIs, and time spent improving the app.
         </p>
         <div className="flex justify-center pt-2">
           <BuyCreatorABeer />

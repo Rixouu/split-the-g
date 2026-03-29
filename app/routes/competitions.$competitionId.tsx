@@ -556,14 +556,14 @@ export default function CompetitionDetail() {
                     <>
                       The competition window has closed. Pours had to be logged with{" "}
                       <span className="text-guinness-cream/90">New pour for comp</span> while
-                      it was live — older scores couldn&apos;t be attached afterward. Thanks
+                      it was live; older scores couldn&apos;t be attached afterward. Thanks
                       for playing.
                     </>
                   ) : (
                     <>
                       Log each pour with{" "}
                       <span className="text-guinness-cream/90">New pour for comp</span> while the
-                      window is live — older scores can&apos;t be attached afterward. We&apos;ll
+                      window is live; older scores can&apos;t be attached afterward. We&apos;ll
                       notify you when someone else submits.
                     </>
                   )}
@@ -633,9 +633,9 @@ export default function CompetitionDetail() {
               <p className="text-base font-semibold text-guinness-gold">Summary</p>
               <p className="type-meta mt-0.5 truncate text-guinness-tan/70">
                 {timePhase?.phase === "before"
-                  ? `Upcoming · starts in ${timePhase ? formatDuration(timePhase.ms) : "—"}`
+                  ? `Upcoming · starts in ${timePhase ? formatDuration(timePhase.ms) : "…"}`
                   : timePhase?.phase === "live"
-                    ? `Live · ends in ${timePhase ? formatDuration(timePhase.ms) : "—"}`
+                    ? `Live · ends in ${timePhase ? formatDuration(timePhase.ms) : "…"}`
                     : "Ended"}
                 <span className="text-guinness-tan/45"> · </span>
                 {participantUserIds.length}/{competition.max_participants} in
@@ -701,10 +701,10 @@ export default function CompetitionDetail() {
                 </p>
                 <p className="mt-2 text-2xl font-semibold tabular-nums leading-tight text-guinness-cream sm:text-[1.65rem]">
                   {timePhase?.phase === "after"
-                    ? "—"
+                    ? "Ended"
                     : timePhase
                       ? formatDuration(timePhase.ms)
-                      : "—"}
+                      : "…"}
                 </p>
               </div>
               <div>
@@ -761,7 +761,7 @@ export default function CompetitionDetail() {
                     competition.location_address?.trim() ? (
                       <span className="text-guinness-tan/75">
                         {" "}
-                        — {competition.location_address.trim()}
+                        · {competition.location_address.trim()}
                       </span>
                     ) : competition.location_address?.trim() &&
                       !competition.location_name?.trim() ? (
@@ -807,7 +807,7 @@ export default function CompetitionDetail() {
                       </summary>
                       <p className="mt-3 border-t border-[#312814] pt-3 text-guinness-tan/55">
                         Only new pours you log from the pour screen with this competition
-                        selected count — you can&apos;t attach older pours after joining.
+                        selected count; you can&apos;t attach older pours after joining.
                       </p>
                     </details>
                   ) : null}
@@ -984,7 +984,7 @@ export default function CompetitionDetail() {
             </p>
             {sortedParticipantUserIds.length === 0 ? (
               <p className="type-meta text-guinness-tan/60">
-                No participants yet — be the first to join.
+                No participants yet. Be the first to join.
               </p>
             ) : (
               <ul className="space-y-2">

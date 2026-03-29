@@ -1,3 +1,5 @@
+import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
+
 export interface CompetitionRow {
   id: string;
   title: string;
@@ -43,8 +45,13 @@ export const COMPETITION_ROW_SELECT =
 export const competitionOutlineButtonClass =
   "rounded-lg border border-guinness-gold/30 px-3 py-1.5 text-xs font-semibold text-guinness-gold hover:bg-guinness-brown/50 disabled:opacity-40";
 
-export const competitionFieldClass =
-  "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
+const competitionFieldShell =
+  "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
+
+export const competitionFieldClass = `${competitionFieldShell} px-3`;
+
+/** Native `<select>` only — custom chevron inset from the right edge. */
+export const competitionSelectFieldClass = `${competitionFieldShell} pl-3 ${NATIVE_SELECT_APPEARANCE_CLASS}`;
 
 export function winRuleLabel(rule: string): string {
   switch (rule) {

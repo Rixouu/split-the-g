@@ -58,7 +58,7 @@ export function CompetitionLeaderboardScoreAside({
 }) {
   if (winRule === "highest_score") {
     const m = row.metric.match(/^(\d+\.\d{2})\s*\/\s*5$/);
-    const num = m ? m[1] : row.metric.replace(/\s*\/\s*5.*$/, "").trim() || "—";
+    const num = m ? m[1] : row.metric.replace(/\s*\/\s*5.*$/, "").trim() || "…";
     return (
       <div className="shrink-0 text-right">
         <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
@@ -70,7 +70,7 @@ export function CompetitionLeaderboardScoreAside({
   }
   if (winRule === "closest_to_target") {
     const m = row.detail.match(/Score\s+(\d+\.\d{2})\s*\/\s*5/);
-    const num = m ? m[1] : "—";
+    const num = m ? m[1] : "…";
     return (
       <div className="shrink-0 text-right">
         <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">

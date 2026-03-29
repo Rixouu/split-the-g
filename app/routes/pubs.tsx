@@ -18,6 +18,7 @@ import {
 import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
+import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 
 export type BarStat = {
   bar_key: string;
@@ -183,7 +184,9 @@ function StatPill({ icon, children }: { icon: ReactNode; children: ReactNode }) 
   );
 }
 
-const selectFieldClass = `w-full min-h-11 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none`;
+const filterFieldShell = `w-full min-h-11 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-black/60 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none`;
+const filterInputClass = `${filterFieldShell} px-3`;
+const selectFieldClass = `${filterFieldShell} pl-3 ${NATIVE_SELECT_APPEARANCE_CLASS}`;
 
 export async function loader(_args: LoaderFunctionArgs) {
   const { supabase } = await import("~/utils/supabase");
@@ -416,7 +419,7 @@ export default function Pubs() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Bar name…"
-                className={selectFieldClass}
+                className={filterInputClass}
                 aria-label="Filter by bar name"
               />
             </label>

@@ -13,6 +13,7 @@ import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_COLLAGE_COLUMNS } from "~/utils/scoresListColumns";
 import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
 import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
+import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 
 type Submission = {
   id: string;
@@ -80,7 +81,8 @@ function formatDateTime(dateString: string) {
 }
 
 const selectFieldClass =
-  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none sm:min-w-[10.5rem]";
+  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 py-2 pl-3 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none sm:min-w-[10.5rem] " +
+  NATIVE_SELECT_APPEARANCE_CLASS;
 
 /** Local calendar day bounds for date range filter (matches how users pick dates in the UI). */
 function startOfLocalDay(ymd: string): number {

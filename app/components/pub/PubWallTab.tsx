@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
 import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
 import { scorePourPathFromFields } from "~/utils/scorePath";
+import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 
 export type PubWallRow = {
   id: string;
@@ -45,7 +46,8 @@ function endOfLocalDay(ymd: string): number {
 }
 
 const selectFieldClass =
-  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2.5 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none";
+  "w-full min-h-11 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 py-2.5 pl-3 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none " +
+  NATIVE_SELECT_APPEARANCE_CLASS;
 
 interface PubWallTabProps {
   items: PubWallRow[];

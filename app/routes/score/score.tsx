@@ -532,7 +532,7 @@ export default function Score() {
                 competition
               </Link>
               . Join the comp (if needed), claim with Google, then save your bar
-              &amp; rating — we&apos;ll add this score automatically.
+              &amp; rating; we&apos;ll add this score automatically.
             </p>
           </div>
         ) : null}
@@ -752,7 +752,7 @@ export default function Score() {
                     <div className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-4">
                       <dt className="type-label text-guinness-tan/75">Pint price</dt>
                       <dd className="text-guinness-cream">
-                        {pintPriceSavedLabel != null ? pintPriceSavedLabel : "—"}
+                        {pintPriceSavedLabel != null ? pintPriceSavedLabel : "Not set"}
                         {pintPriceSavedLabel != null ? (
                           <span className="type-meta ml-2 text-guinness-tan/50">
                             (your local currency)
@@ -808,8 +808,8 @@ export default function Score() {
                       className="w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream placeholder:text-guinness-tan/40 focus:border-guinness-gold focus:outline-none"
                     />
                     <p className="type-meta mt-1.5 text-guinness-tan/55">
-                      Amount you paid — use your usual currency; we only store
-                      the number.
+                      Amount you paid. Use your usual currency; we only store the
+                      number.
                     </p>
                   </div>
                   <div>
@@ -871,6 +871,7 @@ export default function Score() {
             totalSplits={totalSplits}
             weeklyRank={weeklyRank}
             weeklyTotalSplits={weeklyTotalSplits}
+            previewImageUrl={score.pint_image_url || annotatedUrl}
           />
 
           <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-3">

@@ -33,6 +33,7 @@ import {
   COMPETITION_ROW_SELECT,
   competitionFieldClass,
   competitionOutlineButtonClass,
+  competitionSelectFieldClass,
   isPrivateCompetition,
   toDatetimeLocalValue,
   type BarLinkOption,
@@ -705,6 +706,7 @@ export default function Competitions() {
   }
 
   const fieldClass = competitionFieldClass;
+  const nativeSelectClass = competitionSelectFieldClass;
   const outlineBtn = competitionOutlineButtonClass;
   const isPrivate = isPrivateCompetition;
 
@@ -773,7 +775,7 @@ export default function Competitions() {
                       onChange={(e) =>
                         setEditWinRule(e.target.value as WinRuleChoice)
                       }
-                      className={fieldClass}
+                      className={nativeSelectClass}
                     >
                       <option value="highest_score">Highest split score</option>
                       <option value="closest_to_target">Closest to target score</option>
@@ -828,7 +830,7 @@ export default function Competitions() {
                       id="edit-linked-pub"
                       value={editLinkedBarKey}
                       onChange={(e) => setEditLinkedBarKey(e.target.value)}
-                      className={fieldClass}
+                      className={nativeSelectClass}
                     >
                       <option value="">— Not linked —</option>
                       {barLinkOptions.map((o) => (
@@ -948,7 +950,7 @@ export default function Competitions() {
                   onChange={(e) =>
                     setCreateWinRule(e.target.value as WinRuleChoice)
                   }
-                  className={fieldClass}
+                  className={nativeSelectClass}
                 >
                   <option value="highest_score">Highest split score</option>
                   <option value="closest_to_target">Closest to target score</option>
@@ -1003,7 +1005,7 @@ export default function Competitions() {
                   id="comp-linked-pub"
                   value={createLinkedBarKey}
                   onChange={(e) => setCreateLinkedBarKey(e.target.value)}
-                  className={fieldClass}
+                  className={nativeSelectClass}
                 >
                   <option value="">— Not linked —</option>
                   {barLinkOptions.map((o) => (

@@ -7,6 +7,8 @@ export interface ScoreSharePanelProps {
   totalSplits: number;
   weeklyRank: number;
   weeklyTotalSplits: number;
+  /** Full pint photo shown beside the score on desktop. */
+  previewImageUrl?: string | null;
 }
 
 const btnBase =
@@ -20,7 +22,7 @@ export function shareChallengeHeadline(splitScore: number): string {
     return "Think you can split the G cleaner than this pour?";
   }
   if (splitScore >= 3.5) {
-    return "Your turn — beat my line and show the feed.";
+    return "Your turn: beat my line and show the feed.";
   }
   return "Pour yours on Split the G and try to score higher.";
 }
@@ -38,7 +40,7 @@ export function buildScoreShareMessage(params: {
   const hook = shareChallengeHeadline(params.splitScore);
   return (
     `${hook}\n\n` +
-    `I scored ${s}/5 on Split the G — all-time #${params.allTimeRank} of ${params.totalSplits}, weekly #${params.weeklyRank} of ${params.weeklyTotalSplits}.\n\n` +
+    `I scored ${s}/5 on Split the G; all-time #${params.allTimeRank} of ${params.totalSplits}, weekly #${params.weeklyRank} of ${params.weeklyTotalSplits}.\n\n` +
     `Your move: open the link, photograph your pint, and get your line scored on the same wall (free):\n` +
     `${params.shareUrl}`
   );
@@ -123,10 +125,6 @@ function IconCopy({ className }: { className?: string }) {
   );
 }
 
-/**
- * Branded share block for pour results: preview card + deep links for major networks
- * (WhatsApp, X, Telegram, Facebook, Reddit), email, copy, and native share when available.
- */
 export function ScoreSharePanel({
   sharePath,
   splitScore,
@@ -134,6 +132,7 @@ export function ScoreSharePanel({
   totalSplits,
   weeklyRank,
   weeklyTotalSplits,
+  previewImageUrl,
 }: ScoreSharePanelProps) {
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
@@ -166,13 +165,13 @@ export function ScoreSharePanel({
     const s = splitScore.toFixed(2);
     const hook = shareChallengeHeadline(splitScore);
     const compact = `${hook} I scored ${s}/5 on Split the G. Pour yours: ${shareUrl}`;
-    return compact.length > 280 ? `${hook} ${s}/5 on Split the G — ${shareUrl}` : compact;
+    return compact.length > 280 ? `${hook} ${s}/5 on Split the G: ${shareUrl}` : compact;
   }, [shareUrl, splitScore]);
 
   const telegramBlurb = useMemo(() => {
     const s = splitScore.toFixed(2);
     const hook = shareChallengeHeadline(splitScore);
-    return `${hook} I scored ${s}/5 — open the link to pour yours and get scored.`;
+    return `${hook} I scored ${s}/5. Open the link to pour yours and get scored.`;
   }, [splitScore]);
 
   const canNativeShare =
@@ -208,7 +207,7 @@ export function ScoreSharePanel({
     if (!canNativeShare || !shareText) return;
     try {
       await navigator.share({
-        title: `Split the G challenge — ${splitScore.toFixed(2)}/5`,
+        title: `Split the G challenge (${splitScore.toFixed(2)}/5)`,
         text: shareText,
         url: shareUrl || undefined,
       });
@@ -219,13 +218,13 @@ export function ScoreSharePanel({
 
   const mailtoHref = useMemo(() => {
     if (!shareText) return "";
-    const subject = `Split the G challenge — ${splitScore.toFixed(2)}/5`;
+    const subject = `Split the G challenge (${splitScore.toFixed(2)}/5)`;
     return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(shareText)}`;
   }, [shareText, splitScore]);
 
   const links = useMemo(() => {
     if (!shareUrl || !shareText) return null;
-    const redditTitle = `Split the G — scored ${splitScore.toFixed(2)}/5. Can you beat this pour?`;
+    const redditTitle = `Split the G: scored ${splitScore.toFixed(2)}/5. Can you beat this pour?`;
     return {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
       x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`,
@@ -239,58 +238,68 @@ export function ScoreSharePanel({
   const previewHook = shareChallengeHeadline(splitScore);
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      <div>
-        <h2 className="type-card-title text-guinness-gold">Share your split</h2>
-        <p className="type-meta mt-1 text-guinness-tan/65">
-          What you send includes your score and a link so they can pour theirs and get rated too.
+    <div className="space-y-4 sm:space-y-5">
+      <header className="mb-4 border-b border-[#312814] pb-3">
+        <h2 className="type-card-title text-base text-guinness-gold sm:text-lg">
+          Share your split
+        </h2>
+        <p className="type-meta mt-2 text-guinness-tan/65">
+          Challenge line, score, wall ranks, and the link they tap to pour theirs.
         </p>
-      </div>
+      </header>
 
+      {/* Preview card */}
       <div
-        className="rounded-xl bg-guinness-black/25 px-4 py-5 sm:px-5 sm:py-6"
+        className="overflow-hidden rounded-xl border border-[#201B10] bg-guinness-black/30 shadow-none outline-none"
         aria-live="polite"
       >
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <img
-            src="/logo-splittheg.svg"
-            alt="Split the G"
-            width={595}
-            height={117}
-            decoding="async"
-            className="h-8 w-auto max-w-[10.5rem] shrink-0 object-contain opacity-95 sm:h-9 sm:max-w-[11.5rem]"
-          />
-          <div className="min-w-0 flex-1 space-y-1.5 text-center sm:text-left">
-            <p className="text-[15px] font-semibold leading-snug text-guinness-cream sm:text-base">
+        <div className="flex flex-col md:flex-row">
+          {previewImageUrl ? (
+            <div className="hidden md:block md:w-36 lg:w-44 shrink-0">
+              <img
+                src={previewImageUrl}
+                alt="Your pint"
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          ) : null}
+
+          <div className="flex-1 px-4 py-4 sm:px-5 sm:py-5">
+            <img
+              src="/logo-splittheg.svg"
+              alt="Split the G"
+              width={595}
+              height={117}
+              decoding="async"
+              className="h-7 w-auto max-w-[9rem] object-contain opacity-90"
+            />
+
+            <p className="mt-3 text-[15px] font-semibold leading-snug text-guinness-cream">
               {previewHook}
             </p>
-            <p className="type-meta text-guinness-tan/70">
-              Anyone you challenge uses this link to pour theirs, photograph the pint, and get a G line score — same wall and leaderboards you’re on.
+
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
+                {scoreLabel}
+                <span className="text-base font-semibold text-guinness-tan/60 sm:text-lg"> / 5.0</span>
+              </p>
+              <p className="type-meta text-guinness-cream/70">
+                #{allTimeRank} of {totalSplits}
+                <span className="mx-1.5 text-guinness-gold/25">|</span>
+                week #{weeklyRank} of {weeklyTotalSplits}
+              </p>
+            </div>
+
+            <p className="mt-2 truncate font-mono text-[11px] text-guinness-tan/40 sm:text-xs">
+              {shareUrl || "\u2026"}
             </p>
           </div>
         </div>
-
-        <div className="mt-5 space-y-2 border-t border-guinness-gold/15 pt-5">
-          <p className="text-center text-3xl font-bold tabular-nums text-guinness-gold sm:text-left sm:text-4xl">
-            {scoreLabel}
-            <span className="text-xl font-semibold text-guinness-tan/70 sm:text-2xl"> / 5.0</span>
-          </p>
-          <ul className="type-meta space-y-0.5 text-center text-guinness-cream/90 sm:text-left">
-            <li>
-              All-time rank: <span className="font-semibold text-guinness-tan">#{allTimeRank}</span> of{" "}
-              {totalSplits}
-            </li>
-            <li>
-              Weekly rank: <span className="font-semibold text-guinness-tan">#{weeklyRank}</span> of{" "}
-              {weeklyTotalSplits}
-            </li>
-          </ul>
-          <p className="truncate pt-1 text-center font-mono text-[11px] text-guinness-tan/50 sm:text-left sm:text-xs">
-            {shareUrl || "…"}
-          </p>
-        </div>
       </div>
 
+      {/* Share buttons */}
       {links ? (
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-guinness-black/15 p-2 sm:grid-cols-4 sm:p-2.5">
           <button type="button" className={btnBase} onClick={() => openHref(links.whatsapp)}>
@@ -351,12 +360,12 @@ export function ScoreSharePanel({
           className="flex w-full min-h-11 items-center justify-center gap-2 rounded-xl bg-guinness-gold/10 px-4 py-2.5 text-sm font-semibold text-guinness-gold ring-1 ring-guinness-gold/25 transition-colors hover:bg-guinness-gold/15 hover:ring-guinness-gold/40"
         >
           <IconShareSystem className="h-5 w-5 text-guinness-gold" />
-          Share via device…
+          Share via device
         </button>
       ) : null}
 
       <p className="type-meta text-center text-guinness-tan/45">
-        Instagram has no web share — use{" "}
+        Instagram has no web share. Use{" "}
         <span className="font-semibold text-guinness-tan/55">Copy text</span> or{" "}
         <span className="font-semibold text-guinness-tan/55">Copy link</span>, then paste in the app.
       </p>
