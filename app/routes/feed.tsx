@@ -13,6 +13,13 @@ import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { useI18n } from "~/i18n/context";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
 
+type GuinnessNewsItem = {
+  title: string;
+  link: string;
+  source?: string;
+  publishedAt?: string;
+};
+
 type FeedRow = {
   id: string;
   slug?: string | null;
@@ -27,6 +34,58 @@ type FeedRow = {
   country_code?: string | null;
   pint_price?: number | null;
 };
+
+
+function decodeXmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]+>/g, "").trim();
+}
+
+function readTag(block: string, tag: string) {
+  const rx = new RegExp(`<${tag}>([\s\S]*?)</${tag}>`, "i");
+  const match = block.match(rx);
+  return match?.[1]?.trim() ?? "";
+}
+
+async function fetchGuinnessThailandNews(limit = 6): Promise<GuinnessNewsItem[]> {
+  const url =
+    "https://news.google.com/rss/search?q=Guinness+Thailand+events&hl=en-US&gl=US&ceid=US:en";
+
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/rss+xml, application/xml, text/xml" },
+    });
+
+    if (!response.ok) return [];
+
+    const xml = await response.text();
+    const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/gi) ?? [];
+
+    return itemBlocks.slice(0, limit).map((block) => {
+      const title = decodeXmlEntities(stripHtml(readTag(block, "title")));
+      const link = decodeXmlEntities(readTag(block, "link"));
+      const source = decodeXmlEntities(stripHtml(readTag(block, "source")));
+      const publishedAt = readTag(block, "pubDate");
+
+      return {
+        title,
+        link,
+        source: source || undefined,
+        publishedAt: publishedAt || undefined,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
 
 export async function loader(_args: LoaderFunctionArgs) {
   const { data, error } = await supabase.rpc("feed_scores_recent", {
@@ -46,12 +105,18 @@ export async function loader(_args: LoaderFunctionArgs) {
         .order("created_at", { ascending: false })
         .limit(48);
       if (fb.error) throw fb.error;
-      return { items: (fb.data ?? []) as FeedRow[] };
+      return {
+        items: (fb.data ?? []) as FeedRow[],
+        guinnessNews: await fetchGuinnessThailandNews(),
+      };
     }
     throw error;
   }
 
-  return { items: (data ?? []) as FeedRow[] };
+  return {
+    items: (data ?? []) as FeedRow[],
+    guinnessNews: await fetchGuinnessThailandNews(),
+  };
 }
 
 export function meta({ params }: { params: { lang?: string } }) {
@@ -69,7 +134,7 @@ function formatWhen(iso: string) {
 
 export default function Feed() {
   const { t } = useI18n();
-  const { items } = useLoaderData<typeof loader>();
+  const { items, guinnessNews } = useLoaderData<typeof loader>();
 
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
@@ -82,6 +147,38 @@ export default function Feed() {
             {t("common.pour")}
           </AppLink>
         </PageHeader>
+
+        <section className="mb-6 rounded-lg border border-guinness-gold/20 bg-guinness-brown/30 p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-guinness-gold">
+              {t("pages.feed.guinnessNewsTitle")}
+            </h2>
+            <span className="text-[10px] text-guinness-tan/60 sm:text-xs">
+              {t("pages.feed.guinnessNewsLegal")}
+            </span>
+          </div>
+          {guinnessNews.length === 0 ? (
+            <p className="text-xs text-guinness-tan/70">{t("pages.feed.guinnessNewsEmpty")}</p>
+          ) : (
+            <ul className="space-y-2">
+              {guinnessNews.map((item) => (
+                <li key={`${item.link}-${item.publishedAt ?? ""}`}>
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="block rounded-md border border-guinness-gold/15 bg-guinness-black/30 p-2 transition-colors hover:border-guinness-gold/35"
+                  >
+                    <p className="text-xs font-medium text-guinness-cream sm:text-sm">{item.title}</p>
+                    <p className="mt-1 text-[10px] text-guinness-tan/60 sm:text-xs">
+                      {[item.source, item.publishedAt].filter(Boolean).join(" • ")}
+                    </p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {items.length === 0 ? (
           <p className="type-meta rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-8 text-center text-guinness-tan/80">

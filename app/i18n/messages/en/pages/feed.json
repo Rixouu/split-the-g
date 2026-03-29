@@ -1,5 +1,8 @@
 {
   "title": "Feed",
   "empty": "No submissions yet. Be the first on the home screen.",
-  "noImage": "No image"
+  "noImage": "No image",
+  "guinnessNewsTitle": "Guinness News in Thailand",
+  "guinnessNewsLegal": "Headlines only • open source to read",
+  "guinnessNewsEmpty": "No recent Guinness-related headlines were found right now."
 }
