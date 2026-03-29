@@ -20,10 +20,11 @@ import {
 import { GoogleMapsScript } from "~/components/GoogleMapsScript";
 import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
 import { htmlLangAttribute, DEFAULT_LOCALE } from "~/i18n/config";
-import { seoPath } from "~/utils/seo-path";
+import { createTranslator } from "~/i18n/load-messages";
 import { getLocaleFromPathname } from "~/i18n/paths";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { hreflangDescriptors } from "~/utils/hreflang";
-import { seoMeta, SITE_URL } from "~/utils/seo";
+import { SITE_URL } from "~/utils/seo";
 
 declare global {
   interface Window {
@@ -55,13 +56,7 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function meta() {
-  return seoMeta({
-    title: "Split The G",
-    description:
-      "Score your Guinness pour with AI, share your split, and climb pub, friend, and weekly leaderboards.",
-    path: seoPath({ lang: DEFAULT_LOCALE }, "/"),
-    keywords: ["AI beer scoring", "pub leaderboard", "pour challenge"],
-  });
+  return seoMetaForRoute({ lang: DEFAULT_LOCALE }, "/", "root");
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -179,15 +174,16 @@ function RoutePendingIndicator({ isActive }: { isActive: boolean }) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  const t = createTranslator(DEFAULT_LOCALE);
+  let message = t("errors.boundaryTitle");
+  let details = t("errors.boundaryUnexpected");
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? "404" : t("errors.boundaryError");
     details =
       error.status === 404
-        ? "The requested page could not be found."
+        ? t("errors.boundary404")
         : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
@@ -195,7 +191,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={htmlLangAttribute(DEFAULT_LOCALE)} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

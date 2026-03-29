@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from "react-router";
 import { AppLink } from "~/i18n/app-link";
-import { stripLocalePrefix } from "~/i18n/paths";
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -9,7 +8,6 @@ import {
   homePourButtonClass,
   pageHeaderActionButtonClass,
   pageShellClass,
-  profilePageDescription,
 } from "~/components/PageHeader";
 import { BrandedNotice } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
@@ -51,36 +49,32 @@ import {
   flagEmojiFromIso2,
   getCountryOptions,
 } from "~/utils/countryDisplay";
-import { signOutToastCopy } from "~/utils/auth-toast-messages";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { signOutToastFromT } from "~/i18n/auth-copy";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
+import { stripLocalePrefix } from "~/i18n/paths";
 import { useIsDesktopMd } from "~/utils/useDesktopMd";
 
-const profileNavItemsAuth = [
-  { to: "/profile/account", label: "Account" },
-  { to: "/profile/progress", label: "Progress" },
-  { to: "/profile/expenses", label: "Expenses" },
-  { to: "/profile/scores", label: "Scores" },
-  { to: "/profile/favorites", label: "Favorite bars" },
-  { to: "/profile/friends", label: "Friends" },
-] as const;
-
-const profileNavItemFaq = { to: "/profile/faq", label: "FAQ" } as const;
-
-const profileNavItemsWithFaq = [...profileNavItemsAuth, profileNavItemFaq] as const;
-
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Profile",
-    description:
-      "Manage your Split the G profile, progress, scores, favorites, expenses, and friends.",
-    path: seoPath(params, "/profile/progress"),
-    keywords: ["split the g profile", "pour progress", "friends leaderboard"],
-  });
+  return seoMetaForRoute(params, "/profile/progress", "profile");
 }
 
 export default function ProfileLayout() {
+  const { t } = useI18n();
   const location = useLocation();
+  const profileNavItemsWithFaq = useMemo(
+    () =>
+      [
+        { to: "/profile/account", label: t("pages.profile.navAccount") },
+        { to: "/profile/progress", label: t("pages.profile.navProgress") },
+        { to: "/profile/expenses", label: t("pages.profile.navExpenses") },
+        { to: "/profile/scores", label: t("pages.profile.navScores") },
+        { to: "/profile/favorites", label: t("pages.profile.navFavorites") },
+        { to: "/profile/friends", label: t("pages.profile.navFriends") },
+        { to: "/profile/faq", label: t("pages.profile.navFaq") },
+      ] as const,
+    [t],
+  );
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState<ScoreSummary[]>([]);
@@ -91,7 +85,29 @@ export default function ProfileLayout() {
   const [favName, setFavName] = useState("");
   const [favAddress, setFavAddress] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [toastTitleOverride, setToastTitleOverride] = useState<
+    string | undefined
+  >();
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+
+  const hideToast = useCallback(() => {
+    setMessage(null);
+    setToastTitleOverride(undefined);
+  }, []);
+
+  const showToast = useCallback(
+    (msg: string | null, explicitTitle?: string) => {
+      if (msg === null) {
+        hideToast();
+        return;
+      }
+      setMessage(msg);
+      setToastTitleOverride(
+        explicitTitle !== undefined ? explicitTitle : undefined,
+      );
+    },
+    [hideToast],
+  );
   const [busy, setBusy] = useState(false);
   const [friendEmail, setFriendEmail] = useState("");
   const [outgoingRequests, setOutgoingRequests] = useState<FriendRequestRow[]>(
@@ -115,16 +131,16 @@ export default function ProfileLayout() {
         to,
         label,
       })),
-    [],
+    [profileNavItemsWithFaq],
   );
 
   const profileSectionPaths = useMemo(
     () => profileNavItemsWithFaq.map((i) => i.to),
-    [],
+    [profileNavItemsWithFaq],
   );
 
   const pathTail =
-    stripLocalePrefix(location.pathname).replace(/\/\+$/, "") || "/";
+    stripLocalePrefix(location.pathname).replace(/\/+$/, "") || "/";
   const isProfileHubPath = pathTail === "/profile";
   const isProfileFaqPath = pathTail === "/profile/faq";
   const hideEndPageNewPourFooter = isProfileHubPath || isProfileFaqPath;
@@ -140,16 +156,16 @@ export default function ProfileLayout() {
     !user || isDesktop || isProfileHubPath;
   const mobileSubsectionTitle = useMemo(() => {
     const hit = profileNavItemsWithFaq.find(({ to }) => to === profileActiveSection);
-    return hit?.label ?? "Profile";
-  }, [profileActiveSection]);
+    return hit?.label ?? t("pages.profile.title");
+  }, [profileActiveSection, profileNavItemsWithFaq, t]);
   const profileHeaderTitle =
     user && !showProfileHeaderPour
       ? profileActiveSection === "/profile/faq"
-        ? "Frequently asked questions"
+        ? t("pages.profile.faqHeaderTitle")
         : mobileSubsectionTitle
-      : "Profile";
+      : t("pages.profile.title");
   const profileHeaderDescription =
-    user && !showProfileHeaderPour ? undefined : profilePageDescription;
+    user && !showProfileHeaderPour ? undefined : t("pages.descriptions.profile");
   const showAccountFormSection =
     Boolean(user) && profileActiveSection === "/profile/account";
   const activeLoadOptions = useMemo(
@@ -430,7 +446,7 @@ export default function ProfileLayout() {
         (u.user_metadata?.full_name as string | undefined)?.trim() ||
         (u.user_metadata?.name as string | undefined)?.trim() ||
         u.email?.split("@")[0] ||
-        "Player";
+        t("pages.profile.defaultPlayerFallback");
 
       const profRes = await supabase
         .from("public_profiles")
@@ -502,7 +518,7 @@ export default function ProfileLayout() {
         await loadFriendComparison(u, socialRows);
       }
     },
-    [activeLoadOptions, loadFriendComparison, loadSocial],
+    [activeLoadOptions, loadFriendComparison, loadSocial, t],
   );
 
   useEffect(() => {
@@ -557,7 +573,7 @@ export default function ProfileLayout() {
   }, [location.pathname, location.search]);
 
   const signInGoogle = async () => {
-    setMessage(null);
+    hideToast();
     rememberPathBeforeGoogleOAuth();
     const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -566,9 +582,8 @@ export default function ProfileLayout() {
     });
     if (error) {
       const detail =
-        error.message?.trim() ||
-        "We couldn’t start Google sign-in. Try again in a moment.";
-      setMessage(`Couldn’t start Google sign-in. ${detail}`);
+        error.message?.trim() || t("pages.profile.msgSignInFallback");
+      showToast(t("pages.profile.msgSignInFailed", { detail }));
     }
   };
 
@@ -592,22 +607,20 @@ export default function ProfileLayout() {
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
     if (!user?.email) return;
-    setMessage(null);
+    hideToast();
     const nameTrim = fullName.trim();
     if (!nameTrim) {
-      setMessage("Enter your full name.");
+      showToast(t("pages.profile.msgEnterFullName"));
       return;
     }
     const nickTrim = nickname.trim();
     if (nickTrim && !nicknamePattern.test(nickTrim)) {
-      setMessage(
-        "Nickname: 2–30 characters, letters, numbers, spaces, hyphen or underscore.",
-      );
+      showToast(t("pages.profile.msgNicknameRules"));
       return;
     }
     const ccRaw = countryCode.trim().toUpperCase();
     if (ccRaw && !/^[A-Z]{2}$/.test(ccRaw)) {
-      setMessage("Choose a country from the list, or leave it unset.");
+      showToast(t("pages.profile.msgCountryInvalid"));
       return;
     }
     setProfileSaving(true);
@@ -621,7 +634,7 @@ export default function ProfileLayout() {
           .neq("user_id", user.id)
           .maybeSingle();
         if (taken) {
-          setMessage("That nickname is already taken. Try another.");
+          showToast(t("pages.profile.msgNicknameTaken"));
           return;
         }
       }
@@ -637,9 +650,9 @@ export default function ProfileLayout() {
         { onConflict: "user_id" },
       );
       if (perr) {
-        setMessage(
+        showToast(
           perr.code === "23505"
-            ? "That nickname is already taken."
+            ? t("pages.profile.msgNicknameTakenShort")
             : perr.message,
         );
         return;
@@ -659,7 +672,7 @@ export default function ProfileLayout() {
           .update({ username: leaderboardName })
           .ilike("email", ilikePattern);
         if (serr) {
-          setMessage(serr.message);
+          showToast(serr.message);
           return;
         }
       }
@@ -668,7 +681,7 @@ export default function ProfileLayout() {
       setNickname(nickTrim);
       setCountryCode(ccRaw);
       await loadProfileData(user, { includeScores: true, includeSocial: true });
-      setMessage("Profile saved.");
+      showToast(t("pages.profile.msgProfileSaved"));
     } finally {
       setProfileSaving(false);
     }
@@ -676,14 +689,14 @@ export default function ProfileLayout() {
 
   const addFavorite = async (e: FormEvent) => {
     e.preventDefault();
-    setMessage(null);
+    hideToast();
     if (!user) {
-      setMessage("Sign in to save favorites.");
+      showToast(t("pages.profile.msgSignInForFavorites"));
       return;
     }
     const name = favName.trim();
     if (!name) {
-      setMessage("Enter a bar name or pick from suggestions.");
+      showToast(t("pages.profile.msgEnterBarName"));
       return;
     }
     setBusy(true);
@@ -695,13 +708,13 @@ export default function ProfileLayout() {
         bar_address: favAddress.trim() || null,
       });
       if (error) {
-        setMessage(error.message);
+        showToast(error.message);
         return;
       }
       setFavName("");
       setFavAddress("");
       await loadProfileData(user, { includeFavorites: true });
-      setMessage("Favorite saved.");
+      showToast(t("pages.profile.msgFavoriteSaved"));
     } finally {
       setBusy(false);
     }
@@ -717,11 +730,11 @@ export default function ProfileLayout() {
         .delete()
         .eq("id", id);
       if (error) {
-        setMessage(error.message);
+        showToast(error.message);
         return;
       }
       await loadProfileData(user, { includeFavorites: true });
-      setMessage("Favorite removed.");
+      showToast(t("pages.profile.msgFavoriteRemoved"));
     } finally {
       setBusy(false);
     }
@@ -729,14 +742,14 @@ export default function ProfileLayout() {
 
   async function sendFriendRequest() {
     if (!user?.email) return;
-    setMessage(null);
+    hideToast();
     const to = normalizeEmail(friendEmail);
     if (!to || !to.includes("@")) {
-      setMessage("Enter a valid email.");
+      showToast(t("pages.profile.msgValidEmail"));
       return;
     }
     if (to === normalizeEmail(user.email)) {
-      setMessage("You cannot add yourself.");
+      showToast(t("pages.profile.msgCannotAddSelf"));
       return;
     }
     if (
@@ -744,7 +757,7 @@ export default function ProfileLayout() {
         (friend) => friend.peer_email && normalizeEmail(friend.peer_email) === to,
       )
     ) {
-      setMessage("You are already friends with that email.");
+      showToast(t("pages.profile.msgAlreadyFriends"));
       return;
     }
     setBusy(true);
@@ -762,7 +775,7 @@ export default function ProfileLayout() {
           status: "pending",
         });
         if (error) {
-          setMessage(error.message);
+          showToast(error.message);
           return;
         }
       }
@@ -789,20 +802,24 @@ export default function ProfileLayout() {
         const emailResult = (await emailResponse.json().catch(() => null)) as
           | { error?: string; details?: string }
           | null;
-        setMessage(
+        showToast(
           emailResult?.error
             ? alreadyPending
-              ? `Request already pending, but email invite failed: ${emailResult.error}`
-              : `Request saved, but email invite failed: ${emailResult.error}`
+              ? t("pages.profile.msgInvitePendingEmailFail", {
+                  error: emailResult.error,
+                })
+              : t("pages.profile.msgInviteSavedEmailFail", {
+                  error: emailResult.error,
+                })
             : alreadyPending
-              ? "Request already pending, but email invite failed."
-              : "Request saved, but email invite failed.",
+              ? t("pages.profile.msgInvitePendingNoEmail")
+              : t("pages.profile.msgInviteSavedNoEmail"),
         );
       } else {
-        setMessage(
+        showToast(
           alreadyPending
-            ? "Friend request already pending. Invite email sent again."
-            : "Friend request sent.",
+            ? t("pages.profile.msgFriendPendingResent")
+            : t("pages.profile.msgFriendRequestSent"),
         );
       }
 
@@ -820,7 +837,7 @@ export default function ProfileLayout() {
   ) {
     if (!user) return;
     setBusy(true);
-    setMessage(null);
+    hideToast();
     try {
       const supabase = await getSupabaseBrowserClient();
       const { error: uerr } = await supabase
@@ -828,7 +845,7 @@ export default function ProfileLayout() {
         .update({ status })
         .eq("id", row.id);
       if (uerr) {
-        setMessage(uerr.message);
+        showToast(uerr.message);
         return;
       }
       if (status === "accepted") {
@@ -854,13 +871,13 @@ export default function ProfileLayout() {
               ignoreDuplicates: true,
             });
           if (insErr) {
-            setMessage(insErr.message);
+            showToast(insErr.message);
             return;
           }
         }
-        setMessage("Friend request accepted. You’re now friends.");
+        showToast(t("pages.profile.msgFriendAccepted"));
       } else {
-        setMessage("Friend request declined.");
+        showToast(t("pages.profile.msgFriendDeclined"));
       }
       await loadProfileData(user, { includeSocial: true });
     } finally {
@@ -871,7 +888,7 @@ export default function ProfileLayout() {
   async function cancelOutgoingFriendRequest(row: FriendRequestRow) {
     if (!user) return;
     setBusy(true);
-    setMessage(null);
+    hideToast();
     try {
       const supabase = await getSupabaseBrowserClient();
       // Prefer UPDATE → withdrawn: original schema already grants UPDATE to senders via RLS.
@@ -884,20 +901,18 @@ export default function ProfileLayout() {
         .eq("status", "pending")
         .select("id");
       if (error) {
-        setMessage(error.message);
+        showToast(error.message);
         await loadSocial(user);
         return;
       }
       if (!updated?.length) {
-        setMessage(
-          "Couldn’t cancel that invite. Refresh the page, then try again after applying the latest database migration (withdrawn status for friend requests).",
-        );
+        showToast(t("pages.profile.msgInviteCancelFail"));
         await loadSocial(user);
         return;
       }
       const socialRows = await loadSocial(user);
       await loadFriendComparison(user, socialRows);
-      setMessage("Invite cancelled.");
+      showToast(t("pages.profile.msgInviteCancelled"));
     } finally {
       setBusy(false);
     }
@@ -908,7 +923,7 @@ export default function ProfileLayout() {
     const other =
       f.user_id === user.id ? f.friend_user_id : f.user_id;
     setBusy(true);
-    setMessage(null);
+    hideToast();
     try {
       const supabase = await getSupabaseBrowserClient();
       await supabase
@@ -923,7 +938,7 @@ export default function ProfileLayout() {
         .eq("friend_user_id", user.id);
       const socialRows = await loadSocial(user);
       await loadFriendComparison(user, socialRows);
-      setMessage("Friend removed.");
+      showToast(t("pages.profile.msgFriendRemoved"));
     } finally {
       setBusy(false);
     }
@@ -953,7 +968,9 @@ export default function ProfileLayout() {
       return (
         <main className="min-h-screen bg-guinness-black text-guinness-cream">
           <div className={pageShellClass}>
-            <p className="type-meta text-guinness-tan/70">Loading…</p>
+            <p className="type-meta text-guinness-tan/70">
+              {t("pages.profile.loading")}
+            </p>
           </div>
         </main>
       );
@@ -977,7 +994,7 @@ export default function ProfileLayout() {
         {showMobileProfileSubHeader ? (
           <header
             className="relative mb-6 min-h-10 border-b border-guinness-gold/10 pb-4 md:hidden"
-            aria-label="Profile section"
+            aria-label={t("pages.profile.ariaProfileSection")}
           >
             <h1 className="type-display absolute left-1/2 top-1/2 z-0 max-w-[calc(100%-5.5rem)] -translate-x-1/2 -translate-y-1/2 text-center text-2xl leading-tight text-guinness-gold">
               <span className="block truncate">{mobileSubsectionTitle}</span>
@@ -988,7 +1005,7 @@ export default function ProfileLayout() {
                 viewTransition
                 className={profileMobileBackTopClass}
               >
-                Back
+                {t("pages.profile.back")}
               </AppLink>
             </div>
           </header>
@@ -1001,7 +1018,7 @@ export default function ProfileLayout() {
         >
           {showProfileHeaderPour ? (
             <AppLink to="/" viewTransition className={pageHeaderActionButtonClass}>
-              Pour
+              {t("common.pour")}
             </AppLink>
           ) : (
             <AppLink
@@ -1009,25 +1026,26 @@ export default function ProfileLayout() {
               viewTransition
               className={profileHeaderBackButtonClass}
             >
-              Back
+              {t("common.back")}
             </AppLink>
           )}
         </PageHeader>
 
         {loading ? (
-          <p className="type-meta text-guinness-tan/70">Loading…</p>
+          <p className="type-meta text-guinness-tan/70">
+            {t("pages.profile.loading")}
+          </p>
         ) : !user ? (
           <div className="rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-6">
             <p className="type-meta mb-4 text-guinness-tan/85">
-              Sign in with Google to link your email to scores you claim, add
-              friends, and sync favorites.
+              {t("pages.profile.signInBlurb")}
             </p>
             <button
               type="button"
               onClick={() => void signInGoogle()}
               className="w-full rounded-lg border border-guinness-gold/45 bg-guinness-gold/15 py-3 font-semibold text-guinness-cream transition-colors hover:border-guinness-gold/70 hover:bg-guinness-gold/25"
             >
-              Sign in with Google
+              {t("pages.profile.signInGoogle")}
             </button>
             <p className="type-meta mt-5 text-center text-guinness-tan/75">
               <AppLink
@@ -1036,9 +1054,11 @@ export default function ProfileLayout() {
                 viewTransition
                 className="font-semibold text-guinness-gold underline decoration-guinness-gold/35 underline-offset-2 hover:text-guinness-tan"
               >
-                FAQ
+                {t("pages.profile.navFaq")}
               </AppLink>
-              <span className="text-guinness-tan/55"> — answers without signing in</span>
+              <span className="text-guinness-tan/55">
+                {t("pages.profile.faqLinkBlurb")}
+              </span>
             </p>
           </div>
         ) : (
@@ -1074,7 +1094,10 @@ export default function ProfileLayout() {
               }}
             >
               {user && isProfileHubPath ? (
-                <nav className="md:hidden" aria-label="Profile sections">
+                <nav
+                  className="md:hidden"
+                  aria-label={t("pages.profile.ariaProfileSections")}
+                >
                   <ul className="space-y-2">
                     {profileNavItemsWithFaq.map(({ to, label }) => (
                       <li key={to}>
@@ -1110,14 +1133,16 @@ export default function ProfileLayout() {
                 items={profileNavLinkItems}
                 activeValue={profileActiveSection}
                 layoutClassName="hidden md:grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7"
-                aria-label="Profile sections"
+                aria-label={t("pages.profile.ariaProfileSections")}
               />
 
               {showAccountFormSection ? (
                 <section className="mt-6 rounded-xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 sm:p-6">
                   <div className="flex flex-col gap-1 border-b border-guinness-gold/10 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                     <div className="min-w-0">
-                      <p className="type-label text-guinness-gold">Signed in</p>
+                      <p className="type-label text-guinness-gold">
+                        {t("pages.profile.signedIn")}
+                      </p>
                       <p className="mt-1 truncate text-sm text-guinness-tan/80">
                         {user.email}
                       </p>
@@ -1127,7 +1152,7 @@ export default function ProfileLayout() {
                             {flagEmojiFromIso2(countryCode)}
                           </span>
                         ) : null}
-                        {fullName || "—"}
+                        {fullName || t("pages.profile.namePlaceholderDash")}
                       </p>
                     </div>
                   </div>
@@ -1141,7 +1166,7 @@ export default function ProfileLayout() {
                         htmlFor="profile-full-name"
                         className="type-label mb-1.5 block text-guinness-tan/85"
                       >
-                        Full name
+                        {t("pages.profile.fullName")}
                       </label>
                       <input
                         id="profile-full-name"
@@ -1149,7 +1174,7 @@ export default function ProfileLayout() {
                         onChange={(e) => setFullName(e.target.value)}
                         autoComplete="name"
                         className={inputClass}
-                        placeholder="Your name"
+                        placeholder={t("pages.profile.fullNamePlaceholder")}
                       />
                     </div>
                     <div>
@@ -1157,20 +1182,19 @@ export default function ProfileLayout() {
                         htmlFor="profile-nickname"
                         className="type-label mb-1.5 block text-guinness-tan/85"
                       >
-                        Nickname (leaderboard)
+                        {t("pages.profile.nickname")}
                       </label>
                       <input
                         id="profile-nickname"
                         value={nickname}
                         onChange={(e) => setNickname(e.target.value)}
                         className={inputClass}
-                        placeholder="Optional — shown instead of full name"
+                        placeholder={t("pages.profile.nicknamePlaceholder")}
                         maxLength={30}
                         autoComplete="nickname"
                       />
                       <p className="type-meta mt-1.5 text-guinness-tan/60">
-                        Leave blank to use your full name on feeds and boards. Must
-                        be unique (letters, numbers, spaces, - or _). 2–30 characters.
+                        {t("pages.profile.nicknameHint")}
                       </p>
                     </div>
                     <div>
@@ -1178,7 +1202,7 @@ export default function ProfileLayout() {
                         htmlFor="profile-country"
                         className="type-label mb-1.5 block text-guinness-tan/85"
                       >
-                        Country
+                        {t("pages.profile.country")}
                       </label>
                       <select
                         id="profile-country"
@@ -1186,7 +1210,7 @@ export default function ProfileLayout() {
                         onChange={(e) => setCountryCode(e.target.value)}
                         className={countrySelectClass}
                       >
-                        <option value="">Not set</option>
+                        <option value="">{t("pages.profile.countryNotSet")}</option>
                         {countryOptions.map((c) => (
                           <option key={c.code} value={c.code}>
                             {flagEmojiFromIso2(c.code)} {c.name}
@@ -1194,12 +1218,11 @@ export default function ProfileLayout() {
                         ))}
                       </select>
                       <p className="type-meta mt-1.5 text-guinness-tan/60">
-                        Shown as a flag next to your name.{" "}
+                        {t("pages.profile.countryHint")}{" "}
                         <strong className="font-medium text-guinness-tan/75">
-                          Local leaderboard
+                          {t("pages.profile.countryHintBold")}
                         </strong>{" "}
-                        lists top pours this week from everyone who chose this same
-                        country on their profile.
+                        {t("pages.profile.countryHintRest")}
                       </p>
                     </div>
                     <button
@@ -1207,7 +1230,9 @@ export default function ProfileLayout() {
                       disabled={profileSaving}
                       className="w-full rounded-lg bg-guinness-gold py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:px-8"
                     >
-                      {profileSaving ? "Saving…" : "Save profile"}
+                      {profileSaving
+                        ? t("pages.profile.savingProfile")
+                        : t("pages.profile.saveProfile")}
                     </button>
                   </form>
 
@@ -1217,7 +1242,7 @@ export default function ProfileLayout() {
                       onClick={() => setSignOutConfirmOpen(true)}
                       className="w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-3 text-sm font-semibold text-guinness-tan transition-colors hover:border-guinness-gold/50 hover:bg-guinness-brown/55 hover:text-guinness-cream"
                     >
-                      Sign out
+                      {t("pages.profile.signOut")}
                     </button>
                   </div>
                 </section>
@@ -1239,31 +1264,27 @@ export default function ProfileLayout() {
           message={message ?? ""}
           variant={messageVariant}
           title={
-            messageVariant === "danger"
-              ? "Couldn’t complete that"
+            toastTitleOverride ??
+            (messageVariant === "danger"
+              ? t("toasts.toastDangerTitle")
               : messageVariant === "warning"
-                ? "Heads up"
+                ? t("toasts.toastWarningTitle")
                 : messageVariant === "info"
-                  ? "Update"
-                  : messageVariant === "success" &&
-                      (message ?? "")
-                        .toLowerCase()
-                        .includes("signed out")
-                    ? "Signed out"
-                    : undefined
+                  ? t("toasts.toastInfoTitle")
+                  : undefined)
           }
-          onClose={() => setMessage(null)}
+          onClose={hideToast}
           autoCloseMs={toastAutoCloseForVariant(messageVariant)}
         />
 
         <BrandedNotice
           open={signOutConfirmOpen}
           onOpenChange={setSignOutConfirmOpen}
-          title="Sign out?"
-          description="You’ll need to sign in again to manage your profile, friends, and favorites."
+          title={t("pages.profile.signOutConfirmTitle")}
+          description={t("pages.profile.signOutConfirmDescription")}
           variant="warning"
-          secondaryLabel="Stay signed in"
-          primaryLabel="Sign out"
+          secondaryLabel={t("pages.profile.staySignedIn")}
+          primaryLabel={t("pages.profile.signOut")}
           onPrimary={async () => {
             setSignOutConfirmOpen(false);
             const preferredName =
@@ -1271,7 +1292,10 @@ export default function ProfileLayout() {
               fullName.trim() ||
               (user?.email ? emailDisplayName(user.email) : "");
             await signOut();
-            setMessage(signOutToastCopy(preferredName || "there"));
+            showToast(
+              signOutToastFromT(t, preferredName || "there"),
+              t("toasts.toastSignedOutTitle"),
+            );
           }}
         />
 
@@ -1283,7 +1307,7 @@ export default function ProfileLayout() {
                 viewTransition
                 className={homePourButtonClass}
               >
-                Back
+                {t("pages.profile.back")}
               </AppLink>
             </div>
             {!hideEndPageNewPourFooter ? (

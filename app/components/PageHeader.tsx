@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { AppLink } from "~/i18n/app-link";
+import { useOptionalLang } from "~/i18n/context";
+import { createTranslator } from "~/i18n/load-messages";
 
 export * from "./page-descriptions";
 
@@ -43,11 +46,9 @@ export function PageHeader({
           </p>
         ) : null}
       </div>
-      {children ? (
-        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 [&_a]:w-full [&_button]:w-full sm:[&_a]:w-auto sm:[&_button]:w-auto">
-          {children}
-        </div>
-      ) : null}
+      <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 [&_a]:w-full [&_button]:w-full sm:[&_a]:w-auto sm:[&_button]:w-auto">
+        {children}
+      </div>
     </header>
   );
 }
@@ -71,10 +72,12 @@ export const homePourButtonClass =
 
 /** End-of-page CTA — same block as `/wall` (ghost “New Pour” → home). */
 export function EndPageNewPourFooter() {
+  const lang = useOptionalLang();
+  const t = useMemo(() => createTranslator(lang), [lang]);
   return (
     <div className="mt-10 flex justify-center pb-6">
       <AppLink to="/" viewTransition className={homePourButtonClass}>
-        New Pour
+        {t("common.newPour")}
       </AppLink>
     </div>
   );

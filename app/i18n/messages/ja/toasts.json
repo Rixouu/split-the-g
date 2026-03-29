@@ -1,0 +1,14 @@
+{
+  "signedInFallback": "サインインしました",
+  "competitionUpdate": "コンテストの最新情報",
+  "competitionActivity": "競技活動",
+  "compStarted": "「{title}」が始まりました。幸運を。",
+  "compEnded": "「{title}」は終了しました。順位を確認してください。",
+  "compSkipped": "「{title}」はもうアクティブではありません。",
+  "compNewPour": "誰かが「{title}」で新しい注入を送信しました。 Compete を開いてリーダーボードを確認します。",
+  "compFallbackTitle": "あなたの競争相手",
+  "toastDangerTitle": "それを完了できませんでした",
+  "toastWarningTitle": "注意喚起",
+  "toastInfoTitle": "アップデート",
+  "toastSignedOutTitle": "サインアウトしました"
+}

@@ -1,0 +1,114 @@
+{
+  "defaultTitle": "Dividere il G",
+  "defaultDescription": "Segna il tuo Guinness pour con l'intelligenza artificiale, condividi la tua frazione e scala le classifiche di pub, amici e settimanali.",
+  "ogDefaultImageAlt": "Marchio Split The G su sfondo scuro del marchio",
+  "routes": {
+    "root": {
+      "title": "Dividere il G",
+      "description": "Segna il tuo Guinness pour con l'intelligenza artificiale, condividi la tua frazione e scala le classifiche di pub, amici e settimanali.",
+      "keywords": "Punteggio birra AI | classifica pub | sfida versamento"
+    },
+    "home": {
+      "title": "Split the G Marcatore",
+      "description": "Scatta la tua pinta e ottieni un punteggio AI Split the G in pochi secondi.",
+      "keywords": "dividi il g scorer|guinness score app|pour analyzer"
+    },
+    "feed": {
+      "title": "Alimentazione dal vivo",
+      "description": "Sfoglia i versamenti, i punteggi e le attività dei pub recenti di Split the G.",
+      "keywords": "dividere il g feed | recenti versamenti di guinness"
+    },
+    "pubs": {
+      "title": "Pub",
+      "description": "Trova pub, confronta le valutazioni medie dei versamenti e apri la bacheca di ogni pub.",
+      "keywords": "pub guinness|classifica pub|dividi i pub g"
+    },
+    "pubDetail": {
+      "title": "Dettagli del pub",
+      "description": "Visualizza il profilo di un pub, la mappa e le ultime Split the G versate per quel locale.",
+      "keywords": "pub wall|punteggi del pub guinness"
+    },
+    "competitions": {
+      "title": "Concorsi",
+      "description": "Crea o partecipa a competizioni Split the G con gli amici e classifiche dal vivo.",
+      "keywords": "dividi la classifica delle competizioni | guinness challenge | amici"
+    },
+    "competitionDetail": {
+      "title": "Dettagli del concorso",
+      "description": "Tieni traccia della classifica, dei partecipanti e dei versamenti recenti per questa competizione Split the G.",
+      "keywords": "classifica della competizione|dividi il torneo g"
+    },
+    "profile": {
+      "title": "Profilo",
+      "description": "Gestisci il tuo profilo Split the G, i progressi, i punteggi, i preferiti, le spese e gli amici.",
+      "keywords": "dividi il profilo g|versa i progressi|la classifica degli amici"
+    },
+    "account": {
+      "title": "Account personale",
+      "description": "Aggiorna il nome visualizzato, il nickname della classifica, la bandiera del paese e l'accesso per Split the G.",
+      "keywords": "dividere le impostazioni dell'account g|del profilo"
+    },
+    "progress": {
+      "title": "Progresso del profilo",
+      "description": "Tieni traccia delle tendenze del punteggio medio, dei migliori versamenti e dei progressi degli amici in Split the G.",
+      "keywords": "dividere i progressi g|versare le statistiche"
+    },
+    "expenses": {
+      "title": "Spese del profilo",
+      "description": "Visualizza la spesa totale della pinta e l'andamento dei prezzi dai tuoi Split the G versati collegati.",
+      "keywords": "spesa per una pinta | spese per la birra | dividere i prezzi g"
+    },
+    "scores": {
+      "title": "Punteggi del profilo",
+      "description": "Controlla i tuoi recenti risultati Split the G e la cronologia dei punteggi.",
+      "keywords": "dividere la cronologia g|versate recenti"
+    },
+    "favorites": {
+      "title": "Barre preferite del profilo",
+      "description": "Salva e gestisci i tuoi pub preferiti in Split the G.",
+      "keywords": "pub preferiti|preferiti del profilo"
+    },
+    "friends": {
+      "title": "Amici del profilo",
+      "description": "Gestisci le richieste di amicizia e confronta i tuoi punteggi Split the G.",
+      "keywords": "dividere i g amici|inviti di amici"
+    },
+    "faq": {
+      "title": "Domande frequenti",
+      "description": "Risposte su punteggio, condivisione di versamenti, pub, competizioni e funzionalità del profilo in Split the G.",
+      "keywords": "dividi le domande sull'app g faq|guinness"
+    },
+    "leaderboard": {
+      "title": "Classifica",
+      "description": "Visualizza i migliori punteggi Split the G nelle schede globali, locali e amici.",
+      "keywords": "dividere la classifica g|classifica guinness settimanale"
+    },
+    "wall": {
+      "title": "Parete",
+      "description": "Esplora il muro Split the G dei versamenti e dei punteggi recenti.",
+      "keywords": "dividi il g wall|guinness collage|pour gallery"
+    },
+    "past24hr": {
+      "title": "Classifica delle ultime 24 ore",
+      "description": "Classifiche dei paesi per le ultime 24 ore di Split the G rivers.",
+      "keywords": "Classifica 24 ore | divide la classifica giornaliera g"
+    },
+    "country": {
+      "title": "Classifica nazionale",
+      "description": "Classifiche di tutti i tempi per paese in base al numero di invii e al punteggio medio di Split the G.",
+      "keywords": "classifica nazionale|dividi i paesi g"
+    },
+    "scoreFallback": {
+      "title": "Versare il risultato",
+      "description": "Apri questo risultato Split the G pour e sfida i tuoi amici.",
+      "keywords": "dividi il risultato g | punteggio guinness pour"
+    },
+    "scoreDetail": {
+      "title": "{scoreValue}/5 Diviso per {username}",
+      "description": "{username} ha segnato {scoreValue}/5 su Split the G. #{allTimeRank} di tutti i tempi di {totalSplits}, #{weeklyRank} settimanale di {weeklyTotalSplits}.",
+      "imageAlt": "Guinness pinta da {username} versata su Split the G",
+      "keywords": "dividi il punteggio g|versa la sfida|punteggio guinness",
+      "anonymousUser": "Versatore anonimo"
+    }
+  }
+}

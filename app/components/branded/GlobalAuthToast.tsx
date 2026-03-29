@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
-import { signInToastCopy } from "~/utils/auth-toast-messages";
+import { signInToastFromT } from "~/i18n/auth-copy";
+import { useTChrome } from "~/i18n/context";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { BrandedToast } from "./BrandedToast";
 import { toastAutoCloseForVariant } from "./feedback-variant";
@@ -42,6 +43,7 @@ async function resolvePreferredName(user: User): Promise<string> {
  * Uses `SIGNED_IN` only so restored sessions from `INITIAL_SESSION` do not toast on every load.
  */
 export function GlobalAuthToast() {
+  const t = useTChrome();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -69,7 +71,7 @@ export function GlobalAuthToast() {
               preferred = "there";
             }
             if (isDisposed) return;
-            const { title: nextTitle, message } = signInToastCopy(preferred);
+            const { title: nextTitle, message } = signInToastFromT(t, preferred);
             setTitle(nextTitle);
             setText(message);
             setOpen(true);
@@ -87,14 +89,14 @@ export function GlobalAuthToast() {
       isDisposed = true;
       unsubscribe?.();
     };
-  }, [onClose]);
+  }, [onClose, t]);
 
   return (
     <BrandedToast
       open={open}
       message={text}
       variant="success"
-      title={title || "Signed in"}
+      title={title || t("toasts.signedInFallback")}
       onClose={onClose}
       autoCloseMs={toastAutoCloseForVariant("success")}
     />

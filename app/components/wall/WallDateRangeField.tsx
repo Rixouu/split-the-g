@@ -2,6 +2,8 @@ import { format } from "date-fns";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DayPicker, type DateRange } from "react-day-picker";
+import { useI18n } from "~/i18n/context";
+import type { TranslateFn } from "~/i18n/translate";
 
 import "react-day-picker/style.css";
 import "./wall-day-picker.css";
@@ -40,12 +42,22 @@ function rangeFromStrings(
   return { from, to: to ?? undefined };
 }
 
-function formatButtonLabel(dateFrom: string, dateTo: string): string {
+function formatButtonLabel(
+  dateFrom: string,
+  dateTo: string,
+  t: TranslateFn,
+): string {
   const from = dateFrom.trim() ? parseLocalYmd(dateFrom.trim()) : undefined;
   const to = dateTo.trim() ? parseLocalYmd(dateTo.trim()) : undefined;
-  if (!from) return "All dates";
-  if (!to) return `From ${format(from, "MMM d, yyyy")}`;
-  return `${format(from, "MMM d, yyyy")} – ${format(to, "MMM d, yyyy")}`;
+  if (!from) return t("pages.wall.dateAll");
+  if (!to)
+    return t("pages.wall.dateFrom", {
+      date: format(from, "MMM d, yyyy"),
+    });
+  return t("pages.wall.dateThrough", {
+    from: format(from, "MMM d, yyyy"),
+    to: format(to, "MMM d, yyyy"),
+  });
 }
 
 export interface WallDateRangeFieldProps {
@@ -59,6 +71,7 @@ export function WallDateRangeField({
   dateTo,
   onChange,
 }: WallDateRangeFieldProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   /** Matches compact calendar width (7 × ~30px cells + padding). */
   const PANEL_W = 264;
@@ -147,7 +160,7 @@ export function WallDateRangeField({
           left: popPos.left,
         }}
         role="dialog"
-        aria-label="Choose date range"
+        aria-label={t("pages.wall.datePickerAria")}
       >
         <DayPicker
           mode="range"
@@ -175,14 +188,14 @@ export function WallDateRangeField({
               setOpen(false);
             }}
           >
-            Clear range
+            {t("pages.wall.clearRange")}
           </button>
           <button
             type="button"
             className="rounded-md bg-guinness-gold/90 px-2.5 py-1 text-[11px] font-semibold text-guinness-black hover:bg-guinness-tan"
             onClick={() => setOpen(false)}
           >
-            Done
+            {t("pages.wall.done")}
           </button>
         </div>
       </div>
@@ -191,7 +204,9 @@ export function WallDateRangeField({
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="type-meta text-guinness-tan/80">Date range</span>
+      <span className="type-meta text-guinness-tan/80">
+        {t("pages.wall.dateRange")}
+      </span>
       <button
         ref={btnRef}
         type="button"
@@ -201,7 +216,7 @@ export function WallDateRangeField({
         onClick={() => setOpen((o) => !o)}
       >
         <span className="min-w-0 flex-1 truncate pr-9">
-          {formatButtonLabel(dateFrom, dateTo)}
+          {formatButtonLabel(dateFrom, dateTo, t)}
         </span>
         <span
           className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-guinness-gold/70"

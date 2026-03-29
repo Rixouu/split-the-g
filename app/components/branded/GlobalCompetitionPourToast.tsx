@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
+import { useTChrome } from "~/i18n/context";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { BrandedToast } from "./BrandedToast";
 import { toastAutoCloseForVariant } from "./feedback-variant";
@@ -26,6 +27,7 @@ function phaseAt(meta: CompTimeline, nowMs: number): Phase {
  * changes on competitions you created or joined.
  */
 export function GlobalCompetitionPourToast() {
+  const t = useTChrome();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [toastVariant, setToastVariant] =
@@ -65,14 +67,11 @@ export function GlobalCompetitionPourToast() {
         const prev = phaseMapRef.current.get(id);
         if (emitToasts && prev !== undefined && prev !== ph) {
           if (prev === "upcoming" && ph === "live") {
-            showToast(`“${meta.title}” has started. Good luck.`, "success");
+            showToast(t("toasts.compStarted", { title: meta.title }), "success");
           } else if (prev === "live" && ph === "ended") {
-            showToast(
-              `“${meta.title}” has finished. Check the standings.`,
-              "info",
-            );
+            showToast(t("toasts.compEnded", { title: meta.title }), "info");
           } else if (prev === "upcoming" && ph === "ended") {
-            showToast(`“${meta.title}” is no longer active.`, "info");
+            showToast(t("toasts.compSkipped", { title: meta.title }), "info");
           }
         }
         phaseMapRef.current.set(id, ph);
@@ -81,7 +80,7 @@ export function GlobalCompetitionPourToast() {
         if (!compTimelineRef.current.has(id)) phaseMapRef.current.delete(id);
       }
     },
-    [showToast],
+    [showToast, t],
   );
 
   const loadRelevantMeta = useCallback(async (uid: string) => {
@@ -192,11 +191,10 @@ export function GlobalCompetitionPourToast() {
             if (now - last < TOAST_COOLDOWN_MS) return;
             lastToastByCompRef.current.set(compId, now);
 
-            const title = titleByCompRef.current.get(compId) ?? "your competition";
-            showToast(
-              `Someone submitted a new pour in “${title}”. Open Compete to see the leaderboard.`,
-              "info",
-            );
+            const title =
+              titleByCompRef.current.get(compId) ??
+              t("toasts.compFallbackTitle");
+            showToast(t("toasts.compNewPour", { title }), "info");
           },
         )
         .subscribe();
@@ -231,13 +229,13 @@ export function GlobalCompetitionPourToast() {
       window.clearInterval(metaInterval);
       void teardownChannel();
     };
-  }, [getSupabase, loadRelevantMeta, showToast, syncPhases, teardownChannel]);
+  }, [getSupabase, loadRelevantMeta, showToast, syncPhases, teardownChannel, t]);
 
   const toastTitle =
     toastVariant === "success"
-      ? "Competition update"
+      ? t("toasts.competitionUpdate")
       : toastVariant === "info"
-        ? "Competition activity"
+        ? t("toasts.competitionActivity")
         : undefined;
 
   return (

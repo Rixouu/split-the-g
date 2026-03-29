@@ -5,21 +5,17 @@ import {
 } from "~/components/pub-venue-card";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { pubDetailPath } from "~/utils/pubPath";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { barKey, favoriteMapsUrl } from "./profile-shared";
 import { useProfileOutlet } from "./profile-context";
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Profile Favorite Bars",
-    description: "Save and manage your favorite pubs in Split the G.",
-    path: seoPath(params, "/profile/favorites"),
-    keywords: ["favorite pubs", "profile favorites"],
-  });
+  return seoMetaForRoute(params, "/profile/favorites", "favorites");
 }
 
 export default function ProfileFavoritesPage() {
+  const { t } = useI18n();
   const {
     favorites,
     favoriteStats,
@@ -34,9 +30,11 @@ export default function ProfileFavoritesPage() {
 
   return (
     <section className="rounded-xl border border-[#372C16] bg-guinness-brown/40 p-4 sm:p-6">
-      <h2 className="type-card-title mb-1">Favorite bars</h2>
+      <h2 className="type-card-title mb-1">
+        {t("pages.profile.favoritesSectionTitle")}
+      </h2>
       <p className="type-meta mb-4 text-guinness-tan/65">
-        Save pubs you visit; we use Places for accurate addresses.
+        {t("pages.profile.favoritesSectionBlurb")}
       </p>
       <form onSubmit={(ev) => void addFavorite(ev)} className="space-y-3">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -45,7 +43,7 @@ export default function ProfileFavoritesPage() {
               htmlFor="fav-bar-search"
               className="type-label mb-1.5 block text-guinness-tan/85"
             >
-              Search (Google Places)
+              {t("pages.profile.favoritesSearchLabel")}
             </label>
             <PlacesAutocomplete
               initialValue={favName}
@@ -62,11 +60,11 @@ export default function ProfileFavoritesPage() {
             disabled={busy}
             className="h-11 w-full shrink-0 rounded-lg bg-guinness-gold px-6 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50 lg:min-w-[10.5rem]"
           >
-            Save favorite
+            {t("pages.profile.favoritesSaveButton")}
           </button>
         </div>
         <p className="text-xs leading-relaxed text-guinness-tan/55">
-          Choose a suggestion when possible so we store the full address.
+          {t("pages.profile.favoritesAddressHint")}
         </p>
       </form>
 
@@ -96,7 +94,7 @@ export default function ProfileFavoritesPage() {
                       rel="noopener noreferrer"
                       className={pubVenueCardActionOutlineClass}
                     >
-                      Maps
+                      {t("pages.profile.favoritesMaps")}
                     </a>
                     <button
                       type="button"
@@ -104,7 +102,7 @@ export default function ProfileFavoritesPage() {
                       onClick={() => void removeFavorite(f.id)}
                       className={pubVenueCardActionDangerClass}
                     >
-                      Remove
+                      {t("pages.profile.favoritesRemove")}
                     </button>
                   </>
                 }
@@ -113,7 +111,9 @@ export default function ProfileFavoritesPage() {
           })}
         </ul>
       ) : (
-        <p className="type-meta mt-6 text-guinness-tan/65">No favorites yet.</p>
+        <p className="type-meta mt-6 text-guinness-tan/65">
+          {t("pages.profile.favoritesEmpty")}
+        </p>
       )}
     </section>
   );

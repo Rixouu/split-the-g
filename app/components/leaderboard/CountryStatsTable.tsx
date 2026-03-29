@@ -1,3 +1,4 @@
+import { useI18n } from "~/i18n/context";
 import { getCountryFlag } from "~/utils/leaderboard";
 
 interface CountryStats {
@@ -13,6 +14,7 @@ interface CountryStatsTableProps {
 }
 
 export function CountryStatsTable({ title, submissions }: CountryStatsTableProps) {
+  const { t } = useI18n();
   return (
     <div className="max-w-4xl mx-auto">
       <p className="type-section mb-4 px-2 md:px-4">
@@ -20,10 +22,12 @@ export function CountryStatsTable({ title, submissions }: CountryStatsTableProps
       </p>
       <div className="bg-guinness-gold/10 rounded-lg overflow-hidden">
         <div className="grid grid-cols-12 gap-1 md:gap-4 p-2 md:p-4 text-guinness-gold font-bold border-b border-guinness-gold/20 text-xs md:text-base">
-          <div className="col-span-1">#</div>
-          <div className="col-span-5">Country</div>
-          <div className="col-span-3 text-right">Splits</div>
-          <div className="col-span-3 text-right">Avg</div>
+          <div className="col-span-1">{t("pages.leaderboard.colRank")}</div>
+          <div className="col-span-5">{t("pages.leaderboard.colCountry")}</div>
+          <div className="col-span-3 text-right">
+            {t("pages.leaderboard.colSplits")}
+          </div>
+          <div className="col-span-3 text-right">{t("pages.leaderboard.colAvg")}</div>
         </div>
         {submissions.map((stat, index) => (
           <div

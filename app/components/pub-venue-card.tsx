@@ -1,5 +1,6 @@
 import { AppLink } from "~/i18n/app-link";
 import type { ReactNode } from "react";
+import { useI18n } from "~/i18n/context";
 
 /** Dark brown stroke — matches pub list / venue cards (no light borders). */
 export const PUB_VENUE_CARD_STROKE = "border-[#322914]";
@@ -113,10 +114,17 @@ export function PubVenueCard({
   actions,
   className = "",
 }: PubVenueCardProps) {
+  const { t } = useI18n();
   const pourLabel =
-    submissionCount === 1 ? "1 pour" : `${submissionCount} pours`;
+    submissionCount === 1
+      ? t("pages.pubs.cardPourOne")
+      : t("pages.pubs.cardPourMany", { count: String(submissionCount) });
   const hasRating =
     ratingCount > 0 && avgPourRating != null && Number.isFinite(avgPourRating);
+  const ratingDotLabel =
+    ratingCount === 1
+      ? t("pages.pubs.cardRatingDotOne")
+      : t("pages.pubs.cardRatingDotMany", { count: String(ratingCount) });
 
   const body = (
     <>
@@ -149,16 +157,16 @@ export function PubVenueCard({
               <span className="text-guinness-gold">
                 {avgPourRating!.toFixed(1)}
               </span>
-              <span className="text-guinness-tan/55">/ 5</span>
-              <span className="text-guinness-tan/45">
-                · {ratingCount} {ratingCount === 1 ? "rating" : "ratings"}
+              <span className="text-guinness-tan/55">
+                {t("pages.pubs.cardOutOfFive")}
               </span>
+              <span className="text-guinness-tan/45">{ratingDotLabel}</span>
             </StatPill>
           ) : (
             <span
               className={`inline-flex items-center rounded-lg border border-dashed ${PUB_VENUE_CARD_STROKE} bg-guinness-black/25 px-2.5 py-1 text-xs text-guinness-tan/50`}
             >
-              No ratings yet
+              {t("pages.pubs.cardNoRatingsYet")}
             </span>
           )}
         </div>

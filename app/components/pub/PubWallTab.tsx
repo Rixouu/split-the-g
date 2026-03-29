@@ -1,4 +1,5 @@
 import { AppLink } from "~/i18n/app-link";
+import { useI18n } from "~/i18n/context";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
 import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
@@ -55,6 +56,7 @@ interface PubWallTabProps {
 }
 
 export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
+  const { t } = useI18n();
   const [sort, setSort] = useState<SortOption>("newest");
   const [minScore, setMinScore] = useState<string>("0");
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -150,8 +152,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
   if (items.length === 0) {
     return (
       <p className="type-meta text-guinness-tan/70">
-        No pours recorded for this pub name yet. Be the first from the home
-        screen.
+        {t("pages.pubDetail.wallEmpty")}
       </p>
     );
   }
@@ -162,11 +163,22 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
         className={`w-full min-w-0 rounded-xl border ${pubStroke} bg-guinness-brown/30 p-5 sm:p-6`}
       >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <span className="type-label text-guinness-gold">Filters</span>
+          <span className="type-label text-guinness-gold">
+            {t("pages.pubDetail.wallFilters")}
+          </span>
           <div className="flex items-center gap-2">
             <span className="text-xs text-guinness-tan/60 sm:text-sm">
-              {filtered.length} pour{filtered.length === 1 ? "" : "s"} · Page{" "}
-              {safePage} / {totalPages}
+              {filtered.length === 1
+                ? t("pages.pubDetail.wallPagerSummaryOne", {
+                    count: String(filtered.length),
+                    page: String(safePage),
+                    totalPages: String(totalPages),
+                  })
+                : t("pages.pubDetail.wallPagerSummaryMany", {
+                    count: String(filtered.length),
+                    page: String(safePage),
+                    totalPages: String(totalPages),
+                  })}
             </span>
             <button
               type="button"
@@ -174,7 +186,9 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
               onClick={() => setFiltersOpen((o) => !o)}
               className={`rounded-lg border ${pubStroke} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
             >
-              {filtersOpen ? "Hide" : "Show"}
+              {filtersOpen
+                ? t("pages.pubDetail.wallHide")
+                : t("pages.pubDetail.wallShow")}
             </button>
           </div>
         </div>
@@ -182,28 +196,40 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
           className={`grid w-full min-w-0 grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-6 xl:grid-cols-4 ${filtersOpen ? "" : "hidden md:grid"}`}
         >
           <label className="flex min-w-0 flex-col gap-2">
-            <span className="type-meta text-guinness-tan/80">Sort by</span>
+            <span className="type-meta text-guinness-tan/80">
+              {t("pages.pubDetail.wallSortBy")}
+            </span>
             <select
               className={selectFieldClass}
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              aria-label="Sort pours"
+              aria-label={t("pages.pubDetail.wallSortAria")}
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="score_high">Highest score</option>
-              <option value="score_low">Lowest score</option>
+              <option value="newest">
+                {t("pages.pubDetail.wallSortNewest")}
+              </option>
+              <option value="oldest">
+                {t("pages.pubDetail.wallSortOldest")}
+              </option>
+              <option value="score_high">
+                {t("pages.pubDetail.wallSortScoreHigh")}
+              </option>
+              <option value="score_low">
+                {t("pages.pubDetail.wallSortScoreLow")}
+              </option>
             </select>
           </label>
           <label className="flex min-w-0 flex-col gap-2">
-            <span className="type-meta text-guinness-tan/80">Minimum score</span>
+            <span className="type-meta text-guinness-tan/80">
+              {t("pages.pubDetail.wallMinScore")}
+            </span>
             <select
               className={selectFieldClass}
               value={minScore}
               onChange={(e) => setMinScore(e.target.value)}
-              aria-label="Minimum split score"
+              aria-label={t("pages.pubDetail.wallMinScoreAria")}
             >
-              <option value="0">Any score</option>
+              <option value="0">{t("pages.pubDetail.wallAnyScore")}</option>
               <option value="2">2.0+</option>
               <option value="3">3.0+</option>
               <option value="3.5">3.5+</option>
@@ -222,14 +248,16 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
             />
           </div>
           <label className="flex min-w-0 flex-col gap-2">
-            <span className="type-meta text-guinness-tan/80">Country</span>
+            <span className="type-meta text-guinness-tan/80">
+              {t("pages.pubDetail.wallCountry")}
+            </span>
             <select
               className={selectFieldClass}
               value={countryFilter}
               onChange={(e) => setCountryFilter(e.target.value)}
-              aria-label="Filter by country"
+              aria-label={t("pages.pubDetail.wallCountryAria")}
             >
-              <option value="">Any country</option>
+              <option value="">{t("pages.pubDetail.wallAnyCountry")}</option>
               {wallCountrySelectOptions.map(({ code, name }) => (
                 <option key={code} value={code}>
                   {flagEmojiFromIso2(code)} {name}
@@ -243,7 +271,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
       {pageSlice.length === 0 ? (
         <div className="rounded-lg border border-guinness-gold/15 bg-guinness-brown/25 py-10 text-center">
           <p className="type-meta text-guinness-tan/80">
-            No pours match these filters.
+            {t("pages.pubDetail.wallNoMatch")}
           </p>
           <button
             type="button"
@@ -256,7 +284,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
             }}
             className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-guinness-gold px-5 py-2 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan"
           >
-            Reset filters
+            {t("pages.pubDetail.wallResetFilters")}
           </button>
         </div>
       ) : (
@@ -278,7 +306,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-xs text-guinness-tan/50">
-                      No image
+                      {t("pages.pubDetail.wallNoImage")}
                     </div>
                   )}
                 </div>
@@ -329,7 +357,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             className={`rounded-lg border ${pubStroke} px-4 py-2 text-sm font-semibold text-guinness-gold disabled:opacity-40`}
           >
-            Previous
+            {t("pages.pubDetail.wallPrevious")}
           </button>
           <span className="type-meta text-guinness-tan/70">
             {safePage} / {totalPages}
@@ -340,7 +368,7 @@ export function PubWallTab({ items, pubStroke }: PubWallTabProps) {
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             className={`rounded-lg border ${pubStroke} px-4 py-2 text-sm font-semibold text-guinness-gold disabled:opacity-40`}
           >
-            Next
+            {t("pages.pubDetail.wallNext")}
           </button>
         </div>
       ) : null}

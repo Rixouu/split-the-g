@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useI18n } from "~/i18n/context";
 import {
   parsePlaceGeoFromComponents,
   type ParsedPlaceGeo,
@@ -58,6 +59,7 @@ export function PlacesAutocomplete({
   initialValue = "",
   className = "",
 }: PlacesAutocompleteProps) {
+  const { t } = useI18n();
   const [inputValue, setInputValue] = useState(initialValue);
   const [suggestions, setSuggestions] = useState<SuggestionRow[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -198,9 +200,9 @@ export function PlacesAutocomplete({
 
   const helperText =
     mapsUiStatus === "no_key"
-      ? "Venue search needs VITE_GOOGLE_MAPS_API_KEY in .env.local (browser key)."
+      ? t("pages.score.placesNoApiKey")
       : mapsUiStatus === "unavailable"
-        ? "Google Maps didn’t load. Enable Maps JavaScript API + Places API (New), billing, and add this site to the key’s HTTP referrer allowlist (see browser console)."
+        ? t("pages.score.placesUnavailable")
         : null;
 
   return (
@@ -216,7 +218,7 @@ export function PlacesAutocomplete({
         autoComplete="off"
         disabled={isSelecting}
         className={`w-full px-4 py-2 bg-guinness-black/50 border border-guinness-gold/20 rounded-lg text-guinness-tan focus:outline-none focus:border-guinness-gold ${className}`}
-        placeholder="Search for a bar in Thailand or type the name"
+        placeholder={t("pages.score.placesPlaceholder")}
         aria-describedby={helperText ? "places-autocomplete-hint" : undefined}
       />
 
@@ -263,7 +265,7 @@ export function PlacesAutocomplete({
                 newSession();
               }}
             >
-              Use this name: &quot;{inputValue.trim()}&quot;
+              {t("pages.score.placesUseName", { name: inputValue.trim() })}
             </button>
           )}
         </div>

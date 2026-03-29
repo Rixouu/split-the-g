@@ -1,19 +1,15 @@
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { useProfileOutlet } from "./profile-context";
 import { progressRangeOptions, type ProgressRange } from "./profile-shared";
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Profile Progress",
-    description: "Track average score trends, best pours, and friend progress in Split the G.",
-    path: seoPath(params, "/profile/progress"),
-    keywords: ["split the g progress", "pour stats"],
-  });
+  return seoMetaForRoute(params, "/profile/progress", "progress");
 }
 
 export default function ProfileProgressPage() {
+  const { t } = useI18n();
   const {
     scores,
     progressStats,
@@ -22,16 +18,35 @@ export default function ProfileProgressPage() {
     friendProgressLeaderboard,
   } = useProfileOutlet();
 
+  const progressTabLabel: Record<ProgressRange, string> = {
+    "7d": t("pages.profile.progressTab7d"),
+    "30d": t("pages.profile.progressTab30d"),
+    "90d": t("pages.profile.progressTab90d"),
+    all: t("pages.profile.progressTabAll"),
+  };
+
   return (
     <div className="space-y-8">
       {scores.length > 0 ? (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "Pours", value: String(progressStats.count) },
-              { label: "Best", value: progressStats.best.toFixed(2) },
-              { label: "Avg / 5", value: progressStats.avg.toFixed(2) },
-              { label: "Last 7d", value: String(progressStats.last7) },
+              {
+                label: t("pages.profile.progressPours"),
+                value: String(progressStats.count),
+              },
+              {
+                label: t("pages.profile.progressBest"),
+                value: progressStats.best.toFixed(2),
+              },
+              {
+                label: t("pages.profile.progressAvg"),
+                value: progressStats.avg.toFixed(2),
+              },
+              {
+                label: t("pages.profile.progressLast7"),
+                value: String(progressStats.last7),
+              },
             ].map((item) => (
               <div
                 key={item.label}
@@ -58,7 +73,9 @@ export default function ProfileProgressPage() {
                     aria-hidden
                   >
                     <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full border border-[#322914] bg-guinness-black/95 shadow-[0_0_22px_rgba(0,0,0,0.45)]">
-                      <span className="type-meta text-guinness-tan/70">Average</span>
+                      <span className="type-meta text-guinness-tan/70">
+                        {t("pages.profile.progressAverage")}
+                      </span>
                       <span className="text-3xl font-bold tabular-nums text-guinness-gold">
                         {progressStats.avg.toFixed(2)}
                       </span>
@@ -66,31 +83,33 @@ export default function ProfileProgressPage() {
                   </div>
                 </div>
                 <p className="type-meta text-center text-guinness-tan/75">
-                  Last 7 days:{" "}
+                  {t("pages.profile.progressLast7Pour")}{" "}
                   <span className="font-semibold text-guinness-cream">
                     {progressStats.last7}
                   </span>{" "}
-                  pour(s)
+                  {t("pages.profile.progressPoursSuffix")}
                 </p>
               </div>
 
               <div className="space-y-4">
                 {[
                   {
-                    label: "Average",
+                    label: t("pages.profile.progressAverage"),
                     value: progressStats.avg,
                     accent: "bg-guinness-gold",
                   },
                   {
-                    label: "Best",
+                    label: t("pages.profile.progressBest"),
                     value: progressStats.best,
                     accent: "bg-[#322914] ring-1 ring-guinness-gold/25",
                   },
                   {
-                    label: "Recent volume",
+                    label: t("pages.profile.progressRecentVolume"),
                     value: Math.min(progressStats.last7, 5),
                     accent: "bg-guinness-tan",
-                    suffix: ` (${progressStats.last7} in 7d)`,
+                    suffix: t("pages.profile.progressVolume7dSuffix", {
+                      count: String(progressStats.last7),
+                    }),
                   },
                 ].map((item) => (
                   <div key={item.label} className="space-y-1.5">
@@ -100,7 +119,7 @@ export default function ProfileProgressPage() {
                       </span>
                       <span className="type-meta text-guinness-tan/70">
                         {item.value.toFixed(2)}
-                        {item.suffix ?? " / 5.00"}
+                        {item.suffix ?? t("pages.profile.progressOutOfFiveMax")}
                       </span>
                     </div>
                     <div className="h-3 overflow-hidden rounded-full border border-[#322914]/80 bg-guinness-black/60">
@@ -120,9 +139,11 @@ export default function ProfileProgressPage() {
           <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="type-card-title">Friends leaderboard</h2>
+                <h2 className="type-card-title">
+                  {t("pages.profile.progressFriendLeaderboard")}
+                </h2>
                 <p className="type-meta mt-1 text-guinness-tan/70">
-                  Compare your average, best score, and volume against accepted friends.
+                  {t("pages.profile.progressFriendLeaderboardBlurb")}
                 </p>
               </div>
               <SegmentedTabs
@@ -130,10 +151,10 @@ export default function ProfileProgressPage() {
                 onValueChange={(v) => setProgressRange(v as ProgressRange)}
                 items={progressRangeOptions.map((option) => ({
                   value: option.value,
-                  label: option.label,
+                  label: progressTabLabel[option.value],
                 }))}
                 layoutClassName="flex w-full min-w-0 sm:flex-1"
-                aria-label="Time range"
+                aria-label={t("pages.profile.progressTimeRangeAria")}
               />
             </div>
 
@@ -154,33 +175,38 @@ export default function ProfileProgressPage() {
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-guinness-cream">
                         {entry.label}
-                        {entry.isCurrentUser ? " · You" : ""}
+                        {entry.isCurrentUser ? t("pages.profile.progressYouSuffix") : ""}
                       </p>
                       <p className="type-meta truncate text-guinness-tan/60">{entry.email}</p>
                     </div>
                     <span className="text-sm tabular-nums text-guinness-tan/80 sm:text-right">
-                      {entry.pours} pours
+                      {t("pages.profile.progressLeaderboardPours", {
+                        count: String(entry.pours),
+                      })}
                     </span>
                     <span className="hidden text-sm tabular-nums text-guinness-tan/80 sm:block">
-                      Avg {entry.avg.toFixed(2)}
+                      {t("pages.profile.progressRowAvgShort", {
+                        value: entry.avg.toFixed(2),
+                      })}
                     </span>
                     <span className="hidden text-sm tabular-nums text-guinness-tan/80 sm:block">
-                      Best {entry.best.toFixed(2)}
+                      {t("pages.profile.progressRowBestShort", {
+                        value: entry.best.toFixed(2),
+                      })}
                     </span>
                   </li>
                 ))}
               </ol>
             ) : (
               <p className="type-meta mt-5 text-guinness-tan/70">
-                Accept a few friends to unlock side-by-side progress comparisons.
+                {t("pages.profile.progressEmptyLeaderboardHint")}
               </p>
             )}
           </section>
         </>
       ) : (
         <p className="type-meta text-guinness-tan/70">
-          No scores linked to this email yet. Open a result you own and tap &quot;Claim with
-          Google&quot;.
+          {t("pages.profile.progressNoScoresClaimBlurb")}
         </p>
       )}
     </div>

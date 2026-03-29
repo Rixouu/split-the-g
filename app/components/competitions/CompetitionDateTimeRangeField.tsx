@@ -52,21 +52,51 @@ function rangeFromDatetimeLocals(
   return { from, to: to ?? undefined };
 }
 
-function formatWindowLabel(startLocal: string, endLocal: string): string {
-  if (!startLocal || !endLocal) return "Choose competition window";
+function formatWindowLabel(
+  startLocal: string,
+  endLocal: string,
+  emptyLabel: string,
+): string {
+  if (!startLocal || !endLocal) return emptyLabel;
   const a = new Date(startLocal);
   const b = new Date(endLocal);
   if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
-    return "Choose competition window";
+    return emptyLabel;
   }
   return `${format(a, "EEE MMM d, yyyy · h:mm a")} → ${format(b, "EEE MMM d, yyyy · h:mm a")}`;
 }
+
+export interface CompetitionDateTimeRangeCopy {
+  chooseWindow: string;
+  dialogAriaLabel: string;
+  timesLocal: string;
+  start: string;
+  end: string;
+  clear: string;
+  done: string;
+  sectionLabel: string;
+  hint: string;
+}
+
+const DEFAULT_DATETIME_COPY: CompetitionDateTimeRangeCopy = {
+  chooseWindow: "Choose competition window",
+  dialogAriaLabel: "Choose competition date range and times",
+  timesLocal: "Times (local)",
+  start: "Start",
+  end: "End",
+  clear: "Clear",
+  done: "Done",
+  sectionLabel: "Competition window",
+  hint: "Pick the date range, then set start and end times (your device timezone).",
+};
 
 export interface CompetitionDateTimeRangeFieldProps {
   startLocal: string;
   endLocal: string;
   onChange: (start: string, end: string) => void;
   inputClass: string;
+  /** Optional UI strings (defaults to English). */
+  copy?: Partial<CompetitionDateTimeRangeCopy>;
 }
 
 export function CompetitionDateTimeRangeField({
@@ -74,7 +104,9 @@ export function CompetitionDateTimeRangeField({
   endLocal,
   onChange,
   inputClass,
+  copy: copyPartial,
 }: CompetitionDateTimeRangeFieldProps) {
+  const copy = { ...DEFAULT_DATETIME_COPY, ...copyPartial };
   const [open, setOpen] = useState(false);
   const PANEL_W = 280;
   const [popPos, setPopPos] = useState({ top: 0, left: 0 });
@@ -165,7 +197,7 @@ export function CompetitionDateTimeRangeField({
         className="fixed z-[110] w-[min(280px,calc(100vw-24px))] max-h-[min(85vh,480px)] overflow-y-auto overflow-x-hidden rounded-lg border border-guinness-gold/35 bg-[#14110c] p-2 shadow-2xl shadow-black/60"
         style={{ top: popPos.top, left: popPos.left }}
         role="dialog"
-        aria-label="Choose competition date range and times"
+        aria-label={copy.dialogAriaLabel}
       >
         <DayPicker
           mode="range"
@@ -188,7 +220,7 @@ export function CompetitionDateTimeRangeField({
         />
         <div className="mt-3 space-y-2 border-t border-guinness-gold/15 pt-3">
           <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-guinness-tan/55">
-            Times (local)
+            {copy.timesLocal}
           </p>
           <div className="grid grid-cols-2 gap-2 px-1">
             <div>
@@ -196,7 +228,7 @@ export function CompetitionDateTimeRangeField({
                 htmlFor="comp-window-start-time"
                 className="type-meta mb-1 block text-guinness-tan/70"
               >
-                Start
+                {copy.start}
               </label>
               <input
                 id="comp-window-start-time"
@@ -212,7 +244,7 @@ export function CompetitionDateTimeRangeField({
                 htmlFor="comp-window-end-time"
                 className="type-meta mb-1 block text-guinness-tan/70"
               >
-                End
+                {copy.end}
               </label>
               <input
                 id="comp-window-end-time"
@@ -234,14 +266,14 @@ export function CompetitionDateTimeRangeField({
               setOpen(false);
             }}
           >
-            Clear
+            {copy.clear}
           </button>
           <button
             type="button"
             className="rounded-md bg-guinness-gold/90 px-2.5 py-1 text-[11px] font-semibold text-guinness-black hover:bg-guinness-tan"
             onClick={() => setOpen(false)}
           >
-            Done
+            {copy.done}
           </button>
         </div>
       </div>
@@ -250,7 +282,7 @@ export function CompetitionDateTimeRangeField({
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="type-meta text-guinness-tan/80">Competition window</span>
+      <span className="type-meta text-guinness-tan/80">{copy.sectionLabel}</span>
       <button
         ref={btnRef}
         type="button"
@@ -260,7 +292,7 @@ export function CompetitionDateTimeRangeField({
         onClick={() => setOpen((o) => !o)}
       >
         <span className="min-w-0 truncate text-left">
-          {formatWindowLabel(startLocal, endLocal)}
+          {formatWindowLabel(startLocal, endLocal, copy.chooseWindow)}
         </span>
         <svg
           className="h-4 w-4 shrink-0 text-guinness-gold/70"
@@ -274,9 +306,7 @@ export function CompetitionDateTimeRangeField({
           <path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
       </button>
-      <p className="type-meta text-guinness-tan/55">
-        Pick the date range, then set start and end times (your device timezone).
-      </p>
+      <p className="type-meta text-guinness-tan/55">{copy.hint}</p>
       {typeof document !== "undefined" && picker
         ? createPortal(picker, document.body)
         : null}

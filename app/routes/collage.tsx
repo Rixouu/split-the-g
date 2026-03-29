@@ -7,7 +7,6 @@ import {
   PageHeader,
   EndPageNewPourFooter,
   pageShellClass,
-  wallPageDescription,
 } from "~/components/PageHeader";
 import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
 import { scorePourPathFromFields } from "~/utils/scorePath";
@@ -15,8 +14,8 @@ import { SCORES_COLLAGE_COLUMNS } from "~/utils/scoresListColumns";
 import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
 import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 
 type Submission = {
   id: string;
@@ -63,12 +62,7 @@ export const loader: LoaderFunction = async () => {
 };
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Wall",
-    description: "Explore the Split the G wall of recent pours and scores.",
-    path: seoPath(params, "/wall"),
-    keywords: ["split the g wall", "guinness collage", "pour gallery"],
-  });
+  return seoMetaForRoute(params, "/wall", "wall");
 }
 
 function formatLocation(submission: Submission) {
@@ -110,6 +104,7 @@ function endOfLocalDay(ymd: string): number {
 }
 
 export default function Collage() {
+  const { t } = useI18n();
   const { submissions } = useLoaderData<{ submissions: Submission[] }>();
   const [sort, setSort] = useState<SortOption>("newest");
   const [minScore, setMinScore] = useState<string>("0");
@@ -195,18 +190,23 @@ export default function Collage() {
       <div className={pageShellClass}>
         <div className="mb-8 space-y-6">
           <PageHeader
-            title="Split the G Collection"
-            description={wallPageDescription}
+            title={t("pages.wall.collectionTitle")}
+            description={t("pages.descriptions.wall")}
           >
             <LeaderboardButton />
           </PageHeader>
 
           <div className="rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="type-label text-guinness-gold">Filters</span>
+              <span className="type-label text-guinness-gold">
+                {t("pages.wall.filters")}
+              </span>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-guinness-tan/60 sm:text-sm">
-                  {filtered.length} of {submissions.length} shown
+                  {t("pages.wall.shownCount", {
+                    filtered: String(filtered.length),
+                    total: String(submissions.length),
+                  })}
                 </span>
                 <button
                   type="button"
@@ -214,7 +214,7 @@ export default function Collage() {
                   onClick={() => setFiltersOpen((o) => !o)}
                   className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
                 >
-                  {filtersOpen ? "Hide" : "Show"}
+                  {filtersOpen ? t("pages.wall.hide") : t("pages.wall.show")}
                 </button>
               </div>
             </div>
@@ -222,30 +222,36 @@ export default function Collage() {
               className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 ${filtersOpen ? "" : "hidden md:grid"}`}
             >
               <label className="flex flex-col gap-1.5">
-                <span className="type-meta text-guinness-tan/80">Sort by</span>
+                <span className="type-meta text-guinness-tan/80">
+                  {t("pages.wall.sortBy")}
+                </span>
                 <select
                   className={selectFieldClass}
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortOption)}
-                  aria-label="Sort submissions"
+                  aria-label={t("pages.wall.sortAria")}
                 >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="score_high">Highest score</option>
-                  <option value="score_low">Lowest score</option>
+                  <option value="newest">{t("pages.wall.sortNewest")}</option>
+                  <option value="oldest">{t("pages.wall.sortOldest")}</option>
+                  <option value="score_high">
+                    {t("pages.wall.sortScoreHigh")}
+                  </option>
+                  <option value="score_low">
+                    {t("pages.wall.sortScoreLow")}
+                  </option>
                 </select>
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="type-meta text-guinness-tan/80">
-                  Minimum score
+                  {t("pages.wall.minimumScore")}
                 </span>
                 <select
                   className={selectFieldClass}
                   value={minScore}
                   onChange={(e) => setMinScore(e.target.value)}
-                  aria-label="Minimum split score"
+                  aria-label={t("pages.wall.minScoreAria")}
                 >
-                  <option value="0">Any score</option>
+                  <option value="0">{t("pages.wall.anyScore")}</option>
                   <option value="2">2.0+</option>
                   <option value="3">3.0+</option>
                   <option value="3.5">3.5+</option>
@@ -264,14 +270,16 @@ export default function Collage() {
                 />
               </div>
               <label className="flex flex-col gap-1.5">
-                <span className="type-meta text-guinness-tan/80">Country</span>
+                <span className="type-meta text-guinness-tan/80">
+                  {t("pages.wall.country")}
+                </span>
                 <select
                   className={selectFieldClass}
                   value={countryFilter}
                   onChange={(e) => setCountryFilter(e.target.value)}
-                  aria-label="Filter by country"
+                  aria-label={t("pages.wall.countryAria")}
                 >
-                  <option value="">Any country</option>
+                  <option value="">{t("pages.wall.anyCountry")}</option>
                   {wallCountrySelectOptions.map(({ code, name }) => (
                     <option key={code} value={code}>
                       {flagEmojiFromIso2(code)} {name}
@@ -285,10 +293,9 @@ export default function Collage() {
 
         {filtered.length === 0 ? (
           <div className="rounded-lg border border-guinness-gold/20 bg-guinness-brown/30 py-16 text-center">
-            <p className="type-section text-xl">No pours match your filters</p>
+            <p className="type-section text-xl">{t("pages.wall.emptyTitle")}</p>
             <p className="type-meta mx-auto mt-2 max-w-sm">
-              Try lowering the minimum score, widening the date range, or setting
-              Country to Any country.
+              {t("pages.wall.emptyHint")}
             </p>
             <button
               type="button"
@@ -301,7 +308,7 @@ export default function Collage() {
               }}
               className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-guinness-gold px-6 py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan"
             >
-              Reset filters
+              {t("pages.wall.resetFilters")}
             </button>
           </div>
         ) : (
@@ -319,7 +326,9 @@ export default function Collage() {
                     <div className="overflow-hidden rounded-lg bg-guinness-black/50 aspect-[3/4]">
                       <img
                         src={submission.pint_image_url}
-                        alt={`Pour by ${submission.username}`}
+                        alt={t("pages.wall.pourImageAlt", {
+                          username: submission.username,
+                        })}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                         loading="lazy"
                       />

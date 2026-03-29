@@ -10,15 +10,13 @@ import { AppLink } from "~/i18n/app-link";
 import type { User } from "@supabase/supabase-js";
 import { BrandedNotice } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
-import {
-  scorePageFeedbackVariant,
-  toastAutoCloseForVariant,
-} from "~/components/branded/feedback-variant";
+import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
+import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import { type Score } from "~/types/score";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { ScoreSharePanel } from "~/components/score/ScoreSharePanel";
@@ -33,8 +31,9 @@ import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { pubDetailPath } from "~/utils/pubPath";
 import { langFromParams } from "~/i18n/lang-param";
 import { localizePath } from "~/i18n/paths";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { createTranslator } from "~/i18n/load-messages";
+import { seoMetaForRoute, seoMetaForScoreDetail } from "~/i18n/seo-meta";
 
 const COMPETITION_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -63,31 +62,32 @@ export function meta({
 }) {
   const score = data?.score;
   if (!score) {
-    return seoMeta({
-      title: "Pour Result",
-      description: "Open this Split the G pour result and challenge your friends.",
-      path: seoPath(params, "/"),
-      keywords: ["split the g result", "guinness pour score"],
-    });
+    return seoMetaForRoute(params ?? {}, "/", "scoreFallback");
   }
 
   const scoreValue = Number(score.split_score).toFixed(2);
-  const username = score.username?.trim() || "Anonymous pourer";
+  const t = createTranslator(langFromParams(params ?? {}));
+  const username =
+    score.username?.trim() || t("seo.routes.scoreDetail.anonymousUser");
   const allTimeRank = data?.allTimeRank ?? 0;
   const totalSplits = data?.totalSplits ?? 0;
   const weeklyRank = data?.weeklyRank ?? 0;
   const weeklyTotalSplits = data?.weeklyTotalSplits ?? 0;
   const image = score.pint_image_url || score.split_image_url || undefined;
 
-  return seoMeta({
-    title: `${scoreValue}/5 Split by ${username}`,
-    description: `${username} scored ${scoreValue}/5 on Split the G. All-time #${allTimeRank} of ${totalSplits}, weekly #${weeklyRank} of ${weeklyTotalSplits}.`,
-    path: seoPath(params, scorePourPath(score)),
+  return seoMetaForScoreDetail(
+    params ?? {},
+    scorePourPath(score),
+    {
+      scoreValue,
+      username,
+      allTimeRank: String(allTimeRank),
+      totalSplits: String(totalSplits),
+      weeklyRank: String(weeklyRank),
+      weeklyTotalSplits: String(weeklyTotalSplits),
+    },
     image,
-    imageAlt: `Guinness pint from ${username}'s pour on Split the G`,
-    type: "article",
-    keywords: ["split the g score", "pour challenge", "guinness rating"],
-  });
+  );
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -210,6 +210,7 @@ export default function Score() {
     isOwner: boolean;
     pubPageBarKey: string | null;
   }>();
+  const { t } = useI18n();
   const revalidator = useRevalidator();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -218,8 +219,8 @@ export default function Score() {
   const competitionId = COMPETITION_UUID_RE.test(competitionIdParam)
     ? competitionIdParam
     : "";
-  const [displayUsername, setDisplayUsername] = useState(
-    score.username || "Anonymous Pourer"
+  const [displayUsername, setDisplayUsername] = useState(() =>
+    score.username?.trim() ? score.username : "",
   );
   const [barName, setBarName] = useState(score.bar_name || "");
   const [barAddress, setBarAddress] = useState(score.bar_address || "");
@@ -264,7 +265,7 @@ export default function Score() {
       setCompetitionAttachMessage(error.message);
       return;
     }
-    setCompetitionAttachMessage("Added to competition.");
+    setCompetitionAttachMessage(t("pages.score.msgAddedCompetition"));
     revalidator.revalidate();
   }
 
@@ -277,7 +278,7 @@ export default function Score() {
 
   useEffect(() => {
     setClaimedEmail(score.email ?? null);
-    setDisplayUsername(score.username || "Anonymous Pourer");
+    setDisplayUsername(score.username?.trim() ? score.username : "");
   }, [score.email, score.username]);
 
   useEffect(() => {
@@ -341,8 +342,10 @@ export default function Score() {
     if (error) {
       const detail =
         error.message?.trim() ||
-        "Try again shortly.";
-      setSignInToastError(`Couldn’t start Google sign-in. ${detail}`);
+        t("pages.score.msgSignInTryAgainDetail");
+      setSignInToastError(
+        t("errors.signInGoogleFailed", { detail }),
+      );
     }
   };
 
@@ -391,13 +394,13 @@ export default function Score() {
 
       setDisplayUsername(leaderboardName);
       setClaimedEmail(authUser.email);
-      setClaimMessage("Score claimed successfully with Google.");
+      setClaimMessage(t("pages.score.msgClaimSuccess"));
       if (competitionId) {
         void attachScoreToCompetition(competitionId, score.id);
       }
       revalidator.revalidate();
     } catch (_error) {
-      setClaimMessage("Failed to claim this score. Please try again.");
+      setClaimMessage(t("pages.score.msgClaimFailed"));
     } finally {
       setIsClaiming(false);
     }
@@ -428,10 +431,10 @@ export default function Score() {
       if (error) throw error;
       setClaimedEmail(null);
       setDisplayUsername(nextUsername);
-      setClaimMessage("Score unclaimed. This pour is anonymous again.");
+      setClaimMessage(t("pages.score.msgUnclaimSuccess"));
       revalidator.revalidate();
     } catch (_error) {
-      setClaimMessage("Could not unclaim this score. Try again.");
+      setClaimMessage(t("pages.score.msgUnclaimFailed"));
     } finally {
       setIsUnclaiming(false);
     }
@@ -444,14 +447,14 @@ export default function Score() {
 
     const nameTrim = barName.trim();
     if (!nameTrim) {
-      setSubmitError("Enter a bar name (search or type your own).");
+      setSubmitError(t("errors.barNameRequired"));
       setIsSubmitting(false);
       return;
     }
 
     const ratingVal = parseFloat(pourRating);
     if (!Number.isFinite(ratingVal) || ratingVal < 0 || ratingVal > 5) {
-      setSubmitError("Pour rating must be between 0 and 5.");
+      setSubmitError(t("errors.ratingRange"));
       setIsSubmitting(false);
       return;
     }
@@ -461,12 +464,12 @@ export default function Score() {
     if (pintTrim !== "") {
       const p = parseFloat(pintTrim);
       if (!Number.isFinite(p) || p < 0) {
-        setSubmitError("Pint price must be zero or a positive number.");
+        setSubmitError(t("errors.pintPriceNonNegative"));
         setIsSubmitting(false);
         return;
       }
       if (p > 999_999.99) {
-        setSubmitError("Pint price is too large.");
+        setSubmitError(t("errors.pintPriceTooLarge"));
         setIsSubmitting(false);
         return;
       }
@@ -509,19 +512,22 @@ export default function Score() {
       revalidator.revalidate();
     } catch (error) {
       const msg =
-        error instanceof Error ? error.message : "Could not save rating.";
+        error instanceof Error
+          ? error.message
+          : t("errors.saveRatingFailed");
       setSubmitError(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getScoreMessage = (score: number) => {
-    if (score >= 4.7) return "Sláinte! A perfect split.";
-    if (score >= 3.75) return "Beautiful split. Like a true Dubliner.";
-    if (score >= 3.0) return "Cheers for trying. Have another go.";
-    return "The perfect split awaits. Try again.";
-  };
+  const celebrationLine = useMemo(() => {
+    const s = score.split_score;
+    if (s >= 4.7) return t("pages.score.celebrationHigh");
+    if (s >= 3.75) return t("pages.score.celebrationMidHigh");
+    if (s >= 3.0) return t("pages.score.celebrationMid");
+    return t("pages.score.celebrationLow");
+  }, [score.split_score, t]);
 
   const geoFallbackLine = [score.city, score.region, score.country]
     .filter((p): p is string => Boolean(p?.trim()))
@@ -555,11 +561,35 @@ export default function Score() {
     submitError ??
     claimMessage ??
     competitionAttachMessage ??
-    (submitSuccess ? "Rating saved successfully." : null) ??
+    (submitSuccess ? t("pages.score.msgRatingSaved") : null) ??
     "";
-  const scoreToastVariant = scoreToastText
-    ? scorePageFeedbackVariant(scoreToastText)
-    : "info";
+
+  const scoreToastVariant = useMemo((): BrandedNoticeVariant => {
+    if (signInToastError) return "warning";
+    if (submitError) return "danger";
+    if (claimMessage) {
+      if (
+        claimMessage === t("pages.score.msgClaimSuccess") ||
+        claimMessage === t("pages.score.msgUnclaimSuccess")
+      )
+        return "success";
+      return "danger";
+    }
+    if (competitionAttachMessage) {
+      return competitionAttachMessage === t("pages.score.msgAddedCompetition")
+        ? "success"
+        : "danger";
+    }
+    if (submitSuccess) return "success";
+    return "info";
+  }, [
+    signInToastError,
+    submitError,
+    claimMessage,
+    competitionAttachMessage,
+    submitSuccess,
+    t,
+  ]);
 
   return (
     <main className="min-h-screen bg-guinness-black">
@@ -568,23 +598,22 @@ export default function Score() {
         <div className="flex flex-col items-center gap-3 sm:gap-4">
           <SplitTheGLogo className="mx-auto" />
           <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-guinness-gold text-center">
-            Results
+            {t("pages.score.resultsTitle")}
           </h1>
         </div>
 
         {competitionId ? (
           <div className="mx-auto mt-4 max-w-lg rounded-lg border border-guinness-gold/30 bg-guinness-gold/10 px-4 py-3 text-center text-sm text-guinness-cream">
             <p>
-              This pour is linked to a{" "}
+              {t("pages.score.compLinked")}{" "}
               <AppLink
                 to={`/competitions/${competitionId}`}
                 viewTransition
                 className="font-semibold text-guinness-gold underline hover:text-guinness-tan"
               >
-                competition
+                {t("pages.score.competitionWord")}
               </AppLink>
-              . Join the comp (if needed), claim with Google, then save your bar
-              &amp; rating; we&apos;ll add this score automatically.
+              {t("pages.score.compLinkedHint")}
             </p>
           </div>
         ) : null}
@@ -593,7 +622,7 @@ export default function Score() {
         <div className="mt-6 sm:mt-8">
           <div className="mx-auto w-full max-w-lg rounded-2xl border border-[#312814] bg-guinness-brown/30 px-5 py-6 sm:px-7 sm:py-7">
             <p className="text-center text-lg font-semibold text-guinness-cream sm:text-xl md:text-left">
-              {displayUsername}
+              {displayUsername.trim() || t("pages.score.anonymousDisplay")}
             </p>
 
             <div className="mt-6 flex flex-col items-center gap-6 border-t border-[#312814] pt-6 md:flex-row md:items-start md:justify-between md:gap-8">
@@ -601,11 +630,15 @@ export default function Score() {
                 <p className="text-5xl font-bold tabular-nums leading-none text-guinness-gold sm:text-6xl">
                   {score.split_score.toFixed(2)}
                 </p>
-                <p className="type-meta mt-2 text-guinness-tan/65">out of 5.0</p>
+                <p className="type-meta mt-2 text-guinness-tan/65">
+                  {t("pages.score.outOfFive")}
+                </p>
               </div>
               <div className="grid w-full max-w-[16rem] grid-cols-2 gap-4 text-center md:max-w-none md:grid-cols-1 md:text-right">
                 <div>
-                  <p className="type-meta text-guinness-tan/55">All-time</p>
+                  <p className="type-meta text-guinness-tan/55">
+                    {t("pages.score.allTime")}
+                  </p>
                   <p className="mt-0.5 text-sm font-semibold text-guinness-gold sm:text-base">
                     #{allTimeRank}
                     <span className="font-normal text-guinness-tan/65">
@@ -615,7 +648,9 @@ export default function Score() {
                   </p>
                 </div>
                 <div>
-                  <p className="type-meta text-guinness-tan/55">This week</p>
+                  <p className="type-meta text-guinness-tan/55">
+                    {t("pages.score.thisWeek")}
+                  </p>
                   <p className="mt-0.5 text-sm font-semibold text-guinness-gold sm:text-base">
                     #{weeklyRank}
                     <span className="font-normal text-guinness-tan/65">
@@ -630,7 +665,9 @@ export default function Score() {
             <div className="mt-6 border-t border-[#312814] pt-5">
               {score.bar_name?.trim() ? (
                 <div className="text-center md:text-left">
-                  <p className="type-meta mb-2 text-guinness-tan/55">Venue</p>
+                  <p className="type-meta mb-2 text-guinness-tan/55">
+                    {t("pages.score.venue")}
+                  </p>
                   {pubPageBarKey ? (
                     <AppLink
                       to={pubDetailPath(pubPageBarKey)}
@@ -652,18 +689,20 @@ export default function Score() {
                 </div>
               ) : geoFallbackLine ? (
                 <div className="text-center md:text-left">
-                  <p className="type-meta mb-1.5 text-guinness-tan/55">Location</p>
+                  <p className="type-meta mb-1.5 text-guinness-tan/55">
+                    {t("pages.score.location")}
+                  </p>
                   <p className="text-sm text-guinness-tan/80">{geoFallbackLine}</p>
                 </div>
               ) : (
                 <p className="type-meta text-center text-guinness-tan/60 md:text-left">
-                  No venue saved for this pour.
+                  {t("pages.score.noVenueSaved")}
                 </p>
               )}
             </div>
 
             <p className="mt-6 border-t border-[#312814] pt-5 text-center text-base leading-snug text-guinness-cream/90 md:text-left md:text-lg">
-              {getScoreMessage(score.split_score)}
+              {celebrationLine}
             </p>
           </div>
         </div>
@@ -671,33 +710,33 @@ export default function Score() {
         {/* Image comparison — close-up vs annotated frame */}
         <section
           className="mt-8 md:mt-10"
-          aria-label="Pour close-up and annotated photo"
+          aria-label={t("pages.score.imagesSectionAria")}
         >
           <div className="grid grid-cols-1 gap-3 sm:gap-4 md:mx-auto md:max-w-4xl md:grid-cols-2 lg:gap-5">
             <article className="flex flex-col rounded-2xl border border-[#312814] bg-guinness-brown/30 p-4 shadow-[inset_0_1px_0_rgba(212,175,55,0.05)] sm:p-5">
               <header className="mb-4 border-b border-[#312814] pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="type-card-title text-base sm:text-lg">
-                    Your Split G
+                    {t("pages.score.splitGTitle")}
                   </h3>
                   <span className="shrink-0 rounded-md border border-[#312814] bg-guinness-black/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-guinness-tan/70 sm:text-[11px]">
-                    Close-up
+                    {t("pages.score.closeupBadge")}
                   </span>
                 </div>
                 <p className="type-meta mt-2 text-guinness-tan/65">
-                  Zoomed on the logo and foam line
+                  {t("pages.score.closeupHint")}
                 </p>
               </header>
               <div className="aspect-square overflow-hidden rounded-xl border border-[#312814] bg-guinness-black/55">
                 {closeupUrl ? (
                   <img
                     src={closeupUrl}
-                    alt="G logo close-up from your split"
+                    alt={t("pages.score.closeupAlt")}
                     className="h-full w-full object-contain"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center px-4 type-meta text-guinness-tan/55">
-                    No image available
+                    {t("pages.score.noImageAvailable")}
                   </div>
                 )}
               </div>
@@ -707,26 +746,26 @@ export default function Score() {
               <header className="mb-4 border-b border-[#312814] pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="type-card-title text-base sm:text-lg">
-                    Original pour
+                    {t("pages.score.originalPourTitle")}
                   </h3>
                   <span className="shrink-0 rounded-md border border-[#312814] bg-guinness-black/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-guinness-tan/70 sm:text-[11px]">
-                    Full frame
+                    {t("pages.score.fullFrameBadge")}
                   </span>
                 </div>
                 <p className="type-meta mt-2 text-guinness-tan/65">
-                  Model boxes and labels on your photo
+                  {t("pages.score.annotatedHint")}
                 </p>
               </header>
               <div className="aspect-square overflow-hidden rounded-xl border border-[#312814] bg-guinness-black/55">
                 {annotatedUrl ? (
                   <img
                     src={annotatedUrl}
-                    alt="Annotated pour analysis"
+                    alt={t("pages.score.annotatedAlt")}
                     className="h-full w-full object-contain"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center px-4 type-meta text-guinness-tan/55">
-                    No image available
+                    {t("pages.score.noImageAvailable")}
                   </div>
                 )}
               </div>
@@ -737,18 +776,18 @@ export default function Score() {
         {isOwner && (
           <div className="mx-auto mt-8 max-w-3xl md:grid md:grid-cols-2 md:items-start md:gap-x-10 lg:gap-x-14">
             <section className="border-b border-guinness-gold/15 pb-8 md:border-b-0 md:border-r md:border-guinness-gold/15 md:pb-0 md:pr-8 lg:pr-10">
-              <h2 className="type-card-title">Claim this split</h2>
+              <h2 className="type-card-title">
+                {t("pages.score.claimSplitTitle")}
+              </h2>
               <p className="type-meta mt-2">
-                Sign in with Google to claim this score to your email. If you set a
-                nickname under Profile, that name is used on the feed; otherwise we
-                use your Google name.
+                {t("pages.score.claimSplitBlurb")}
               </p>
 
               <div className="mt-5 space-y-3">
                 {claimedEmail ? (
                   <>
                     <p className="type-label text-guinness-gold">
-                      Claimed by: {claimedEmail}
+                      {t("pages.score.claimedBy", { email: claimedEmail })}
                     </p>
                     {canUnclaim ? (
                       <button
@@ -757,20 +796,26 @@ export default function Score() {
                         onClick={() => setUnclaimConfirmOpen(true)}
                         className="w-full rounded-lg border border-red-400/40 bg-red-950/20 px-4 py-2.5 text-sm font-semibold text-red-300/95 transition-colors hover:bg-red-950/35 disabled:opacity-50"
                       >
-                        {isUnclaiming ? "Working…" : "Unclaim this split"}
+                        {isUnclaiming
+                          ? t("pages.score.unclaimWorking")
+                          : t("pages.score.unclaimButton")}
                       </button>
                     ) : null}
                   </>
                 ) : authUser ? (
                   <>
-                    <p className="type-meta text-guinness-tan/70">Signed in as: {authUser.email}</p>
+                    <p className="type-meta text-guinness-tan/70">
+                      {t("pages.score.signedInAs", { email: authUser.email ?? "" })}
+                    </p>
                     <button
                       type="button"
                       onClick={handleClaimWithGoogle}
                       disabled={isClaiming}
                       className="w-full rounded-lg bg-guinness-gold px-4 py-2.5 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isClaiming ? "Claiming..." : "Claim with Google"}
+                      {isClaiming
+                        ? t("pages.score.claiming")
+                        : t("pages.score.claimWithGoogle")}
                     </button>
                   </>
                 ) : (
@@ -780,7 +825,9 @@ export default function Score() {
                     disabled={isAuthLoading}
                     className="w-full rounded-lg bg-white px-4 py-2.5 font-medium text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isAuthLoading ? "Checking sign-in..." : "Sign in with Google"}
+                    {isAuthLoading
+                      ? t("pages.score.checkingSignIn")
+                      : t("pages.score.signInGoogle")}
                   </button>
                 )}
               </div>
@@ -789,25 +836,36 @@ export default function Score() {
             <section className="pt-8 md:pt-0">
               {hasSavedRating ? (
                 <>
-                  <h2 className="type-card-title">Your rating</h2>
+                  <h2 className="type-card-title">
+                    {t("pages.score.yourRatingTitle")}
+                  </h2>
                   <dl className="mt-4 divide-y divide-guinness-gold/10">
                     <div className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-4">
-                      <dt className="type-label text-guinness-tan/75">Bar name</dt>
+                      <dt className="type-label text-guinness-tan/75">
+                        {t("pages.score.barNameLabel")}
+                      </dt>
                       <dd className="text-guinness-cream">{score.bar_name}</dd>
                     </div>
                     <div className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-4">
-                      <dt className="type-label text-guinness-tan/75">Pour rating</dt>
+                      <dt className="type-label text-guinness-tan/75">
+                        {t("pages.score.dtPourRating")}
+                      </dt>
                       <dd className="tabular-nums text-guinness-cream">
-                        {Number(score.pour_rating).toFixed(1)} / 5
+                        {Number(score.pour_rating).toFixed(1)}
+                        {t("pages.score.slashOutOfFive")}
                       </dd>
                     </div>
                     <div className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-4">
-                      <dt className="type-label text-guinness-tan/75">Pint price</dt>
+                      <dt className="type-label text-guinness-tan/75">
+                        {t("pages.score.dtPintPrice")}
+                      </dt>
                       <dd className="text-guinness-cream">
-                        {pintPriceSavedLabel != null ? pintPriceSavedLabel : "Not set"}
+                        {pintPriceSavedLabel != null
+                          ? pintPriceSavedLabel
+                          : t("pages.score.notSet")}
                         {pintPriceSavedLabel != null ? (
                           <span className="type-meta ml-2 text-guinness-tan/50">
-                            (your local currency)
+                            {t("pages.score.localCurrencyHint")}
                           </span>
                         ) : null}
                       </dd>
@@ -816,15 +874,14 @@ export default function Score() {
                 </>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <h2 className="type-card-title">Rate the pour</h2>
-                  <p className="type-meta">
-                    Search for the venue or type its name, set your rating, and
-                    optionally log what you paid for expense tracking.
-                  </p>
+                  <h2 className="type-card-title">
+                    {t("pages.score.ratePourTitle")}
+                  </h2>
+                  <p className="type-meta">{t("pages.score.ratePourBlurb")}</p>
                   <div className="space-y-5 pt-1">
                   <div>
                     <label htmlFor="barName" className="type-label mb-1 block">
-                      Bar or venue
+                      {t("pages.score.barOrVenueLabel")}
                     </label>
                     <PlacesAutocomplete
                       initialValue={barName}
@@ -843,9 +900,9 @@ export default function Score() {
                   </div>
                   <div>
                     <label htmlFor="pintPrice" className="type-label mb-1 block">
-                      Pint price{" "}
+                      {t("pages.score.pintPriceShort")}{" "}
                       <span className="font-normal text-guinness-tan/60">
-                        (optional)
+                        {t("pages.score.pintPriceOptionalParenthetical")}
                       </span>
                     </label>
                     <input
@@ -854,14 +911,13 @@ export default function Score() {
                       inputMode="decimal"
                       min={0}
                       step={0.01}
-                      placeholder="e.g. 8.50"
+                      placeholder={t("pages.score.pintPricePlaceholder")}
                       value={pintPrice}
                       onChange={(e) => setPintPrice(e.target.value)}
                       className="w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream placeholder:text-guinness-tan/40 focus:border-guinness-gold focus:outline-none"
                     />
                     <p className="type-meta mt-1.5 text-guinness-tan/55">
-                      Amount you paid. Use your usual currency; we only store the
-                      number.
+                      {t("pages.score.pintPriceHint")}
                     </p>
                   </div>
                   <div>
@@ -871,13 +927,14 @@ export default function Score() {
                         id="pourRatingLabel"
                         className="type-label"
                       >
-                        Pour rating
+                        {t("pages.score.pourRatingSliderLabel")}
                       </label>
                       <span
                         className="text-lg font-semibold tabular-nums text-guinness-gold"
                         aria-live="polite"
                       >
-                        {ratingDisplay} / 5
+                        {ratingDisplay}
+                        {t("pages.score.slashOutOfFive")}
                       </span>
                     </div>
                     <input
@@ -890,7 +947,9 @@ export default function Score() {
                       onChange={(e) => setPourRating(e.target.value)}
                       className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-guinness-black/80 accent-guinness-gold"
                       aria-labelledby="pourRatingLabel"
-                      aria-valuetext={`${ratingDisplay} out of 5`}
+                      aria-valuetext={t("pages.score.ariaRatingOutOfFive", {
+                        rating: ratingDisplay,
+                      })}
                     />
                     <div className="mt-1 flex justify-between type-meta text-guinness-tan/60">
                       <span>0</span>
@@ -902,7 +961,9 @@ export default function Score() {
                     disabled={isSubmitting}
                     className="w-full rounded-lg bg-guinness-gold px-4 py-3 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isSubmitting ? "Saving..." : "Save rating"}
+                    {isSubmitting
+                      ? t("pages.score.savingShort")
+                      : t("pages.score.saveRating")}
                   </button>
                 </div>
               </form>
@@ -914,7 +975,7 @@ export default function Score() {
         {/* Actions + support — single panel */}
         <section
           className="mx-auto mt-8 w-full max-w-xl rounded-2xl bg-guinness-brown/20 px-5 py-6 shadow-[inset_0_1px_0_rgba(212,175,55,0.06)] ring-1 ring-guinness-gold/10 sm:px-6 sm:py-7 md:max-w-3xl"
-          aria-label="Share, pour again, and leaderboard"
+          aria-label={t("pages.score.shareActionsAria")}
         >
           <ScoreSharePanel
             sharePath={scorePourPath(score)}
@@ -932,7 +993,7 @@ export default function Score() {
               viewTransition
               className="flex min-h-12 w-full items-center justify-center rounded-lg bg-guinness-gold px-4 py-3 text-center text-sm font-semibold text-guinness-black shadow-[0_0_0_1px_rgba(212,175,55,0.2)] transition-colors hover:bg-guinness-tan sm:text-base"
             >
-              Try again
+              {t("pages.score.tryAgain")}
             </AppLink>
 
             <LeaderboardButton className="flex min-h-12 w-full items-center justify-center px-4 py-3 text-sm sm:text-base" />
@@ -940,7 +1001,7 @@ export default function Score() {
 
           <div className="mt-5 flex flex-col items-center justify-center gap-1 border-t border-guinness-gold/10 pt-5 text-center sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1">
             <span className="type-meta text-guinness-tan/55">
-              Enjoying Split the G?
+              {t("pages.score.enjoying")}
             </span>
             <BuyCreatorABeer variant="compact" />
           </div>
@@ -953,9 +1014,9 @@ export default function Score() {
         variant={scoreToastVariant}
         title={
           scoreToastVariant === "danger"
-            ? "Couldn’t complete that"
+            ? t("pages.score.toastCouldntComplete")
             : scoreToastVariant === "warning"
-              ? "Heads up"
+              ? t("pages.score.toastHeadsUp")
               : undefined
         }
         onClose={() => {
@@ -971,11 +1032,13 @@ export default function Score() {
       <BrandedNotice
         open={unclaimConfirmOpen}
         onOpenChange={setUnclaimConfirmOpen}
-        title="Unclaim this split?"
-        description="Your email will be removed from this pour and it will show an anonymous name again. You can reclaim it later if you still have this device session."
+        title={t("pages.score.unclaimDialogTitle")}
+        description={t("pages.score.unclaimDialogDescription")}
         variant="warning"
-        secondaryLabel="Keep claim"
-        primaryLabel={isUnclaiming ? "…" : "Unclaim"}
+        secondaryLabel={t("pages.score.keepClaim")}
+        primaryLabel={
+          isUnclaiming ? t("pages.score.unclaimBusy") : t("pages.score.unclaimConfirm")
+        }
         onPrimary={() => void handleUnclaim()}
       />
     </main>

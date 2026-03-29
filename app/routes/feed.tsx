@@ -3,7 +3,6 @@ import { AppLink } from "~/i18n/app-link";
 import type { LoaderFunctionArgs } from "react-router";
 import {
   PageHeader,
-  feedPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
@@ -11,8 +10,8 @@ import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_LIST_COLUMNS } from "~/utils/scoresListColumns";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 
 type FeedRow = {
   id: string;
@@ -56,12 +55,7 @@ export async function loader(_args: LoaderFunctionArgs) {
 }
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Live Feed",
-    description: "Browse recent Split the G pours, scores, and pub activity.",
-    path: seoPath(params, "/feed"),
-    keywords: ["split the g feed", "recent guinness pours"],
-  });
+  return seoMetaForRoute(params, "/feed", "feed");
 }
 
 function formatWhen(iso: string) {
@@ -74,20 +68,24 @@ function formatWhen(iso: string) {
 }
 
 export default function Feed() {
+  const { t } = useI18n();
   const { items } = useLoaderData<typeof loader>();
 
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Feed" description={feedPageDescription}>
+        <PageHeader
+          title={t("pages.feed.title")}
+          description={t("pages.descriptions.feed")}
+        >
           <AppLink to="/" viewTransition className={pageHeaderActionButtonClass}>
-            Pour
+            {t("common.pour")}
           </AppLink>
         </PageHeader>
 
         {items.length === 0 ? (
           <p className="type-meta rounded-lg border border-guinness-gold/20 bg-guinness-brown/40 p-8 text-center text-guinness-tan/80">
-            No submissions yet. Be the first on the home screen.
+            {t("pages.feed.empty")}
           </p>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -109,7 +107,7 @@ export default function Feed() {
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-xs text-guinness-tan/50">
-                        No image
+                        {t("pages.feed.noImage")}
                       </div>
                     )}
                   </div>

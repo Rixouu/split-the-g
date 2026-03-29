@@ -1,0 +1,22 @@
+{
+  "boundaryTitle": "¡Ups!",
+  "boundaryUnexpected": "Se produjo un error inesperado.",
+  "boundaryError": "Error",
+  "boundary404": "No se pudo encontrar la página solicitada.",
+  "noGDetected": "No se detectó G",
+  "noGPattern": "No se detectó ningún patrón G",
+  "failedProcessImage": "No se pudo procesar la imagen",
+  "genericPourError": "Algo salió mal al procesar su vertido.",
+  "invalidImageType": "Elija un archivo de imagen (por ejemplo, JPG o PNG).",
+  "imageTooLarge": "Esa imagen es demasiado grande (máximo {maxMb} MB). Prueba con una foto más pequeña.",
+  "readImageFailed": "No pudimos leer esa imagen. Pruebe con otra foto o expórtela nuevamente.",
+  "readImageFailedShort": "No pude leer esa imagen. Pruebe con un archivo diferente.",
+  "invalidAction": "Acción no válida",
+  "barNameRequired": "Ingrese el nombre de una barra (busque o escriba el suyo propio).",
+  "ratingRange": "La calificación de vertido debe estar entre 0 y 5.",
+  "pintPriceNonNegative": "El precio de la pinta debe ser cero o un número positivo.",
+  "pintPriceTooLarge": "El precio de la pinta es demasiado alto.",
+  "saveRatingFailed": "No se pudo guardar la calificación.",
+  "signInGoogleFailed": "No se pudo iniciar el inicio de sesión de Google. {detail}",
+  "couldNotUpdatePours": "No se pudieron actualizar los registros de vertido."
+}

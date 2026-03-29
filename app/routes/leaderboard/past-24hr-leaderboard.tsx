@@ -2,8 +2,7 @@ import { type LoaderFunction } from "react-router";
 import { useLoaderData } from "react-router";
 import { supabase } from "~/utils/supabase";
 import { CountryLeaderboardLayout } from "~/components/leaderboard/CountryLeaderboardLayout";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 
 type CountryStats = {
   country: string;
@@ -22,12 +21,7 @@ export const loader: LoaderFunction = async () => {
 };
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Past 24 Hours Leaderboard",
-    description: "Country rankings for the last 24 hours of Split the G pours.",
-    path: seoPath(params, "/past24hrleaderboard"),
-    keywords: ["24 hour leaderboard", "split the g daily ranking"],
-  });
+  return seoMetaForRoute(params, "/past24hrleaderboard", "past24hr");
 }
 
 export default function Collage() {
@@ -36,7 +30,6 @@ export default function Collage() {
   return (
     <CountryLeaderboardLayout
       activePage="past24hr"
-      tableTitle="Past 24 Hour Splits By Country"
       submissions={submissions}
     />
   );

@@ -1,0 +1,114 @@
+{
+  "defaultTitle": "スプリット・ザ・G",
+  "defaultDescription": "AI で Guinness を注いでスコアを付け、スプリットを共有し、パブ、友人、毎週のリーダーボードを登り詰めましょう。",
+  "ogDefaultImageAlt": "暗いブランド背景の Split The G ワードマーク",
+  "routes": {
+    "root": {
+      "title": "スプリット・ザ・G",
+      "description": "AI で Guinness を注いでスコアを付け、スプリットを共有し、パブ、友人、毎週のリーダーボードを登り詰めましょう。",
+      "keywords": "AI ビールスコアリング|パブリーダーボード|注ぎチャレンジ"
+    },
+    "home": {
+      "title": "Split the G 得点者",
+      "description": "パイントを飲むと、数秒で AI Split the G スコアが得られます。",
+      "keywords": "G スコアラーを分割|ギネス スコア アプリ|注ぎアナライザー"
+    },
+    "feed": {
+      "title": "ライブフィード",
+      "description": "最近の Split the G のプレー、スコア、パブのアクティビティを閲覧します。",
+      "keywords": "グラムフィードを分割|最近のギネス注ぎ"
+    },
+    "pubs": {
+      "title": "パブ",
+      "description": "パブを検索し、平均注力率を比較し、各パブの壁を開けます。",
+      "keywords": "ギネス パブ|パブ リーダーボード|スプリット ザ G パブ"
+    },
+    "pubDetail": {
+      "title": "パブの詳細",
+      "description": "パブのプロフィール、地図、その会場の最新の Split the G を表示します。",
+      "keywords": "パブの壁|ギネス パブ スコア"
+    },
+    "competitions": {
+      "title": "競技会",
+      "description": "友達と Split the G コンテストを作成または参加したり、ライブ リーダーボードを作成したりできます。",
+      "keywords": "スプリット ザ G コンペティション | ギネス チャレンジ | フレンド リーダーボード"
+    },
+    "competitionDetail": {
+      "title": "コンテストの詳細",
+      "description": "この Split the G コンテストの順位、参加者、最近の参加者数を追跡します。",
+      "keywords": "競争のリーダーボード|G トーナメントを分割"
+    },
+    "profile": {
+      "title": "プロフィール",
+      "description": "Split the G プロフィール、進行状況、スコア、お気に入り、支出、友達を管理します。",
+      "keywords": "G プロフィールを分割 | 進行状況を注ぐ | 友達のリーダーボード"
+    },
+    "account": {
+      "title": "アカウント",
+      "description": "表示名、リーダーボードのニックネーム、国旗、Split the G のサインインを更新します。",
+      "keywords": "g アカウントを分割する | プロファイル設定"
+    },
+    "progress": {
+      "title": "プロファイルの進捗状況",
+      "description": "平均スコアの傾向、最高の注ぎ方、友人の進捗状況を Split the G で追跡します。",
+      "keywords": "G の進行状況を分割する | 統計を注ぐ"
+    },
+    "expenses": {
+      "title": "プロフィールの経費",
+      "description": "リンクされた Split the G 注ぎから、パイントの支出合計と価格傾向を確認します。",
+      "keywords": "パイントの支出|ビールの費用|グラムの価格を分割する"
+    },
+    "scores": {
+      "title": "プロフィールスコア",
+      "description": "最近の Split the G の結果とスコア履歴を確認します。",
+      "keywords": "g 履歴を分割|最近の注水"
+    },
+    "favorites": {
+      "title": "プロフィール お気に入りのバー",
+      "description": "Split the G でお気に入りのパブを保存して管理します。",
+      "keywords": "お気に入りのパブ|プロフィールのお気に入り"
+    },
+    "friends": {
+      "title": "プロフィール 友達",
+      "description": "友達リクエストを管理し、Split the G スコアを比較します。",
+      "keywords": "友達を分割|友達の招待"
+    },
+    "faq": {
+      "title": "よくある質問",
+      "description": "Split the G のスコア、共有、パブ、コンテスト、プロフィール機能に関する回答。",
+      "keywords": "スプリット ザ グラム FAQ|ギネス アプリの質問"
+    },
+    "leaderboard": {
+      "title": "リーダーボード",
+      "description": "グローバル、ローカル、友達タブ全体でトップの Split the G スコアを確認します。",
+      "keywords": "スプリット・ザ・G リーダーボード|週間ギネスランキング"
+    },
+    "wall": {
+      "title": "壁",
+      "description": "最近のプレーとスコアの Split the G の壁を探索してください。",
+      "keywords": "G の壁を分割|ギネス コラージュ|ギャラリーを注ぐ"
+    },
+    "past24hr": {
+      "title": "過去 24 時間のリーダーボード",
+      "description": "過去 24 時間のSplit the G 件の国別ランキング。",
+      "keywords": "24 時間リーダーボード|毎日のランキングを分割"
+    },
+    "country": {
+      "title": "国別リーダーボード",
+      "description": "投稿数と平均Split the Gスコアによる歴代の国ランキング。",
+      "keywords": "国のリーダーボード|G ヶ国を分割する"
+    },
+    "scoreFallback": {
+      "title": "注入結果",
+      "description": "この Split the G の注出結果を開いて、友達に挑戦してください。",
+      "keywords": "スプリット ザ G 結果|ギネス スコア スコア"
+    },
+    "scoreDetail": {
+      "title": "{scoreValue}/5 {username} で分割",
+      "description": "{username} は Split the G で {scoreValue}/5 を獲得しました。常時 #{allTimeRank}/{totalSplits}、毎週 #{weeklyRank}/{weeklyTotalSplits}。",
+      "imageAlt": "{username} が Split the G に注いだものから Guinness パイント",
+      "keywords": "G スコアを分割|注ぐチャレンジ|ギネス評価",
+      "anonymousUser": "匿名の注ぎ手"
+    }
+  }
+}

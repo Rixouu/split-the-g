@@ -13,14 +13,13 @@ import {
   PageHeader,
   pageHeaderActionButtonClass,
   pageShellClass,
-  pubsPageDescription,
 } from "~/components/PageHeader";
 import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import {
   PubVenueCard,
   PUB_VENUE_CARD_STROKE as PUB_LIST_STROKE,
@@ -41,12 +40,7 @@ export type BarStat = {
 };
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Pubs",
-    description: "Find pubs, compare average pour ratings, and open each pub wall.",
-    path: seoPath(params, "/pubs"),
-    keywords: ["guinness pubs", "pub leaderboard", "split the g pubs"],
-  });
+  return seoMetaForRoute(params, "/pubs", "pubs");
 }
 
 function aggregateFromScores(
@@ -165,6 +159,7 @@ export async function loader(_args: LoaderFunctionArgs) {
 }
 
 export default function Pubs() {
+  const { t } = useI18n();
   const { bars, source } = useLoaderData<typeof loader>();
   const [search, setSearch] = useState("");
   const [minPours, setMinPours] = useState("0");
@@ -257,7 +252,7 @@ export default function Pubs() {
   async function toggleFavorite(b: BarStat) {
     setFavMessage(null);
     if (!userId) {
-      setFavMessage("Sign in from Profile to save favorites.");
+      setFavMessage(t("pages.pubs.signInForFavorites"));
       return;
     }
 
@@ -310,19 +305,21 @@ export default function Pubs() {
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Pubs" description={pubsPageDescription}>
+        <PageHeader
+          title={t("pages.pubs.title")}
+          description={t("pages.descriptions.pubs")}
+        >
           <AppLink
             to="/feed"
             {...routeViewTransitionLinkProps}
             className={pageHeaderActionButtonClass}
           >
-            Browse feed
+            {t("nav.browseFeed")}
           </AppLink>
         </PageHeader>
         {source === "fallback" ? (
           <p className="type-meta -mt-2 mb-6 text-guinness-tan/55">
-            Using live aggregate (apply the latest migration for the optimized
-            view).
+            {t("pages.pubs.fallbackHint")}
           </p>
         ) : null}
 
@@ -330,10 +327,15 @@ export default function Pubs() {
           className={`mb-6 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-brown/40 p-4`}
         >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="type-label text-guinness-gold">Filters</span>
+            <span className="type-label text-guinness-gold">
+              {t("pages.pubs.filters")}
+            </span>
             <div className="flex items-center gap-2">
               <span className="text-xs text-guinness-tan/60">
-                {filteredBars.length} of {bars.length} shown
+                {t("pages.pubs.shownCount", {
+                  filtered: String(filteredBars.length),
+                  total: String(bars.length),
+                })}
               </span>
               <button
                 type="button"
@@ -341,7 +343,7 @@ export default function Pubs() {
                 onClick={() => setFiltersOpen((o) => !o)}
                 className={`rounded-lg border ${PUB_LIST_STROKE} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
               >
-                {filtersOpen ? "Hide" : "Show"}
+                {filtersOpen ? t("pages.pubs.hide") : t("pages.pubs.show")}
               </button>
             </div>
           </div>
@@ -349,44 +351,48 @@ export default function Pubs() {
             className={`grid grid-cols-1 gap-3 sm:grid-cols-3 ${filtersOpen ? "" : "hidden md:grid"}`}
           >
             <label className="flex flex-col gap-1.5">
-              <span className="type-meta text-guinness-tan/80">Search name</span>
+              <span className="type-meta text-guinness-tan/80">
+                {t("pages.pubs.searchName")}
+              </span>
               <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Bar name…"
+                placeholder={t("pages.pubs.barNamePlaceholder")}
                 className={filterInputClass}
-                aria-label="Filter by bar name"
+                aria-label={t("pages.pubs.filterBarNameAria")}
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="type-meta text-guinness-tan/80">Min pours</span>
+              <span className="type-meta text-guinness-tan/80">
+                {t("pages.pubs.minPours")}
+              </span>
               <select
                 className={selectFieldClass}
                 value={minPours}
                 onChange={(e) => setMinPours(e.target.value)}
-                aria-label="Minimum pour count"
+                aria-label={t("pages.pubs.minPoursAria")}
               >
-                <option value="0">Any</option>
-                <option value="2">2+</option>
-                <option value="5">5+</option>
-                <option value="10">10+</option>
+                <option value="0">{t("pages.pubs.any")}</option>
+                <option value="2">{t("pages.pubs.minPour2")}</option>
+                <option value="5">{t("pages.pubs.minPour5")}</option>
+                <option value="10">{t("pages.pubs.minPour10")}</option>
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="type-meta text-guinness-tan/80">
-                Min avg rating
+                {t("pages.pubs.minAvgRating")}
               </span>
               <select
                 className={selectFieldClass}
                 value={minRating}
                 onChange={(e) => setMinRating(e.target.value)}
-                aria-label="Minimum average pour rating"
+                aria-label={t("pages.pubs.minRatingAria")}
               >
-                <option value="">Any</option>
-                <option value="3">3+</option>
-                <option value="4">4+</option>
-                <option value="4.5">4.5+</option>
+                <option value="">{t("pages.pubs.any")}</option>
+                <option value="3">{t("pages.pubs.rating3")}</option>
+                <option value="4">{t("pages.pubs.rating4")}</option>
+                <option value="4.5">{t("pages.pubs.rating45")}</option>
               </select>
             </label>
           </div>
@@ -402,13 +408,13 @@ export default function Pubs() {
           <p
             className={`type-meta rounded-lg border ${PUB_LIST_STROKE} bg-guinness-brown/40 p-6 text-center text-guinness-tan/75`}
           >
-            No bar names saved yet. Rate a pour on a score page to add one.
+            {t("pages.pubs.noBarsYet")}
           </p>
         ) : filteredBars.length === 0 ? (
           <p
             className={`type-meta rounded-lg border ${PUB_LIST_STROKE} bg-guinness-brown/40 p-6 text-center text-guinness-tan/75`}
           >
-            No pubs match your filters.
+            {t("pages.pubs.noMatchFilters")}
           </p>
         ) : (
           <ul className="grid gap-3 sm:gap-4">
@@ -434,7 +440,7 @@ export default function Pubs() {
                         prefetch="intent"
                         className={pubVenueCardActionOutlineClass}
                       >
-                        View
+                        {t("pages.pubs.view")}
                       </AppLink>
                       <button
                         type="button"
@@ -446,7 +452,11 @@ export default function Pubs() {
                             : pubVenueCardActionMutedClass
                         }
                       >
-                        {busy ? "…" : isFav ? "Saved" : "Favorite"}
+                        {busy
+                          ? t("pages.pubs.busy")
+                          : isFav
+                            ? t("pages.pubs.saved")
+                            : t("pages.pubs.favorite")}
                       </button>
                     </>
                   }

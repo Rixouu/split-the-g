@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Link,
   useSubmit,
   useActionData,
   redirect,
   useSearchParams,
 } from "react-router";
+import { AppLink } from "~/i18n/app-link";
 import { PintGlassOverlay } from "~/components/PintGlassOverlay";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { useI18n } from "~/i18n/context";
 import { langFromParams } from "~/i18n/lang-param";
 import { localizePath } from "~/i18n/paths";
 import type {
@@ -19,8 +20,7 @@ import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 
 const isClient = typeof window !== "undefined";
 
@@ -88,12 +88,7 @@ export async function loader(_args: LoaderFunctionArgs) {
 }
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Split the G Scorer",
-    description: "Snap your pint and get an AI Split the G score in seconds.",
-    path: seoPath(params, "/"),
-    keywords: ["split the g scorer", "guinness score app", "pour analyzer"],
-  });
+  return seoMetaForRoute(params, "/", "home");
 }
 
 const UUID_RE =
@@ -190,8 +185,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (!predictionsIncludeClass(extracted, "G")) {
         return {
           success: false,
-          error: "No G detected",
-          message: "No G pattern detected",
+          error: "NO_G",
           status: 400,
         };
       }
@@ -270,8 +264,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (!hasG) {
         return {
           success: false,
-          error: "No G detected",
-          message: "No G pattern detected",
+          error: "NO_G",
           status: 400,
         };
       }
@@ -407,14 +400,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     return {
       success: false,
-      message: "Failed to process image",
-      error: errorMessage,
+      error: "PROCESS_FAILED",
+      detail: errorMessage,
       status: 500,
     };
   }
 }
 
 export default function Home() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -456,8 +450,7 @@ export default function Home() {
         console.error("Could not load inference module:", err);
         if (cancelled) return;
         setHomeToast({
-          message:
-            "Live camera guidance is temporarily unavailable. You can still upload a photo.",
+          message: t("pages.home.inferenceUnavailable"),
           variant: "warning",
         });
       });
@@ -465,7 +458,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [isCameraActive, inferEngine]);
+  }, [isCameraActive, inferEngine, t]);
 
   const [modelWorkerId, setModelWorkerId] = useState<string | null>(null);
   const [modelLoading, setModelLoading] = useState(false);
@@ -521,8 +514,7 @@ export default function Home() {
         mediaStreamRef.current = null;
         setIsCameraActive(false);
         setHomeToast({
-          message:
-            "Camera unavailable or permission denied. Allow camera access or use Upload an image instead.",
+          message: t("pages.home.cameraDenied"),
           variant: "warning",
         });
       });
@@ -539,7 +531,7 @@ export default function Home() {
       }
       setIsVideoReady(false);
     };
-  }, [isCameraActive]);
+  }, [isCameraActive, t]);
 
   // Release camera when the user leaves the tab (indicator otherwise stays on in many browsers).
   useEffect(() => {
@@ -559,8 +551,8 @@ export default function Home() {
 
   // Add new state for tracking detections
   const [, setConsecutiveDetections] = useState(0);
-  const [feedbackMessage, setFeedbackMessage] = useState(
-    "Show your pint glass"
+  const [feedbackMessage, setFeedbackMessage] = useState(() =>
+    t("pages.home.feedbackShowGlass"),
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -611,7 +603,7 @@ export default function Home() {
                 if (prev >= 4) return prev;
                 const next = prev + 1;
                 if (next === 4) {
-                  setFeedbackMessage("Perfect! Processing your pour...");
+                  setFeedbackMessage(t("pages.home.feedbackPerfect"));
                   setIsProcessing(true);
                   setIsSubmitting(true);
 
@@ -645,18 +637,18 @@ export default function Home() {
                     });
                   }
                 } else if (next >= 2) {
-                  setFeedbackMessage("Hold still...");
+                  setFeedbackMessage(t("pages.home.feedbackHoldStill"));
                 } else {
-                  setFeedbackMessage("Keep the glass centered...");
+                  setFeedbackMessage(t("pages.home.feedbackCentered"));
                 }
                 return next;
               });
             } else {
               setConsecutiveDetections(0);
               if (!hasGlass) {
-                setFeedbackMessage("Show your pint glass");
+                setFeedbackMessage(t("pages.home.feedbackShowGlass"));
               } else if (!hasG) {
-                setFeedbackMessage("Make sure the G pattern is visible");
+                setFeedbackMessage(t("pages.home.feedbackGVisible"));
               }
             }
           } catch (error) {
@@ -682,6 +674,7 @@ export default function Home() {
     submit,
     stopCameraTracks,
     competitionIdParam,
+    t,
   ]);
 
   // Update the effect that handles action response
@@ -690,28 +683,24 @@ export default function Home() {
     setIsUploadProcessing(false);
     setIsSubmitting(false);
 
-    if (actionData.error === "No G detected") {
+    if (actionData.error === "NO_G") {
       setShowNoGModal(true);
       return;
     }
 
-    if (
-      "success" in actionData &&
-      actionData.success === false &&
-      actionData.error !== "No G detected"
-    ) {
+    if ("success" in actionData && actionData.success === false) {
       const msg =
-        typeof actionData.message === "string" && actionData.message.trim()
-          ? actionData.message.trim()
-          : typeof actionData.error === "string"
-            ? actionData.error
-            : "Something went wrong processing your pour.";
+        actionData.error === "PROCESS_FAILED"
+          ? t("errors.failedProcessImage")
+          : typeof (actionData as { detail?: string }).detail === "string"
+            ? (actionData as { detail: string }).detail
+            : t("errors.genericPourError");
       setHomeToast({
         message: msg,
         variant: "danger",
       });
     }
-  }, [actionData]);
+  }, [actionData, t]);
 
   // Update the handleFileChange function
   const handleFileChange = async (
@@ -724,14 +713,16 @@ export default function Home() {
 
     if (!file.type.startsWith("image/")) {
       setHomeToast({
-        message: "Please choose an image file (for example JPG or PNG).",
+        message: t("errors.invalidImageType"),
         variant: "warning",
       });
       return;
     }
     if (file.size > MAX_POUR_IMAGE_BYTES) {
       setHomeToast({
-        message: `That image is too large (max ${Math.round(MAX_POUR_IMAGE_BYTES / (1024 * 1024))} MB). Try a smaller photo.`,
+        message: t("errors.imageTooLarge", {
+          maxMb: Math.round(MAX_POUR_IMAGE_BYTES / (1024 * 1024)),
+        }),
         variant: "warning",
       });
       return;
@@ -743,7 +734,7 @@ export default function Home() {
     reader.onerror = () => {
       setIsUploadProcessing(false);
       setHomeToast({
-        message: "We couldn’t read that image. Try another photo or export it again.",
+        message: t("errors.readImageFailed"),
         variant: "danger",
       });
     };
@@ -755,7 +746,7 @@ export default function Home() {
       if (!base64Image) {
         setIsUploadProcessing(false);
         setHomeToast({
-          message: "Couldn’t read that image. Try a different file.",
+          message: t("errors.readImageFailedShort"),
           variant: "danger",
         });
         return;
@@ -776,36 +767,14 @@ export default function Home() {
 
   return (
     <main className="flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden bg-guinness-black text-guinness-cream max-lg:overflow-y-auto lg:max-h-dvh lg:min-h-0 lg:overflow-y-auto">
-      {/* FAQ Button — desktop only (mobile: use nav on other routes or /faq URL) */}
-      <a
-        href="/profile/faq"
-        className="fixed left-4 top-4 z-40 hidden items-center gap-1.5 rounded-lg border border-[#312814] bg-guinness-brown/40 p-1.5 text-guinness-gold transition-colors hover:border-guinness-gold/35 hover:bg-[#312814]/50 md:inline-flex"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <span className="text-sm">FAQ</span>
-      </a>
-
       {isUploadProcessing && (
         <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
           <div className="w-24 h-24 border-4 border-guinness-gold/20 border-t-guinness-gold rounded-full animate-spin"></div>
           <p className="type-section text-xl">
-            Processing your image...
+            {t("pages.home.processingImage")}
           </p>
           <p className="type-meta">
-            This will just take a moment
+            {t("pages.home.moment")}
           </p>
         </div>
       )}
@@ -814,17 +783,16 @@ export default function Home() {
         <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
           <div className="bg-guinness-black/90 backdrop-blur-sm border border-guinness-gold/20 rounded-lg p-8 max-w-md mx-4 text-center">
             <p className="type-section mb-4">
-              {actionData?.message || "No G detected"}
+              {t("errors.noGDetected")}
             </p>
             <p className="type-meta mb-6">
-              Please make sure the G pattern is clearly visible in your image
-              and try again.
+              {t("pages.home.noGModalBody")}
             </p>
             <button
               onClick={() => setShowNoGModal(false)}
               className="px-6 py-2 bg-guinness-gold text-guinness-black rounded-lg hover:bg-guinness-tan transition-colors duration-300"
             >
-              Try Again
+              {t("common.tryAgain")}
             </button>
           </div>
         </div>
@@ -834,15 +802,15 @@ export default function Home() {
         <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
           <div className="w-24 h-24 border-4 border-guinness-gold/20 border-t-guinness-gold rounded-full animate-spin"></div>
           <p className="type-section text-xl">
-            Analyzing your split...
+            {t("pages.home.analyzingSplit")}
           </p>
           <p className="type-meta">
-            This will just take a moment
+            {t("pages.home.moment")}
           </p>
         </div>
       ) : (
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-6 pt-4 max-lg:pb-[max(6.5rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-5 lg:min-h-0 lg:flex-1 lg:overflow-visible lg:px-8 lg:pb-5 lg:pt-[4.5rem]">
-          <h1 className="sr-only">Split the G: score your pour</h1>
+          <h1 className="sr-only">{t("pages.home.srTitle")}</h1>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-x-10 lg:gap-y-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] xl:gap-x-12">
             <aside className="flex min-w-0 shrink-0 flex-col items-center gap-4 text-center lg:items-start lg:gap-8 lg:pr-2 lg:pt-0 lg:text-left xl:gap-9">
@@ -857,55 +825,54 @@ export default function Home() {
               </div>
               <div className="flex w-full max-w-sm flex-col gap-2.5 lg:max-w-[23rem] lg:gap-3">
                 <h2 className="text-base font-medium leading-snug tracking-tight text-guinness-gold sm:text-[1.0625rem] lg:text-lg lg:leading-tight xl:text-xl">
-                  Frame it. Split it.
+                  {t("pages.home.tagline")}
                 </h2>
                 <p className="text-[13px] leading-relaxed text-guinness-tan/70 sm:text-sm lg:text-[0.9375rem] lg:leading-[1.65] lg:text-guinness-tan/68">
-                  One photo of your pint, we score the G line. Share on the wall
-                  or chase the board.
+                  {t("pages.home.subtitle")}
                 </p>
               </div>
               <nav
-                aria-label="Browse splits and wall"
+                aria-label={t("pages.home.browseAria")}
                 className="flex w-full max-w-sm flex-col items-stretch gap-2 lg:mt-2 lg:max-w-none"
               >
                 <div className="mx-auto grid w-full max-w-[17.5rem] grid-cols-2 gap-2 lg:hidden">
-                  <Link
+                  <AppLink
                     to="/leaderboard"
                     prefetch="intent"
                     viewTransition
                     className={homeMobileBrowseLinkClass}
                   >
-                    Top splits
-                  </Link>
-                  <Link
+                    {t("pages.home.topSplits")}
+                  </AppLink>
+                  <AppLink
                     to="/wall"
                     prefetch="intent"
                     viewTransition
                     className={homeMobileBrowseLinkClass}
                   >
-                    Wall
-                  </Link>
+                    {t("pages.home.wall")}
+                  </AppLink>
                 </div>
                 <div className="hidden items-center gap-2 text-sm text-guinness-tan/65 lg:flex">
-                  <Link
+                  <AppLink
                     to="/leaderboard"
                     prefetch="intent"
                     viewTransition
                     className="font-medium text-guinness-tan/88 underline decoration-guinness-tan/20 underline-offset-[3px] transition-colors hover:text-guinness-gold hover:decoration-guinness-gold/40"
                   >
-                    Top splits
-                  </Link>
+                    {t("pages.home.topSplits")}
+                  </AppLink>
                   <span className="text-guinness-tan/28" aria-hidden>
                     ·
                   </span>
-                  <Link
+                  <AppLink
                     to="/wall"
                     prefetch="intent"
                     viewTransition
                     className="font-medium text-guinness-tan/88 underline decoration-guinness-tan/20 underline-offset-[3px] transition-colors hover:text-guinness-gold hover:decoration-guinness-gold/40"
                   >
-                    The wall
-                  </Link>
+                    {t("pages.home.theWall")}
+                  </AppLink>
                 </div>
               </nav>
 
@@ -917,7 +884,7 @@ export default function Home() {
                   onClick={() => setHowItWorksOpen((o) => !o)}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-guinness-tan/50">
-                    How it works
+                    {t("pages.home.howItWorks")}
                   </span>
                   <svg
                     className={`h-4 w-4 shrink-0 text-guinness-gold/70 transition-transform duration-200 ${howItWorksOpen ? "rotate-180" : ""}`}
@@ -936,7 +903,7 @@ export default function Home() {
                 </button>
                 <div className="hidden lg:block">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-guinness-tan/32">
-                    How it works
+                    {t("pages.home.howItWorks")}
                   </p>
                   <div
                     className="mt-3 h-px w-[min(11rem,72%)] bg-gradient-to-r from-guinness-gold/28 via-guinness-tan/12 to-transparent"
@@ -950,19 +917,19 @@ export default function Home() {
                     <span className="w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-[1.5] text-guinness-gold/88 lg:font-medium lg:text-guinness-gold/42">
                       1
                     </span>
-                    <span>Straight-on pint, G and foam line visible.</span>
+                    <span>{t("pages.home.step1")}</span>
                   </li>
                   <li className="flex gap-3">
                     <span className="w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-[1.5] text-guinness-gold/88 lg:font-medium lg:text-guinness-gold/42">
                       2
                     </span>
-                    <span>Start analysis and hold still for the score.</span>
+                    <span>{t("pages.home.step2")}</span>
                   </li>
                   <li className="flex gap-3">
                     <span className="w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-[1.5] text-guinness-gold/88 lg:font-medium lg:text-guinness-gold/42">
                       3
                     </span>
-                    <span>Post to the wall or climb the leaderboard.</span>
+                    <span>{t("pages.home.step3")}</span>
                   </li>
                 </ul>
               </div>
@@ -970,14 +937,14 @@ export default function Home() {
 
             <section
               className="mx-auto flex w-full min-h-0 max-w-md flex-1 flex-col gap-2 sm:max-w-lg lg:mx-0 lg:max-h-full lg:min-h-0 lg:w-full lg:max-w-none lg:justify-self-stretch"
-              aria-label="Camera and upload"
+              aria-label={t("pages.home.scoreYourPour")}
             >
               <p className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-guinness-tan/42 max-lg:pb-0 lg:hidden">
-                Score your pour
+                {t("pages.home.scoreYourPour")}
               </p>
               <div className="hidden w-full flex-row items-baseline justify-between gap-4 lg:flex">
                 <p className="text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-guinness-tan/42">
-                  Score your pour
+                  {t("pages.home.scoreYourPour")}
                 </p>
                 <BuyCreatorABeer variant="compact" className="shrink-0 text-sm" />
               </div>
@@ -1076,10 +1043,10 @@ export default function Home() {
                         </svg>
                       </span>
                       <span className="text-base font-semibold tracking-tight sm:text-lg lg:text-base">
-                        Start analysis
+                        {t("pages.home.startAnalysis")}
                       </span>
                       <span className="type-meta max-w-[17rem] px-2 text-center text-[12px] text-guinness-tan/55 sm:text-[13px] lg:max-w-[15rem] lg:text-xs lg:leading-snug">
-                        Line up the pint and G, hold steady, or upload below.
+                        {t("pages.home.startAnalysisHint")}
                       </span>
                     </button>
                   )}
@@ -1092,7 +1059,7 @@ export default function Home() {
                         }
                         className="flex min-h-10 w-full items-center justify-center rounded-lg border border-[#312814] bg-guinness-black/25 px-3 py-2 text-xs font-semibold text-guinness-tan/90 transition-colors duration-300 hover:border-guinness-gold/35 hover:bg-[#312814]/40 hover:text-guinness-cream sm:text-sm"
                       >
-                        Upload a photo instead
+                        {t("pages.home.uploadPhoto")}
                       </button>
                     </div>
                   ) : null}
@@ -1107,8 +1074,8 @@ export default function Home() {
                 id="file-upload"
                 type="file"
                 accept="image/*"
-                aria-label="Upload an image"
-                title="Upload an image"
+                aria-label={t("pages.home.uploadAria")}
+                title={t("pages.home.uploadAria")}
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -1123,9 +1090,9 @@ export default function Home() {
         variant={homeToast?.variant ?? "info"}
         title={
           homeToast?.variant === "danger"
-            ? "Couldn’t process that image"
+            ? t("common.couldntProcessImage")
             : homeToast?.variant === "warning"
-              ? "Heads up"
+              ? t("common.headsUp")
               : undefined
         }
         onClose={() => setHomeToast(null)}

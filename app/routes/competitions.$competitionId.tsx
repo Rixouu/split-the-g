@@ -7,7 +7,6 @@ import { format } from "date-fns";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   PageHeader,
-  competitionDetailPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
@@ -20,8 +19,8 @@ import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import {
   buildLeaderboard,
   COMPETITION_SCORE_LIMIT,
@@ -39,7 +38,6 @@ import {
   normalizeEmail,
   type ParticipantProfilePick,
   type WinRule,
-  winRuleLabel,
 } from "./competitions.$competitionId.shared";
 
 export { loader } from "./competitions.$competitionId.loader";
@@ -50,23 +48,31 @@ export function meta({
   params: { competitionId?: string; lang?: string };
 }) {
   const competitionId = params.competitionId?.trim();
-  return seoMeta({
-    title: "Competition Details",
-    description: "Track standings, participants, and recent pours for this Split the G competition.",
-    path: seoPath(
-      params,
-      competitionId
-        ? `/competitions/${encodeURIComponent(competitionId)}`
-        : "/competitions",
-    ),
-    keywords: ["competition leaderboard", "split the g tournament"],
-  });
+  return seoMetaForRoute(
+    params,
+    competitionId
+      ? `/competitions/${encodeURIComponent(competitionId)}`
+      : "/competitions",
+    "competitionDetail",
+  );
 }
 
 export default function CompetitionDetail() {
+  const { t } = useI18n();
   const { competitionId, competition: loaderComp, loadError } =
     useLoaderData<typeof competitionDetailLoader>();
   const params = useParams();
+
+  function winRuleLabelI18n(rule: string): string {
+    switch (rule) {
+      case "closest_to_target":
+        return t("pages.competitions.winRuleOptionClosest");
+      case "most_submissions":
+        return t("pages.competitions.winRuleOptionMost");
+      default:
+        return t("pages.competitions.winRuleOptionHighest");
+    }
+  }
 
   const [competition, setCompetition] = useState<CompetitionRow | null>(
     loaderComp,
@@ -254,7 +260,7 @@ export default function CompetitionDetail() {
         p?.nickname?.trim() ||
         p?.display_name?.trim() ||
         rankedUsernameByUserId.get(uid) ||
-        "Player"
+        t("pages.competitionDetail.defaultPlayer")
       );
     }
     ids.sort((a, b) => {
@@ -267,7 +273,13 @@ export default function CompetitionDetail() {
       });
     });
     return ids;
-  }, [participantUserIds, participantProfiles, rankedUsernameByUserId, userId]);
+  }, [
+    participantUserIds,
+    participantProfiles,
+    rankedUsernameByUserId,
+    userId,
+    t,
+  ]);
 
   const sendFriendInviteToPeer = useCallback(
     async (toEmail: string, peerUserId: string) => {
@@ -275,12 +287,12 @@ export default function CompetitionDetail() {
       const { data: auth } = await supabase.auth.getUser();
       const me = auth.user;
       if (!me?.id || !me.email) {
-        setMessage("Sign in to add friends.");
+        setMessage(t("pages.competitionDetail.msgSignInAddFriends"));
         return;
       }
       const to = normalizeEmail(toEmail);
       if (!to.includes("@")) {
-        setMessage("We don’t have an email on file for that player.");
+        setMessage(t("pages.competitionDetail.msgNoEmailForPlayer"));
         return;
       }
       if (to === normalizeEmail(me.email)) return;
@@ -325,24 +337,28 @@ export default function CompetitionDetail() {
           setMessage(
             emailResult?.error
               ? alreadyPending
-                ? `Request already pending, but email invite failed: ${emailResult.error}`
-                : `Request saved, but email invite failed: ${emailResult.error}`
+                ? t("pages.profile.msgInvitePendingEmailFail", {
+                    error: emailResult.error,
+                  })
+                : t("pages.profile.msgInviteSavedEmailFail", {
+                    error: emailResult.error,
+                  })
               : alreadyPending
-                ? "Request already pending, but email invite failed."
-                : "Request saved, but email invite failed.",
+                ? t("pages.profile.msgInvitePendingNoEmail")
+                : t("pages.profile.msgInviteSavedNoEmail"),
           );
         } else {
           setMessage(
             alreadyPending
-              ? "Friend request already pending. Invite email sent again."
-              : "Friend request sent.",
+              ? t("pages.profile.msgFriendPendingResent")
+              : t("pages.profile.msgFriendRequestSent"),
           );
         }
       } finally {
         setFriendInviteBusy(null);
       }
     },
-    [pendingFriendEmails],
+    [pendingFriendEmails, t],
   );
 
   const participantLabel = useCallback(
@@ -352,10 +368,10 @@ export default function CompetitionDetail() {
         p?.nickname?.trim() ||
         p?.display_name?.trim() ||
         rankedUsernameByUserId.get(uid) ||
-        "Player"
+        t("pages.competitionDetail.defaultPlayer")
       );
     },
-    [participantProfiles, rankedUsernameByUserId],
+    [participantProfiles, rankedUsernameByUserId, t],
   );
 
   const friendActionForPeer = useCallback(
@@ -363,14 +379,16 @@ export default function CompetitionDetail() {
       if (!userId || peerUserId === userId) return null;
       if (friendPeerIds.has(peerUserId)) {
         return (
-          <span className="type-meta text-xs text-emerald-400/90">Friends</span>
+          <span className="type-meta text-xs text-emerald-400/90">
+            {t("pages.competitionDetail.friendsLabel")}
+          </span>
         );
       }
       const claimEmail = emailByUserId.get(peerUserId) ?? null;
       if (!claimEmail) {
         return (
           <span className="type-meta max-w-[11rem] text-right text-xs leading-snug text-guinness-tan/50">
-            Email visible after they submit a pour here
+            {t("pages.competitionDetail.emailAfterPour")}
           </span>
         );
       }
@@ -379,7 +397,7 @@ export default function CompetitionDetail() {
       if (pendingFriendEmails.has(norm)) {
         return (
           <span className="type-meta text-xs text-guinness-tan/60">
-            Request pending
+            {t("pages.competitionDetail.requestPending")}
           </span>
         );
       }
@@ -390,7 +408,9 @@ export default function CompetitionDetail() {
           onClick={() => void sendFriendInviteToPeer(claimEmail, peerUserId)}
           className="rounded-lg border border-guinness-gold/35 px-2.5 py-1 text-xs font-semibold text-guinness-gold hover:bg-guinness-brown/45 disabled:opacity-50"
         >
-          {friendInviteBusy === peerUserId ? "…" : "Add friend"}
+          {friendInviteBusy === peerUserId
+            ? t("pages.competitionDetail.addFriendBusy")
+            : t("pages.competitionDetail.addFriend")}
         </button>
       );
     },
@@ -402,6 +422,7 @@ export default function CompetitionDetail() {
       pendingFriendEmails,
       friendInviteBusy,
       sendFriendInviteToPeer,
+      t,
     ],
   );
 
@@ -420,7 +441,7 @@ export default function CompetitionDetail() {
     const supabase = await getSupabaseBrowserClient();
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) {
-      setMessage("Sign in to join.");
+      setMessage(t("pages.competitionDetail.msgSignInToJoin"));
       return;
     }
     const { error } = await supabase.from("competition_participants").insert({
@@ -431,7 +452,7 @@ export default function CompetitionDetail() {
     else {
       setJoined(true);
       void refreshAll();
-      setMessage("You’re in! Welcome to the competition.");
+      setMessage(t("pages.competitionDetail.msgWelcomeJoin"));
     }
   }
 
@@ -449,7 +470,7 @@ export default function CompetitionDetail() {
     else {
       setJoined(false);
       void refreshAll();
-      setMessage("You’ve left this competition.");
+      setMessage(t("pages.competitionDetail.msgLeftComp"));
     }
   }
 
@@ -467,7 +488,7 @@ export default function CompetitionDetail() {
             viewTransition
             className="mt-4 inline-block text-guinness-gold underline"
           >
-            Back to competitions
+            {t("pages.competitionDetail.backToListError")}
           </Link>
         </div>
       </main>
@@ -478,7 +499,9 @@ export default function CompetitionDetail() {
     return (
       <main className="min-h-screen bg-guinness-black text-guinness-cream">
         <div className={pageShellClass}>
-          <p className="type-meta text-guinness-tan/70">Loading competition…</p>
+          <p className="type-meta text-guinness-tan/70">
+            {t("pages.competitionDetail.loadingCompetition")}
+          </p>
         </div>
       </main>
     );
@@ -493,13 +516,16 @@ export default function CompetitionDetail() {
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title={competition.title} description={competitionDetailPageDescription}>
+        <PageHeader
+          title={competition.title}
+          description={t("pages.descriptions.competitionDetail")}
+        >
           <Link
             to="/competitions"
             viewTransition
             className={pageHeaderActionButtonClass}
           >
-            All competitions
+            {t("pages.competitionDetail.backToList")}
           </Link>
         </PageHeader>
 
@@ -513,8 +539,8 @@ export default function CompetitionDetail() {
             role="status"
             aria-label={
               timePhase?.phase === "after"
-                ? "You participated in this competition; it has ended"
-                : "You are a participant in this competition"
+                ? t("pages.competitionDetail.ariaJoinedEnded")
+                : t("pages.competitionDetail.ariaJoinedLive")
             }
           >
             <button
@@ -552,8 +578,8 @@ export default function CompetitionDetail() {
               </span>
               <span className="min-w-0 flex-1 font-medium text-guinness-cream/95">
                 {timePhase?.phase === "after"
-                  ? "You took part in this competition"
-                  : "You&apos;re in this competition"}
+                  ? t("pages.competitionDetail.bannerTitleEnded")
+                  : t("pages.competitionDetail.bannerTitleLive")}
               </span>
               <span
                 className={`shrink-0 text-xs text-guinness-tan/50 transition-transform duration-200 ${
@@ -575,17 +601,19 @@ export default function CompetitionDetail() {
                 <p className="type-meta mt-4 pl-10 text-guinness-tan/75 sm:pl-11">
                   {timePhase?.phase === "after" ? (
                     <>
-                      The competition window has closed. Pours had to be logged with{" "}
-                      <span className="text-guinness-cream/90">New pour for comp</span> while
-                      it was live; older scores couldn&apos;t be attached afterward. Thanks
-                      for playing.
+                      {t("pages.competitionDetail.bannerBodyEndedBefore")}{" "}
+                      <span className="text-guinness-cream/90">
+                        {t("pages.competitionDetail.newPourForComp")}
+                      </span>{" "}
+                      {t("pages.competitionDetail.bannerBodyEndedAfter")}
                     </>
                   ) : (
                     <>
-                      Log each pour with{" "}
-                      <span className="text-guinness-cream/90">New pour for comp</span> while the
-                      window is live; older scores can&apos;t be attached afterward. We&apos;ll
-                      notify you when someone else submits.
+                      {t("pages.competitionDetail.bannerBodyLiveBefore")}{" "}
+                      <span className="text-guinness-cream/90">
+                        {t("pages.competitionDetail.newPourForComp")}
+                      </span>{" "}
+                      {t("pages.competitionDetail.bannerBodyLiveMiddle")}
                     </>
                   )}
                 </p>
@@ -598,7 +626,7 @@ export default function CompetitionDetail() {
           className="sticky top-2 z-20 mb-2 w-full shadow-lg shadow-black/40 backdrop-blur-md lg:hidden"
           layoutClassName="flex w-full"
           variant="rowEqual"
-          aria-label="Jump to section"
+          aria-label={t("pages.competitionDetail.ariaJumpSection")}
           value={
             mobileSummaryOpen
               ? "summary"
@@ -625,9 +653,12 @@ export default function CompetitionDetail() {
             });
           }}
           items={[
-            { value: "summary", label: "Summary" },
-            { value: "leaderboard", label: "Leaderboard" },
-            { value: "participants", label: "Who's in" },
+            { value: "summary", label: t("pages.competitionDetail.tabSummary") },
+            {
+              value: "leaderboard",
+              label: t("pages.competitionDetail.tabLeaderboard"),
+            },
+            { value: "participants", label: t("pages.competitionDetail.tabWhosIn") },
           ]}
         />
 
@@ -641,7 +672,7 @@ export default function CompetitionDetail() {
             id="comp-overview-heading"
             className="type-card-title mb-3 hidden lg:block"
           >
-            Summary
+            {t("pages.competitionDetail.tabSummary")}
           </h2>
           <button
             type="button"
@@ -651,15 +682,28 @@ export default function CompetitionDetail() {
             className="mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[#312814] bg-guinness-brown/25 px-3 py-2.5 text-left transition-colors hover:bg-guinness-brown/35 lg:hidden"
           >
             <div className="min-w-0">
-              <p className="text-base font-semibold text-guinness-gold">Summary</p>
+              <p className="text-base font-semibold text-guinness-gold">
+                {t("pages.competitionDetail.tabSummary")}
+              </p>
               <p className="type-meta mt-0.5 truncate text-guinness-tan/70">
                 {timePhase?.phase === "before"
-                  ? `Upcoming · starts in ${timePhase ? formatDuration(timePhase.ms) : "…"}`
+                  ? t("pages.competitionDetail.summaryLineUpcoming", {
+                      duration: timePhase
+                        ? formatDuration(timePhase.ms)
+                        : "…",
+                    })
                   : timePhase?.phase === "live"
-                    ? `Live · ends in ${timePhase ? formatDuration(timePhase.ms) : "…"}`
-                    : "Ended"}
+                    ? t("pages.competitionDetail.summaryLineLive", {
+                        duration: timePhase
+                          ? formatDuration(timePhase.ms)
+                          : "…",
+                      })
+                    : t("pages.competitionDetail.summaryLineEnded")}
                 <span className="text-guinness-tan/45"> · </span>
-                {participantUserIds.length}/{competition.max_participants} in
+                {t("pages.competitionDetail.summaryParticipantsIn", {
+                  current: String(participantUserIds.length),
+                  max: String(competition.max_participants),
+                })}
               </p>
             </div>
             <span
@@ -688,25 +732,29 @@ export default function CompetitionDetail() {
                 }`}
               >
                 {timePhase?.phase === "before"
-                  ? "Upcoming"
+                  ? t("pages.competitionDetail.upcoming")
                   : timePhase?.phase === "live"
-                    ? "Live"
-                    : "Ended"}
+                    ? t("pages.competitionDetail.live")
+                    : t("pages.competitionDetail.ended")}
               </span>
               <span className="text-guinness-tan/40" aria-hidden>
                 ·
               </span>
               <span className="text-sm text-guinness-tan/80">
-                {isPrivate ? "Private" : "Public"}
+                {isPrivate
+                  ? t("pages.competitionDetail.private")
+                  : t("pages.competitionDetail.public")}
               </span>
               <span className="text-guinness-tan/40" aria-hidden>
                 ·
               </span>
               <span className="text-sm font-medium text-guinness-gold">
-                {winRuleLabel(competition.win_rule)}
+                {winRuleLabelI18n(competition.win_rule)}
                 {competition.win_rule === "closest_to_target" &&
                 competition.target_score != null
-                  ? ` · target ${Number(competition.target_score).toFixed(2)}`
+                  ? t("pages.competitionDetail.targetSuffix", {
+                      value: Number(competition.target_score).toFixed(2),
+                    })
                   : ""}
               </span>
             </div>
@@ -715,21 +763,23 @@ export default function CompetitionDetail() {
               <div className="rounded-xl border border-[#312814] bg-[#312814]/40 px-4 py-4">
                 <p className="type-meta text-guinness-tan/55">
                   {timePhase?.phase === "before"
-                    ? "Starts in"
+                    ? t("pages.competitionDetail.startsIn")
                     : timePhase?.phase === "live"
-                      ? "Ends in"
-                      : "Window"}
+                      ? t("pages.competitionDetail.endsIn")
+                      : t("pages.competitionDetail.window")}
                 </p>
                 <p className="mt-2 text-2xl font-semibold tabular-nums leading-tight text-guinness-cream sm:text-[1.65rem]">
                   {timePhase?.phase === "after"
-                    ? "Ended"
+                    ? t("pages.competitionDetail.ended")
                     : timePhase
                       ? formatDuration(timePhase.ms)
                       : "…"}
                 </p>
               </div>
               <div>
-                <p className="type-meta text-guinness-tan/55">Schedule</p>
+                <p className="type-meta text-guinness-tan/55">
+                  {t("pages.competitionDetail.schedule")}
+                </p>
                 <p className="mt-2 text-sm leading-relaxed text-guinness-cream">
                   {format(new Date(competition.starts_at), "EEE MMM d, h:mm a")}
                   <span className="text-guinness-tan/45"> → </span>
@@ -738,16 +788,22 @@ export default function CompetitionDetail() {
               </div>
               <div className="flex flex-col gap-4 rounded-xl border border-[#312814] bg-[#312814]/25 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
                 <div>
-                  <p className="type-meta text-guinness-tan/55">Roster</p>
+                  <p className="type-meta text-guinness-tan/55">
+                    {t("pages.competitionDetail.roster")}
+                  </p>
                   <p className="mt-2 text-xl font-semibold tabular-nums text-guinness-cream">
                     {participantUserIds.length}/{competition.max_participants}
                   </p>
                 </div>
                 <div className="sm:min-w-[8rem] sm:text-right">
-                  <p className="type-meta text-guinness-tan/55">Pour limit</p>
+                  <p className="type-meta text-guinness-tan/55">
+                    {t("pages.competitionDetail.pourLimit")}
+                  </p>
                   <p className="mt-2 text-base font-medium text-guinness-tan/90">
-                    {competition.glasses_per_person} pour
-                    {competition.glasses_per_person === 1 ? "" : "s"} each
+                    {competition.glasses_per_person}{" "}
+                    {competition.glasses_per_person === 1
+                      ? t("pages.competitionDetail.pourEachOne")
+                      : t("pages.competitionDetail.pourEachMany")}
                   </p>
                 </div>
               </div>
@@ -759,20 +815,24 @@ export default function CompetitionDetail() {
               <div className="mt-4 space-y-2 border-t border-guinness-gold/10 pt-4 text-sm leading-relaxed">
                 {competition.linked_bar_key?.trim() ? (
                   <p className="text-guinness-tan/85">
-                    <span className="text-guinness-tan/50">Directory · </span>
+                    <span className="text-guinness-tan/50">
+                      {t("pages.competitionDetail.directoryPrefix")}
+                    </span>
                     <Link
                       to={pubDetailPath(competition.linked_bar_key.trim())}
                       viewTransition
                       className="font-medium text-guinness-gold underline decoration-guinness-gold/35 underline-offset-2 hover:decoration-guinness-gold"
                     >
-                      Open pub page
+                      {t("pages.competitionDetail.openPubPage")}
                     </Link>
                   </p>
                 ) : null}
                 {competition.location_name?.trim() ||
                 competition.location_address?.trim() ? (
                   <p className="text-guinness-cream">
-                    <span className="text-guinness-tan/50">Venue · </span>
+                    <span className="text-guinness-tan/50">
+                      {t("pages.competitionDetail.venuePrefix")}
+                    </span>
                     {competition.location_name?.trim() ? (
                       <span className="font-medium text-guinness-gold">
                         {competition.location_name.trim()}
@@ -795,11 +855,11 @@ export default function CompetitionDetail() {
 
             <div
               className="mt-6 flex flex-col gap-5 border-t border-[#312814] pt-6"
-              aria-label="Competition actions"
+              aria-label={t("pages.competitionDetail.ariaCompetitionActions")}
             >
               {!userId ? (
                 <p className="type-meta text-guinness-tan/70">
-                  Sign in (Profile) to join or pour for this competition.
+                  {t("pages.competitionDetail.signInToJoinPour")}
                 </p>
               ) : joined ? (
                 <div className="flex flex-col gap-4">
@@ -810,7 +870,7 @@ export default function CompetitionDetail() {
                         viewTransition
                         className={`${pageHeaderActionButtonClass} w-full`}
                       >
-                        New pour for comp
+                        {t("pages.competitionDetail.newPourForComp")}
                       </Link>
                     ) : null}
                     <button
@@ -818,17 +878,16 @@ export default function CompetitionDetail() {
                       onClick={() => void handleLeave()}
                       className="w-full rounded-lg border border-[#312814] bg-transparent px-4 py-2.5 text-sm font-medium text-guinness-tan/90 transition-colors hover:bg-[#312814]/30"
                     >
-                      Leave competition
+                      {t("pages.competitionDetail.leaveCompetition")}
                     </button>
                   </div>
                   {canSubmit ? (
                     <details className="type-meta rounded-lg border border-[#312814] bg-guinness-black/20 px-3 py-2.5 text-guinness-tan/60">
                       <summary className="cursor-pointer select-none text-sm font-medium text-guinness-tan/75 hover:text-guinness-tan">
-                        How pours count
+                        {t("pages.competitionDetail.howPoursCount")}
                       </summary>
                       <p className="mt-3 border-t border-[#312814] pt-3 text-guinness-tan/55">
-                        Only new pours you log from the pour screen with this competition
-                        selected count; you can&apos;t attach older pours after joining.
+                        {t("pages.competitionDetail.howPoursCountBody")}
                       </p>
                     </details>
                   ) : null}
@@ -839,7 +898,7 @@ export default function CompetitionDetail() {
                   onClick={() => void handleJoin()}
                   className={`${pageHeaderActionButtonClass} w-full`}
                 >
-                  Join competition
+                  {t("pages.competitionDetail.joinCompetition")}
                 </button>
               )}
             </div>
@@ -849,14 +908,14 @@ export default function CompetitionDetail() {
         <section
           id="comp-leaderboard-panel"
           className="order-2 scroll-mt-28 lg:col-start-2 lg:row-start-1 lg:max-h-[min(72vh,calc(100vh-5.5rem))] lg:min-w-0 lg:overflow-y-auto lg:self-start lg:pt-0 xl:max-h-[calc(100vh-6rem)]"
-          aria-label="Competition leaderboard and roster"
+          aria-label={t("pages.competitionDetail.ariaLeaderboardRoster")}
         >
           <SegmentedTabs
             className="mb-4 hidden w-full lg:mb-6 lg:flex"
             layoutClassName="flex w-full"
             variant="rowEqual"
             role="tablist"
-            aria-label="Leaderboard and roster"
+            aria-label={t("pages.competitionDetail.ariaLeaderboardRosterTabs")}
             tabIdPrefix="tab-comp"
             value={rightColTab}
             onValueChange={(v) =>
@@ -865,12 +924,12 @@ export default function CompetitionDetail() {
             items={[
               {
                 value: "leaderboard",
-                label: "Leaderboard",
+                label: t("pages.competitionDetail.tabLeaderboard"),
                 panelId: "panel-comp-leaderboard",
               },
               {
                 value: "participants",
-                label: "Who's in",
+                label: t("pages.competitionDetail.tabWhosIn"),
                 panelId: "panel-comp-participants",
               },
             ]}
@@ -884,22 +943,22 @@ export default function CompetitionDetail() {
           >
             {scoresLimited ? (
               <p className="type-meta mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100/90">
-                Showing the most recent {COMPETITION_SCORE_LIMIT} competition
-                pours for leaderboard performance.
+                {t("pages.competitionDetail.scoresLimited", {
+                  limit: String(COMPETITION_SCORE_LIMIT),
+                })}
               </p>
             ) : null}
             {ranked.length === 0 ? (
               <p className="type-meta rounded-2xl border border-[#322914] bg-guinness-brown/30 p-8 text-center text-guinness-tan/70">
                 {timePhase?.phase === "after" ? (
-                  <>
-                    No pours were logged for this competition during the live window, so there is
-                    no leaderboard.
-                  </>
+                  t("pages.competitionDetail.emptyLeaderboardAfter")
                 ) : (
                   <>
-                    Waiting for the first pour. Scores appear when someone uses{" "}
-                    <span className="text-guinness-tan/85">New pour for comp</span> during the live
-                    window.
+                    {t("pages.competitionDetail.emptyLeaderboardWaitingBefore")}{" "}
+                    <span className="text-guinness-tan/85">
+                      {t("pages.competitionDetail.newPourForComp")}
+                    </span>{" "}
+                    {t("pages.competitionDetail.emptyLeaderboardWaitingAfter")}
                   </>
                 )}
               </p>
@@ -947,7 +1006,7 @@ export default function CompetitionDetail() {
                                   <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                     <span className="inline-flex items-center gap-1 rounded-full border border-guinness-gold/40 bg-guinness-gold/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-guinness-gold">
                                       <CrownIcon className="text-guinness-gold" />
-                                      Winner
+                                      {t("pages.competitionDetail.winnerBadge")}
                                     </span>
                                   </div>
                                 ) : null}
@@ -997,15 +1056,17 @@ export default function CompetitionDetail() {
             aria-labelledby="tab-comp-participants"
             hidden={rightColTab !== "participants"}
           >
-            <h3 className="sr-only">Who&apos;s in</h3>
+            <h3 className="sr-only">
+              {t("pages.competitionDetail.srOnlyWhosIn")}
+            </h3>
             <p className="type-meta mb-4 text-guinness-tan/70">
               {userId
-                ? "Everyone who joined. After someone pours in this comp, you can add them as a friend if their email appears on their pour."
-                : "Sign in to see friend actions. Participant count is in the summary."}
+                ? t("pages.competitionDetail.participantsBlurbSignedIn")
+                : t("pages.competitionDetail.participantsBlurbSignedOut")}
             </p>
             {sortedParticipantUserIds.length === 0 ? (
               <p className="type-meta text-guinness-tan/60">
-                No participants yet. Be the first to join.
+                {t("pages.competitionDetail.participantsEmpty")}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -1032,7 +1093,7 @@ export default function CompetitionDetail() {
                         {participantLabel(pid)}
                         {userId && pid === userId ? (
                           <span className="type-meta ml-2 font-normal text-guinness-tan/55">
-                            (you)
+                            {t("pages.competitionDetail.youParen")}
                           </span>
                         ) : null}
                       </p>
@@ -1057,11 +1118,11 @@ export default function CompetitionDetail() {
         }
         title={
           message && competitionDetailMessageVariant(message) === "danger"
-            ? "Couldn’t complete that"
+            ? t("toasts.toastDangerTitle")
             : message && competitionDetailMessageVariant(message) === "warning"
-              ? "Sign in required"
+              ? t("pages.competitionDetail.toastWarningTitle")
               : message && competitionDetailMessageVariant(message) === "info"
-                ? "Competition update"
+                ? t("pages.competitionDetail.toastInfoTitle")
                 : undefined
         }
         onClose={() => setMessage(null)}

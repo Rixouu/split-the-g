@@ -1,4 +1,114 @@
 {
   "defaultTitle": "Split The G",
-  "defaultDescription": "Score your Guinness pour with AI, share your split, and climb pub, friend, and weekly leaderboards."
+  "defaultDescription": "Score your Guinness pour with AI, share your split, and climb pub, friend, and weekly leaderboards.",
+  "ogDefaultImageAlt": "Split The G wordmark on a dark branded background",
+  "routes": {
+    "root": {
+      "title": "Split The G",
+      "description": "Score your Guinness pour with AI, share your split, and climb pub, friend, and weekly leaderboards.",
+      "keywords": "AI beer scoring|pub leaderboard|pour challenge"
+    },
+    "home": {
+      "title": "Split the G Scorer",
+      "description": "Snap your pint and get an AI Split the G score in seconds.",
+      "keywords": "split the g scorer|guinness score app|pour analyzer"
+    },
+    "feed": {
+      "title": "Live Feed",
+      "description": "Browse recent Split the G pours, scores, and pub activity.",
+      "keywords": "split the g feed|recent guinness pours"
+    },
+    "pubs": {
+      "title": "Pubs",
+      "description": "Find pubs, compare average pour ratings, and open each pub wall.",
+      "keywords": "guinness pubs|pub leaderboard|split the g pubs"
+    },
+    "pubDetail": {
+      "title": "Pub Details",
+      "description": "View a pub profile, map, and latest Split the G pours for that venue.",
+      "keywords": "pub wall|guinness pub scores"
+    },
+    "competitions": {
+      "title": "Competitions",
+      "description": "Create or join Split the G competitions with friends and live leaderboards.",
+      "keywords": "split the g competitions|guinness challenge|friends leaderboard"
+    },
+    "competitionDetail": {
+      "title": "Competition Details",
+      "description": "Track standings, participants, and recent pours for this Split the G competition.",
+      "keywords": "competition leaderboard|split the g tournament"
+    },
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your Split the G profile, progress, scores, favorites, expenses, and friends.",
+      "keywords": "split the g profile|pour progress|friends leaderboard"
+    },
+    "account": {
+      "title": "Account",
+      "description": "Update your display name, leaderboard nickname, country flag, and sign-in for Split the G.",
+      "keywords": "split the g account|profile settings"
+    },
+    "progress": {
+      "title": "Profile Progress",
+      "description": "Track average score trends, best pours, and friend progress in Split the G.",
+      "keywords": "split the g progress|pour stats"
+    },
+    "expenses": {
+      "title": "Profile Expenses",
+      "description": "See pint spend totals and price trends from your linked Split the G pours.",
+      "keywords": "pint spend|beer expenses|split the g prices"
+    },
+    "scores": {
+      "title": "Profile Scores",
+      "description": "Review your recent Split the G results and score history.",
+      "keywords": "split the g history|recent pours"
+    },
+    "favorites": {
+      "title": "Profile Favorite Bars",
+      "description": "Save and manage your favorite pubs in Split the G.",
+      "keywords": "favorite pubs|profile favorites"
+    },
+    "friends": {
+      "title": "Profile Friends",
+      "description": "Manage friend requests and compare your Split the G scores.",
+      "keywords": "split the g friends|friend invites"
+    },
+    "faq": {
+      "title": "FAQ",
+      "description": "Answers about scoring, sharing pours, pubs, competitions, and profile features in Split the G.",
+      "keywords": "split the g faq|guinness app questions"
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "description": "See top Split the G scores across global, local, and friends tabs.",
+      "keywords": "split the g leaderboard|weekly guinness ranking"
+    },
+    "wall": {
+      "title": "Wall",
+      "description": "Explore the Split the G wall of recent pours and scores.",
+      "keywords": "split the g wall|guinness collage|pour gallery"
+    },
+    "past24hr": {
+      "title": "Past 24 Hours Leaderboard",
+      "description": "Country rankings for the last 24 hours of Split the G pours.",
+      "keywords": "24 hour leaderboard|split the g daily ranking"
+    },
+    "country": {
+      "title": "Country Leaderboard",
+      "description": "All-time country rankings by submission count and average Split the G score.",
+      "keywords": "country leaderboard|split the g countries"
+    },
+    "scoreFallback": {
+      "title": "Pour Result",
+      "description": "Open this Split the G pour result and challenge your friends.",
+      "keywords": "split the g result|guinness pour score"
+    },
+    "scoreDetail": {
+      "title": "{scoreValue}/5 Split by {username}",
+      "description": "{username} scored {scoreValue}/5 on Split the G. All-time #{allTimeRank} of {totalSplits}, weekly #{weeklyRank} of {weeklyTotalSplits}.",
+      "imageAlt": "Guinness pint from {username}'s pour on Split the G",
+      "keywords": "split the g score|pour challenge|guinness rating",
+      "anonymousUser": "Anonymous pourer"
+    }
+  }
 }

@@ -1,0 +1,14 @@
+{
+  "signedInFallback": "Signed in",
+  "competitionUpdate": "Competition update",
+  "competitionActivity": "Competition activity",
+  "compStarted": "“{title}” has started. Good luck.",
+  "compEnded": "“{title}” has finished. Check the standings.",
+  "compSkipped": "“{title}” is no longer active.",
+  "compNewPour": "Someone submitted a new pour in “{title}”. Open Compete to see the leaderboard.",
+  "compFallbackTitle": "your competition",
+  "toastDangerTitle": "Couldn't complete that",
+  "toastWarningTitle": "Heads up",
+  "toastInfoTitle": "Update",
+  "toastSignedOutTitle": "Signed out"
+}

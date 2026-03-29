@@ -1,4 +1,5 @@
 import { AppLink } from "~/i18n/app-link";
+import { useI18n } from "~/i18n/context";
 import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
 
 type Props = {
@@ -6,6 +7,7 @@ type Props = {
 };
 
 export function LeaderboardNavigation({ activePage }: Props) {
+  const { t } = useI18n();
   return (
     <div className="flex justify-center gap-2 mb-4 md:mb-8">
       <AppLink
@@ -32,8 +34,12 @@ export function LeaderboardNavigation({ activePage }: Props) {
           <rect x="14" y="14" width="7" height="7" />
           <rect x="3" y="14" width="7" height="7" />
         </svg>
-        <span className="hidden md:inline">Past 24 Hours</span>
-        <span className="inline md:hidden ml-1">24h</span>
+        <span className="hidden md:inline">
+          {t("pages.leaderboard.navPast24Full")}
+        </span>
+        <span className="inline md:hidden ml-1">
+          {t("pages.leaderboard.past24h")}
+        </span>
       </AppLink>
       <AppLink
         to="/countryleaderboard"
@@ -59,8 +65,12 @@ export function LeaderboardNavigation({ activePage }: Props) {
           <rect x="14" y="14" width="7" height="7" />
           <rect x="3" y="14" width="7" height="7" />
         </svg>
-        <span className="hidden md:inline">All Time</span>
-        <span className="inline md:hidden ml-1">All</span>
+        <span className="hidden md:inline">
+          {t("pages.leaderboard.navAllTimeFull")}
+        </span>
+        <span className="inline md:hidden ml-1">
+          {t("pages.leaderboard.allTimeNav")}
+        </span>
       </AppLink>
     </div>
   );

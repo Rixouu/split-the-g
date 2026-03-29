@@ -1,17 +1,22 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useMemo,
   type ReactNode,
 } from "react";
 import { useMatches } from "react-router";
-import { DEFAULT_LOCALE, isSupportedLocale, type SupportedLocale } from "./config";
+import {
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  type SupportedLocale,
+} from "./config";
+import { createTranslator, makeTFromFlat } from "./load-messages";
+import type { TranslateFn } from "./translate";
 
 export type I18nContextValue = {
   lang: SupportedLocale;
   messages: Record<string, string>;
-  t: (key: string) => string;
+  t: TranslateFn;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -25,10 +30,7 @@ export function I18nProvider({
   messages: Record<string, string>;
   children: ReactNode;
 }) {
-  const t = useCallback(
-    (key: string) => messages[key] ?? key,
-    [messages],
-  );
+  const t = useMemo(() => makeTFromFlat(messages), [messages]);
   const value = useMemo(
     () => ({ lang, messages, t }),
     [lang, messages, t],
@@ -57,4 +59,10 @@ export function useOptionalLang(): SupportedLocale {
     if (data?.lang && isSupportedLocale(data.lang)) return data.lang;
   }
   return DEFAULT_LOCALE;
+}
+
+/** For `AppNavigation`, global toasts, and other components outside `I18nProvider`. */
+export function useTChrome(): TranslateFn {
+  const lang = useOptionalLang();
+  return useMemo(() => createTranslator(lang), [lang]);
 }

@@ -6,5 +6,10 @@
   "me": "Me",
   "wall": "Wall",
   "leaderboard": "Leaderboard",
-  "browseFeed": "Browse feed"
+  "browseFeed": "Browse feed",
+  "theScorer": "The scorer",
+  "brandName": "Split the G",
+  "homeLinkTitle": "Split the G — home",
+  "activeCompetitionHint": "You're in an active competition",
+  "competeAriaActive": "{label} — you're in an active competition"
 }

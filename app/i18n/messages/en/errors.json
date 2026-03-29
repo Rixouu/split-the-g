@@ -1,0 +1,22 @@
+{
+  "boundaryTitle": "Oops!",
+  "boundaryUnexpected": "An unexpected error occurred.",
+  "boundaryError": "Error",
+  "boundary404": "The requested page could not be found.",
+  "noGDetected": "No G detected",
+  "noGPattern": "No G pattern detected",
+  "failedProcessImage": "Failed to process image",
+  "genericPourError": "Something went wrong processing your pour.",
+  "invalidImageType": "Please choose an image file (for example JPG or PNG).",
+  "imageTooLarge": "That image is too large (max {maxMb} MB). Try a smaller photo.",
+  "readImageFailed": "We couldn't read that image. Try another photo or export it again.",
+  "readImageFailedShort": "Couldn't read that image. Try a different file.",
+  "invalidAction": "Invalid action",
+  "barNameRequired": "Enter a bar name (search or type your own).",
+  "ratingRange": "Pour rating must be between 0 and 5.",
+  "pintPriceNonNegative": "Pint price must be zero or a positive number.",
+  "pintPriceTooLarge": "Pint price is too large.",
+  "saveRatingFailed": "Could not save rating.",
+  "signInGoogleFailed": "Couldn't start Google sign-in. {detail}",
+  "couldNotUpdatePours": "Could not update pour records."
+}

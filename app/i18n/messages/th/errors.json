@@ -1,0 +1,22 @@
+{
+  "boundaryTitle": "อ๊ะ!",
+  "boundaryUnexpected": "เกิดข้อผิดพลาดที่ไม่คาดคิด",
+  "boundaryError": "ข้อผิดพลาด",
+  "boundary404": "ไม่พบหน้าที่ร้องขอ",
+  "noGDetected": "ไม่พบ G",
+  "noGPattern": "ไม่พบรูปแบบ G",
+  "failedProcessImage": "ล้มเหลวในการประมวลผลภาพ",
+  "genericPourError": "เกิดข้อผิดพลาดในการประมวลผลการรินของคุณ",
+  "invalidImageType": "โปรดเลือกไฟล์รูปภาพ (เช่น JPG หรือ PNG)",
+  "imageTooLarge": "รูปภาพนั้นใหญ่เกินไป (สูงสุด {maxMb} MB) ลองถ่ายรูปให้เล็กลง",
+  "readImageFailed": "เราไม่สามารถอ่านภาพนั้นได้ ลองรูปภาพอื่นหรือส่งออกอีกครั้ง",
+  "readImageFailedShort": "ไม่สามารถอ่านภาพนั้นได้ ลองใช้ไฟล์อื่น",
+  "invalidAction": "การกระทำที่ไม่ถูกต้อง",
+  "barNameRequired": "ป้อนชื่อแถบ (ค้นหาหรือพิมพ์ของคุณเอง)",
+  "ratingRange": "คะแนนเทต้องอยู่ระหว่าง 0 ถึง 5",
+  "pintPriceNonNegative": "ราคาไพน์ต้องเป็นศูนย์หรือจำนวนบวก",
+  "pintPriceTooLarge": "ราคาไพน์สูงเกินไป",
+  "saveRatingFailed": "ไม่สามารถบันทึกคะแนนได้",
+  "signInGoogleFailed": "ไม่สามารถเริ่มการลงชื่อเข้าใช้ Google ได้ {detail}",
+  "couldNotUpdatePours": "ไม่สามารถอัปเดตบันทึกเทได้"
+}

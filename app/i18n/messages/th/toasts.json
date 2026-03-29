@@ -1,0 +1,14 @@
+{
+  "signedInFallback": "ลงชื่อเข้าใช้แล้ว",
+  "competitionUpdate": "อัพเดทการแข่งขัน",
+  "competitionActivity": "กิจกรรมการแข่งขัน",
+  "compStarted": "\"{title}\" เริ่มต้นแล้ว ขอให้โชคดี.",
+  "compEnded": "\"{title}\" เสร็จสิ้นแล้ว ตรวจสอบอันดับ",
+  "compSkipped": "\"{title}\" ไม่ได้ใช้งานอีกต่อไป",
+  "compNewPour": "มีคนส่งเทใหม่ใน \"{title}\" เปิดการแข่งขันเพื่อดูกระดานผู้นำ",
+  "compFallbackTitle": "การแข่งขันของคุณ",
+  "toastDangerTitle": "ไม่สามารถดำเนินการดังกล่าวให้เสร็จสิ้นได้",
+  "toastWarningTitle": "เงยหน้าขึ้น",
+  "toastInfoTitle": "อัปเดต",
+  "toastSignedOutTitle": "ออกจากระบบแล้ว"
+}

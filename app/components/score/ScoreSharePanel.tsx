@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useI18n } from "~/i18n/context";
+import type { TranslateFn } from "~/i18n/translate";
 
 export interface ScoreSharePanelProps {
   sharePath: string;
@@ -17,32 +19,36 @@ const btnBase =
 const iconClass = "h-6 w-6 shrink-0 text-guinness-gold";
 
 /** Short challenge line for the preview and for tight social snippets. */
-export function shareChallengeHeadline(splitScore: number): string {
-  if (splitScore >= 4.5) {
-    return "Think you can split the G cleaner than this pour?";
-  }
-  if (splitScore >= 3.5) {
-    return "Your turn: beat my line and show the feed.";
-  }
-  return "Pour yours on Split the G and try to score higher.";
+function shareChallengeHeadline(splitScore: number, t: TranslateFn): string {
+  if (splitScore >= 4.5) return t("pages.score.shareHookHigh");
+  if (splitScore >= 3.5) return t("pages.score.shareHookMid");
+  return t("pages.score.shareHookLow");
 }
 
 /** Full message for clipboard, email, WhatsApp, and native share. */
-export function buildScoreShareMessage(params: {
-  shareUrl: string;
-  splitScore: number;
-  allTimeRank: number;
-  totalSplits: number;
-  weeklyRank: number;
-  weeklyTotalSplits: number;
-}): string {
+function buildScoreShareMessage(
+  params: {
+    shareUrl: string;
+    splitScore: number;
+    allTimeRank: number;
+    totalSplits: number;
+    weeklyRank: number;
+    weeklyTotalSplits: number;
+  },
+  t: TranslateFn,
+): string {
   const s = params.splitScore.toFixed(2);
-  const hook = shareChallengeHeadline(params.splitScore);
+  const hook = shareChallengeHeadline(params.splitScore, t);
   return (
     `${hook}\n\n` +
-    `I scored ${s}/5 on Split the G; all-time #${params.allTimeRank} of ${params.totalSplits}, weekly #${params.weeklyRank} of ${params.weeklyTotalSplits}.\n\n` +
-    `Your move: open the link, photograph your pint, and get your line scored on the same wall (free):\n` +
-    `${params.shareUrl}`
+    t("pages.score.shareBody", {
+      score: s,
+      allTimeRank: String(params.allTimeRank),
+      totalSplits: String(params.totalSplits),
+      weeklyRank: String(params.weeklyRank),
+      weeklyTotalSplits: String(params.weeklyTotalSplits),
+      shareUrl: params.shareUrl,
+    })
   );
 }
 
@@ -134,6 +140,7 @@ export function ScoreSharePanel({
   weeklyTotalSplits,
   previewImageUrl,
 }: ScoreSharePanelProps) {
+  const { t } = useI18n();
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
 
@@ -143,36 +150,33 @@ export function ScoreSharePanel({
 
   const shareText = useMemo(() => {
     if (!shareUrl) return "";
-    return buildScoreShareMessage({
-      shareUrl,
-      splitScore,
-      allTimeRank,
-      totalSplits,
-      weeklyRank,
-      weeklyTotalSplits,
-    });
-  }, [
-    shareUrl,
-    splitScore,
-    allTimeRank,
-    totalSplits,
-    weeklyRank,
-    weeklyTotalSplits,
-  ]);
+    return buildScoreShareMessage(
+      {
+        shareUrl,
+        splitScore,
+        allTimeRank,
+        totalSplits,
+        weeklyRank,
+        weeklyTotalSplits,
+      },
+      t,
+    );
+  }, [shareUrl, splitScore, allTimeRank, totalSplits, weeklyRank, weeklyTotalSplits, t]);
 
   const tweetText = useMemo(() => {
     if (!shareUrl) return "";
     const s = splitScore.toFixed(2);
-    const hook = shareChallengeHeadline(splitScore);
-    const compact = `${hook} I scored ${s}/5 on Split the G. Pour yours: ${shareUrl}`;
-    return compact.length > 280 ? `${hook} ${s}/5 on Split the G: ${shareUrl}` : compact;
-  }, [shareUrl, splitScore]);
+    const hook = shareChallengeHeadline(splitScore, t);
+    const compact = t("pages.score.shareTweetLong", { hook, score: s, url: shareUrl });
+    const short = t("pages.score.shareTweetShort", { hook, score: s, url: shareUrl });
+    return compact.length > 280 ? short : compact;
+  }, [shareUrl, splitScore, t]);
 
   const telegramBlurb = useMemo(() => {
     const s = splitScore.toFixed(2);
-    const hook = shareChallengeHeadline(splitScore);
-    return `${hook} I scored ${s}/5. Open the link to pour yours and get scored.`;
-  }, [splitScore]);
+    const hook = shareChallengeHeadline(splitScore, t);
+    return `${hook} ${t("pages.score.shareTelegramRest", { score: s })}`;
+  }, [splitScore, t]);
 
   const canNativeShare =
     typeof navigator !== "undefined" && typeof navigator.share === "function";
@@ -203,28 +207,30 @@ export function ScoreSharePanel({
     }
   }, [shareUrl]);
 
+  const scoreLabel = splitScore.toFixed(2);
+
   const nativeShare = useCallback(async () => {
     if (!canNativeShare || !shareText) return;
     try {
       await navigator.share({
-        title: `Split the G challenge (${splitScore.toFixed(2)}/5)`,
+        title: t("pages.score.shareNativeTitle", { score: scoreLabel }),
         text: shareText,
         url: shareUrl || undefined,
       });
     } catch {
       /* dismissed or unavailable */
     }
-  }, [canNativeShare, shareText, shareUrl, splitScore]);
+  }, [canNativeShare, shareText, shareUrl, scoreLabel, t]);
 
   const mailtoHref = useMemo(() => {
     if (!shareText) return "";
-    const subject = `Split the G challenge (${splitScore.toFixed(2)}/5)`;
+    const subject = t("pages.score.shareMailSubject", { score: scoreLabel });
     return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(shareText)}`;
-  }, [shareText, splitScore]);
+  }, [shareText, scoreLabel, t]);
 
   const links = useMemo(() => {
     if (!shareUrl || !shareText) return null;
-    const redditTitle = `Split the G: scored ${splitScore.toFixed(2)}/5. Can you beat this pour?`;
+    const redditTitle = t("pages.score.shareRedditTitle", { score: scoreLabel });
     return {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
       x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`,
@@ -232,20 +238,28 @@ export function ScoreSharePanel({
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
       reddit: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(redditTitle)}`,
     };
-  }, [shareUrl, shareText, tweetText, telegramBlurb, splitScore]);
+  }, [shareUrl, shareText, tweetText, telegramBlurb, scoreLabel, t]);
 
-  const scoreLabel = splitScore.toFixed(2);
-  const previewHook = shareChallengeHeadline(splitScore);
+  const previewHook = shareChallengeHeadline(splitScore, t);
+  const rankAllTime = t("pages.score.shareRankAllTime", {
+    rank: String(allTimeRank),
+    total: String(totalSplits),
+  });
+  const rankWeek = t("pages.score.shareRankWeek", {
+    rank: String(weeklyRank),
+    total: String(weeklyTotalSplits),
+  });
+  const copyTextLabel = t("pages.score.shareCopyText");
+  const copyLinkLabel = t("pages.score.shareCopyLink");
+  const copiedLabel = t("pages.score.shareCopied");
 
   return (
     <div className="space-y-4 sm:space-y-5">
       <header className="mb-4 border-b border-[#312814] pb-3">
         <h2 className="type-card-title text-base text-guinness-gold sm:text-lg">
-          Share your split
+          {t("pages.score.sharePanelTitle")}
         </h2>
-        <p className="type-meta mt-2 text-guinness-tan/65">
-          Challenge line, score, wall ranks, and the link they tap to pour theirs.
-        </p>
+        <p className="type-meta mt-2 text-guinness-tan/65">{t("pages.score.sharePanelBlurb")}</p>
       </header>
 
       {/* Preview card */}
@@ -258,7 +272,7 @@ export function ScoreSharePanel({
             <div className="hidden md:block md:w-36 lg:w-44 shrink-0">
               <img
                 src={previewImageUrl}
-                alt="Your pint"
+                alt={t("pages.score.sharePreviewPintAlt")}
                 className="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -269,7 +283,7 @@ export function ScoreSharePanel({
           <div className="flex-1 px-4 py-4 sm:px-5 sm:py-5">
             <img
               src="/logo-splittheg.svg"
-              alt="Split the G"
+              alt={t("pages.score.shareLogoAlt")}
               width={595}
               height={117}
               decoding="async"
@@ -283,12 +297,14 @@ export function ScoreSharePanel({
             <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
                 {scoreLabel}
-                <span className="text-base font-semibold text-guinness-tan/60 sm:text-lg"> / 5.0</span>
+                <span className="text-base font-semibold text-guinness-tan/60 sm:text-lg">
+                  {t("pages.score.shareOutOfFive")}
+                </span>
               </p>
               <p className="type-meta text-guinness-cream/70">
-                #{allTimeRank} of {totalSplits}
+                {rankAllTime}
                 <span className="mx-1.5 text-guinness-gold/25">|</span>
-                week #{weeklyRank} of {weeklyTotalSplits}
+                {rankWeek}
               </p>
             </div>
 
@@ -335,19 +351,19 @@ export function ScoreSharePanel({
           <a href={mailtoHref} className={`${btnBase} no-underline`}>
             <IconMail className={iconClass} />
             <span className="text-[10px] font-semibold uppercase tracking-wide text-guinness-cream sm:text-xs">
-              Email
+              {t("pages.score.shareEmail")}
             </span>
           </a>
           <button type="button" className={btnBase} onClick={() => void copyFullText()}>
             <IconCopy className={iconClass} />
             <span className="text-[10px] font-semibold uppercase tracking-wide text-guinness-cream sm:text-xs">
-              {copied === "text" ? "Copied" : "Copy text"}
+              {copied === "text" ? copiedLabel : copyTextLabel}
             </span>
           </button>
           <button type="button" className={btnBase} onClick={() => void copyLinkOnly()}>
             <IconLink className={iconClass} />
             <span className="text-[10px] font-semibold uppercase tracking-wide text-guinness-cream sm:text-xs">
-              {copied === "link" ? "Copied" : "Copy link"}
+              {copied === "link" ? copiedLabel : copyLinkLabel}
             </span>
           </button>
         </div>
@@ -360,14 +376,16 @@ export function ScoreSharePanel({
           className="flex w-full min-h-11 items-center justify-center gap-2 rounded-xl bg-guinness-gold/10 px-4 py-2.5 text-sm font-semibold text-guinness-gold ring-1 ring-guinness-gold/25 transition-colors hover:bg-guinness-gold/15 hover:ring-guinness-gold/40"
         >
           <IconShareSystem className="h-5 w-5 text-guinness-gold" />
-          Share via device
+          {t("pages.score.shareViaDevice")}
         </button>
       ) : null}
 
       <p className="type-meta text-center text-guinness-tan/45">
-        Instagram has no web share. Use{" "}
-        <span className="font-semibold text-guinness-tan/55">Copy text</span> or{" "}
-        <span className="font-semibold text-guinness-tan/55">Copy link</span>, then paste in the app.
+        {t("pages.score.shareInstagramHint")}{" "}
+        <span className="font-semibold text-guinness-tan/55">{copyTextLabel}</span>{" "}
+        {t("pages.score.shareInstagramHintOr")}{" "}
+        <span className="font-semibold text-guinness-tan/55">{copyLinkLabel}</span>
+        {t("pages.score.shareInstagramHintSuffix")}
       </p>
     </div>
   );

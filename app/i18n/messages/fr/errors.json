@@ -1,0 +1,22 @@
+{
+  "boundaryTitle": "Oups !",
+  "boundaryUnexpected": "Une erreur inattendue s'est produite.",
+  "boundaryError": "Erreur",
+  "boundary404": "La page demandée est introuvable.",
+  "noGDetected": "Aucun G détecté",
+  "noGPattern": "Aucun motif G détecté",
+  "failedProcessImage": "Échec du traitement de l'image",
+  "genericPourError": "Une erreur s'est produite lors du traitement de votre versement.",
+  "invalidImageType": "Veuillez choisir un fichier image (par exemple JPG ou PNG).",
+  "imageTooLarge": "Cette image est trop grande (max {maxMb} Mo). Essayez une photo plus petite.",
+  "readImageFailed": "Nous ne pouvions pas lire cette image. Essayez une autre photo ou exportez-la à nouveau.",
+  "readImageFailedShort": "Je n'ai pas pu lire cette image. Essayez un autre fichier.",
+  "invalidAction": "Action invalide",
+  "barNameRequired": "Entrez un nom de barre (recherchez ou saisissez le vôtre).",
+  "ratingRange": "L'indice de coulée doit être compris entre 0 et 5.",
+  "pintPriceNonNegative": "Le prix de la pinte doit être nul ou un nombre positif.",
+  "pintPriceTooLarge": "Le prix de la pinte est trop élevé.",
+  "saveRatingFailed": "Impossible d'enregistrer la note.",
+  "signInGoogleFailed": "Impossible de démarrer la connexion à Google. {detail}",
+  "couldNotUpdatePours": "Impossible de mettre à jour les enregistrements de coulage."
+}

@@ -1,24 +1,22 @@
 import { AppLink } from "~/i18n/app-link";
 import { scorePourPathFromFields } from "~/utils/scorePath";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { useProfileOutlet } from "./profile-context";
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Profile Scores",
-    description: "Review your recent Split the G results and score history.",
-    path: seoPath(params, "/profile/scores"),
-    keywords: ["split the g history", "recent pours"],
-  });
+  return seoMetaForRoute(params, "/profile/scores", "scores");
 }
 
 export default function ProfileScoresPage() {
+  const { t } = useI18n();
   const { scores } = useProfileOutlet();
 
   return scores.length > 0 ? (
     <section>
-      <h2 className="type-card-title mb-3">Recent scores</h2>
+      <h2 className="type-card-title mb-3">
+        {t("pages.profile.scoresRecentTitle")}
+      </h2>
       <ul className="grid gap-3 sm:grid-cols-2">
         {scores.map((s) => (
           <li key={s.id}>
@@ -41,10 +39,11 @@ export default function ProfileScoresPage() {
               ) : null}
               {s.pint_price != null && Number.isFinite(Number(s.pint_price)) ? (
                 <p className="type-meta mt-1 text-guinness-tan/45">
-                  Paid{" "}
-                  {Number(s.pint_price).toLocaleString(undefined, {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 2,
+                  {t("pages.profile.scoresPaid", {
+                    amount: Number(s.pint_price).toLocaleString(undefined, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    }),
                   })}
                 </p>
               ) : null}
@@ -55,7 +54,7 @@ export default function ProfileScoresPage() {
     </section>
   ) : (
     <p className="type-meta text-guinness-tan/70">
-      No scores linked to this email yet. Claim a pour to start a score log.
+      {t("pages.profile.scoresEmptyBlurb")}
     </p>
   );
 }

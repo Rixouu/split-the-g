@@ -36,8 +36,10 @@ import {
   pubDetailPath,
   resolveBarKeyFromPubPathSegment,
 } from "~/utils/pubPath";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { createTranslator } from "~/i18n/load-messages";
+import { langFromParams } from "~/i18n/lang-param";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import type { loader as pubDetailLoader } from "./pubs.$barKey.loader";
 import {
   PUB_WALL_PAGE_LIMIT,
@@ -58,15 +60,11 @@ export function meta({
   params: { barKey?: string; lang?: string };
 }) {
   const barKey = params.barKey?.trim();
-  return seoMeta({
-    title: "Pub Details",
-    description: "View a pub profile, map, and latest Split the G pours for that venue.",
-    path: seoPath(
-      params,
-      barKey ? `/pubs/${encodeURIComponent(barKey)}` : "/pubs",
-    ),
-    keywords: ["pub wall", "guinness pub scores"],
-  });
+  return seoMetaForRoute(
+    params,
+    barKey ? `/pubs/${encodeURIComponent(barKey)}` : "/pubs",
+    "pubDetail",
+  );
 }
 const PubWallTab = lazy(async () => {
   const mod = await import("~/components/pub/PubWallTab");
@@ -85,18 +83,31 @@ type ImportGoogleActionData =
     }
   | { ok: false; message?: string };
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, params }: ActionFunctionArgs) {
+  const t = createTranslator(langFromParams(params ?? {}));
   if (request.method !== "POST") {
-    return data({ ok: false, message: "Method not allowed" } satisfies ImportGoogleActionData, {
-      status: 405,
-    });
+    return data(
+      {
+        ok: false,
+        message: t("pages.pubDetail.actionMethodNotAllowed"),
+      } satisfies ImportGoogleActionData,
+      {
+        status: 405,
+      },
+    );
   }
 
   const formData = await request.formData();
   if (formData.get("intent") !== "importGooglePlace") {
-    return data({ ok: false, message: "Invalid action" } satisfies ImportGoogleActionData, {
-      status: 400,
-    });
+    return data(
+      {
+        ok: false,
+        message: t("pages.pubDetail.actionInvalid"),
+      } satisfies ImportGoogleActionData,
+      {
+        status: 400,
+      },
+    );
   }
 
   const accessToken = String(formData.get("accessToken") ?? "").trim();
@@ -106,26 +117,37 @@ export async function action({ request }: ActionFunctionArgs) {
   const barSampleAddress = String(formData.get("barSampleAddress") ?? "").trim();
 
   if (!accessToken) {
-    return data({ ok: false, message: "Sign in to import." } satisfies ImportGoogleActionData, {
-      status: 401,
-    });
+    return data(
+      {
+        ok: false,
+        message: t("pages.pubDetail.actionSignInToImport"),
+      } satisfies ImportGoogleActionData,
+      {
+        status: 401,
+      },
+    );
   }
 
   const { data: userData, error: userErr } =
     await supabase.auth.getUser(accessToken);
   const email = userData.user?.email;
   if (userErr || !isPubDirectoryAdmin(email)) {
-    return data({ ok: false, message: "Admin only." } satisfies ImportGoogleActionData, {
-      status: 403,
-    });
+    return data(
+      {
+        ok: false,
+        message: t("pages.pubDetail.actionAdminOnly"),
+      } satisfies ImportGoogleActionData,
+      {
+        status: 403,
+      },
+    );
   }
 
   const mapsKey = resolveGoogleMapsKeyForServer();
   if (!mapsKey) {
     return data({
       ok: false,
-      message:
-        "Missing VITE_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_SERVER_KEY on the server.",
+      message: t("pages.pubDetail.actionMissingMapsKey"),
     } satisfies ImportGoogleActionData);
   }
 
@@ -226,6 +248,7 @@ function PubOpeningHoursReadOnly({
 }: {
   googleOpeningHoursLines: string[] | null;
 }) {
+  const { t } = useI18n();
   const todayLabel = weekdayLabelTodayEnUs();
 
   if (googleOpeningHoursLines && googleOpeningHoursLines.length > 0) {
@@ -233,7 +256,7 @@ function PubOpeningHoursReadOnly({
       <div className={`mt-1 border-t ${pubStroke} pt-4`}>
         <ul
           className={`list-none overflow-hidden rounded-xl border ${pubStroke} bg-guinness-black/40 shadow-[inset_0_1px_0_rgba(212,175,55,0.04)]`}
-          aria-label="Weekly opening hours"
+          aria-label={t("pages.pubDetail.openingHoursAria")}
         >
           {googleOpeningHoursLines.map((line, i) => {
             const parsed = parseWeekdayHoursLine(line);
@@ -263,7 +286,7 @@ function PubOpeningHoursReadOnly({
                       </span>
                       {isToday ? (
                         <span className="type-meta shrink-0 rounded-md bg-guinness-gold/15 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-guinness-gold/90">
-                          Today
+                          {t("pages.pubDetail.hoursTodayBadge")}
                         </span>
                       ) : null}
                       <span
@@ -300,8 +323,7 @@ function PubOpeningHoursReadOnly({
       className={`mt-1 rounded-xl border border-dashed ${pubStroke} bg-guinness-black/25 px-3 py-4 text-center sm:px-4`}
     >
       <p className="type-meta leading-relaxed text-guinness-tan/55">
-        No linked listing hours yet. Add a Google Place ID or use admin import —
-        visitors see hours from the business listing when available.
+        {t("pages.pubDetail.hoursEmptyPublic")}
       </p>
     </div>
   );
@@ -312,6 +334,7 @@ function PubOpeningHoursDeferred({
 }: {
   googleOpeningHoursLines: Promise<string[] | null>;
 }) {
+  const { t } = useI18n();
   return (
     <Suspense
       fallback={
@@ -319,7 +342,7 @@ function PubOpeningHoursDeferred({
           className={`mt-1 rounded-xl border ${pubStroke} bg-guinness-black/25 px-3 py-4 text-center sm:px-4`}
         >
           <p className="type-meta leading-relaxed text-guinness-tan/55">
-            Loading live listing hours...
+            {t("pages.pubDetail.hoursLoadingDeferred")}
           </p>
         </div>
       }
@@ -374,6 +397,7 @@ function IconPubFavoriteHeart({
 }
 
 export default function PubDetail() {
+  const { t } = useI18n();
   const {
     barKey,
     bar,
@@ -448,14 +472,18 @@ export default function PubDetail() {
       setToastOk(true);
       const bits = [d.name, d.formattedAddress].filter(Boolean).join(" — ");
       const hoursMsg = d.weekdayLines?.length
-        ? "Review pub name / address below, then Save pub details to update pour records."
-        : "Google did not return opening-hour lines for this listing (some venues omit them in the API). Name, address, Place ID, and Maps link were filled where available — add hours manually if needed, then save.";
-      setToast(bits ? `Imported: ${bits}. ${hoursMsg}` : `Imported from Google. ${hoursMsg}`);
+        ? t("pages.pubDetail.importHoursReview")
+        : t("pages.pubDetail.importHoursMissing");
+      setToast(
+        bits
+          ? t("pages.pubDetail.importSuccessWithBits", { bits, hint: hoursMsg })
+          : t("pages.pubDetail.importSuccessNoBits", { hint: hoursMsg }),
+      );
     } else {
       setToastOk(false);
-      setToast(d.message ?? "Could not import from Google.");
+      setToast(d.message ?? t("pages.pubDetail.importFailedFallback"));
     }
-  }, [importFetcher.state, importFetcher.data]);
+  }, [importFetcher.state, importFetcher.data, t]);
 
   useEffect(() => {
     setOpeningHours(placeDetails?.opening_hours ?? "");
@@ -511,7 +539,7 @@ export default function PubDetail() {
     setToast(null);
     if (!userId) {
       setToastOk(false);
-      setToast("Sign in from Profile to save favorites.");
+      setToast(t("pages.pubs.signInForFavorites"));
       return;
     }
     setFavBusy(true);
@@ -528,7 +556,7 @@ export default function PubDetail() {
         }
         setFavId(null);
         setToastOk(true);
-        setToast("Removed from favorites.");
+        setToast(t("pages.pubDetail.toastFavoriteRemoved"));
       } else {
         const { data, error } = await supabase
           .from("user_favorite_bars")
@@ -546,7 +574,7 @@ export default function PubDetail() {
         }
         if (data?.id) setFavId(data.id as string);
         setToastOk(true);
-        setToast("Saved to favorites.");
+        setToast(t("pages.pubDetail.toastFavoriteSaved"));
       }
     } finally {
       setFavBusy(false);
@@ -559,12 +587,12 @@ export default function PubDetail() {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) {
       setToastOk(false);
-      setToast("Sign in to update pub details.");
+      setToast(t("pages.pubDetail.toastSignInUpdatePub"));
       return;
     }
     if (!isPubDirectoryAdmin(auth.user.email)) {
       setToastOk(false);
-      setToast("Only the site admin can update pub directory details.");
+      setToast(t("pages.pubDetail.toastAdminOnlyDirectory"));
       return;
     }
     setDirectoryBusy(true);
@@ -572,7 +600,7 @@ export default function PubDetail() {
       const nameTrim = canonicalBarName.trim();
       if (!nameTrim) {
         setToastOk(false);
-        setToast("Pub name on pours is required.");
+        setToast(t("pages.pubDetail.toastPubNameRequired"));
         return;
       }
       const addrTrim = canonicalBarAddress.trim();
@@ -593,8 +621,8 @@ export default function PubDetail() {
         const msg = `${rpcError.message ?? ""} ${rpcError.code ?? ""}`.toLowerCase();
         setToast(
           rpcError.code === "42883" || msg.includes("admin_apply_pub_canonical")
-            ? "Run migration 20260328310000_admin_pub_canonical_merge (admin_apply_pub_canonical_on_scores)."
-            : (rpcError.message ?? "Could not update pour records."),
+            ? t("pages.pubDetail.toastPubMigrationHint")
+            : (rpcError.message ?? t("pages.pubDetail.toastCouldNotUpdatePours")),
         );
         return;
       }
@@ -624,7 +652,7 @@ export default function PubDetail() {
         return;
       }
       setToastOk(true);
-      setToast("Pub details saved. Thanks for helping the community.");
+      setToast(t("pages.pubDetail.toastPubSaved"));
       if (newBarKey !== barKey) {
         navigate(pubDetailPath(newBarKey), { replace: true });
       }
@@ -639,29 +667,29 @@ export default function PubDetail() {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) {
       setToastOk(false);
-      setToast("Sign in to merge pubs.");
+      setToast(t("pages.pubDetail.toastSignInMerge"));
       return;
     }
     if (!isPubDirectoryAdmin(auth.user.email)) {
       setToastOk(false);
-      setToast("Only the site admin can merge pubs.");
+      setToast(t("pages.pubDetail.toastAdminOnlyMerge"));
       return;
     }
     const pasted = normalizeBarKeyInput(mergeTargetBarKey);
     if (!pasted) {
       setToastOk(false);
-      setToast("Paste the target pub’s bar key (from its URL after /pubs/).");
+      setToast(t("pages.pubDetail.toastMergePasteTarget"));
       return;
     }
     const tgt = await resolveBarKeyFromPubPathSegment(supabase, pasted);
     if (!tgt) {
       setToastOk(false);
-      setToast("Could not find that pub — check the URL segment after /pubs/.");
+      setToast(t("pages.pubDetail.toastMergePubNotFound"));
       return;
     }
     if (tgt === barKey) {
       setToastOk(false);
-      setToast("Choose a different pub to merge into.");
+      setToast(t("pages.pubDetail.toastMergeSamePub"));
       return;
     }
     setMergeBusy(true);
@@ -675,13 +703,13 @@ export default function PubDetail() {
         const msg = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
         setToast(
           error.code === "42883" || msg.includes("admin_merge_pub_into_target")
-            ? "Run migration 20260328310000_admin_pub_canonical_merge (admin_merge_pub_into_target)."
-            : (error.message ?? "Merge failed."),
+            ? t("pages.pubDetail.toastMergeMigrationHint")
+            : (error.message ?? t("pages.pubDetail.toastMergeFailed")),
         );
         return;
       }
       setToastOk(true);
-      setToast("Merged into target pub. Redirecting…");
+      setToast(t("pages.pubDetail.toastMergeSuccess"));
       setMergeTargetBarKey("");
       navigate(pubDetailPath(tgt), { replace: true });
       revalidator.revalidate();
@@ -696,7 +724,7 @@ export default function PubDetail() {
     const token = sessionData.session?.access_token;
     if (!token) {
       setToastOk(false);
-      setToast("Sign in to import.");
+      setToast(t("pages.pubDetail.toastSignInImport"));
       return;
     }
     const placeInput = [directoryGooglePlaceId, mapsPlaceUrl]
@@ -724,7 +752,7 @@ export default function PubDetail() {
       <div className={pageShellClass}>
         <PageHeader
           title={bar.display_name}
-          description="Community pours, ratings, and optional pub notes."
+          description={t("pages.pubDetail.pageDescription")}
         >
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
@@ -743,13 +771,19 @@ export default function PubDetail() {
                 filled={Boolean(favId)}
                 className="h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem]"
               />
-              <span>{favBusy ? "…" : favId ? "Saved" : "Favorite"}</span>
+              <span>
+                {favBusy
+                  ? t("pages.pubDetail.favoriteBusy")
+                  : favId
+                    ? t("pages.pubDetail.saved")
+                    : t("pages.pubDetail.favorite")}
+              </span>
             </button>
             <AppLink
               to="/pubs"
               className={pageHeaderActionButtonClass}
             >
-              All pubs
+              {t("pages.pubDetail.allPubs")}
             </AppLink>
           </div>
         </PageHeader>
@@ -768,7 +802,9 @@ export default function PubDetail() {
 
         {extraError ? (
           <p className={`type-meta mb-4 rounded-lg border ${pubStroke} bg-guinness-brown/30 px-3 py-2 text-amber-200/90`}>
-            Could not load pour spend stats ({extraError}). Apply migration{" "}
+            {t("pages.pubDetail.couldNotLoadSpend", {
+              error: String(extraError),
+            })}{" "}
             <code className="rounded bg-guinness-black/60 px-1 text-guinness-gold">
               20260328260000_pub_details_and_comp_bar_link
             </code>
@@ -784,12 +820,10 @@ export default function PubDetail() {
                 id="pub-location-heading"
                 className="type-card-title mb-1 text-guinness-gold"
               >
-                Location & map
+                {t("pages.pubDetail.locationMapTitle")}
               </h2>
               <p className="type-meta mb-3 text-guinness-tan/70">
-                Location reflects where the community has poured at this pub. Use
-                the map to preview the area, or open Google Maps for directions
-                and the full listing.
+                {t("pages.pubDetail.locationMapBlurb")}
               </p>
               {bar.sample_address ? (
                 <p className="mb-3 text-sm leading-relaxed text-guinness-cream">
@@ -797,13 +831,15 @@ export default function PubDetail() {
                 </p>
               ) : (
                 <p className="type-meta mb-3 text-guinness-tan/55">
-                  No saved address yet — map search uses the pub name only.
+                  {t("pages.pubDetail.noAddressYet")}
                 </p>
               )}
 
               <PubGoogleMapEmbed
                 searchQuery={mapSearchQuery}
-                title={`Map: ${bar.display_name}`}
+                title={t("pages.pubDetail.mapEmbedTitle", {
+                  name: bar.display_name,
+                })}
               />
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -813,7 +849,7 @@ export default function PubDetail() {
                   rel="noopener noreferrer"
                   className={pageHeaderActionButtonClass}
                 >
-                  Open in Google Maps
+                  {t("pages.pubDetail.openInGoogleMaps")}
                 </a>
               </div>
             </section>
@@ -826,10 +862,10 @@ export default function PubDetail() {
                 id="pub-hours-aside-heading"
                 className="type-card-title mb-1 text-guinness-gold"
               >
-                Opening hours
+                {t("pages.pubDetail.openingHoursTitle")}
               </h2>
               <p className="type-meta mb-3 text-guinness-tan/70">
-                Hours from the linked Google Business Profile listing.
+                {t("pages.pubDetail.openingHoursBlurb")}
               </p>
               <PubOpeningHoursDeferred
                 googleOpeningHoursLines={googleOpeningHoursLines}
@@ -846,16 +882,16 @@ export default function PubDetail() {
                 id="pub-stats-heading"
                 className="type-card-title mb-1 text-guinness-gold"
               >
-                Pour activity
+                {t("pages.pubDetail.pourActivityTitle")}
               </h2>
               <p className="type-meta mb-4 text-guinness-tan/65">
-                Ratings and spend from scores tagged with this pub name.
+                {t("pages.pubDetail.pourActivityBlurb")}
               </p>
 
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 <div className={pubPanelMuted}>
                   <p className="type-meta text-guinness-tan/65">
-                    Avg pour rating
+                    {t("pages.pubDetail.statAvgPourRating")}
                   </p>
                   <p className="mt-1 text-lg font-semibold text-guinness-gold sm:text-xl">
                     {bar.rating_count > 0 && bar.avg_pour_rating != null
@@ -864,54 +900,65 @@ export default function PubDetail() {
                   </p>
                   {bar.rating_count > 0 ? (
                     <p className="type-meta mt-1 text-guinness-tan/50">
-                      {bar.rating_count} rated pour
-                      {bar.rating_count === 1 ? "" : "s"}
+                      {bar.rating_count === 1
+                        ? t("pages.pubDetail.statRatedPourOne", {
+                            count: String(bar.rating_count),
+                          })
+                        : t("pages.pubDetail.statRatedPourMany", {
+                            count: String(bar.rating_count),
+                          })}
                     </p>
                   ) : (
                     <p className="type-meta mt-1 text-guinness-tan/50">
-                      No ratings yet
+                      {t("pages.pubDetail.statNoRatingsYet")}
                     </p>
                   )}
                 </div>
                 <div className={pubPanelMuted}>
-                  <p className="type-meta text-guinness-tan/65">Pours</p>
+                  <p className="type-meta text-guinness-tan/65">
+                    {t("pages.pubDetail.statPours")}
+                  </p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-guinness-cream sm:text-xl">
                     {bar.submission_count}
                   </p>
                   <p className="type-meta mt-1 text-guinness-tan/50">
-                    Recorded here
+                    {t("pages.pubDetail.statRecordedHere")}
                   </p>
                 </div>
                 <div className={pubPanelMuted}>
-                  <p className="type-meta text-guinness-tan/65">Pouring</p>
+                  <p className="type-meta text-guinness-tan/65">
+                    {t("pages.pubDetail.statPouring")}
+                  </p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-guinness-cream sm:text-xl">
                     {extra.distinct_drinkers}
                   </p>
                   <p className="type-meta mt-1 text-guinness-tan/50">
-                    Distinct people (approx.)
+                    {t("pages.pubDetail.statDistinctPeople")}
                   </p>
                 </div>
                 <div className={pubPanelMuted}>
-                  <p className="type-meta text-guinness-tan/65">Community $</p>
+                  <p className="type-meta text-guinness-tan/65">
+                    {t("pages.pubDetail.statCommunitySpend")}
+                  </p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-guinness-gold sm:text-xl">
                     {formatSpend(extra.total_pint_spend)}
                   </p>
                   <p className="type-meta mt-1 text-guinness-tan/50">
-                    Prices entered on pours
+                    {t("pages.pubDetail.statPricesOnPours")}
                   </p>
                 </div>
                 <div className="col-span-2 lg:col-span-2">
                   <div className={pubPanelMuted}>
                     <p className="type-meta text-guinness-tan/65">
-                      Your spend
+                      {t("pages.pubDetail.statYourSpend")}
                     </p>
                     <p className="mt-1 text-lg font-semibold tabular-nums text-guinness-cream sm:text-xl">
                       {userId ? formatSpend(extra.my_pint_spend) : "—"}
                     </p>
                     <p className="type-meta mt-1 text-guinness-tan/50">
                       {userId
-                        ? "Your pours with a price, this pub."
-                        : "Sign in to see your total."}
+                        ? t("pages.pubDetail.spendSignedInHint")
+                        : t("pages.pubDetail.spendSignInHint")}
                     </p>
                   </div>
                 </div>
@@ -922,14 +969,14 @@ export default function PubDetail() {
               <div
                 className="mb-5 w-full min-w-0 border-b border-[#322914] pb-4"
                 role="tablist"
-                aria-label="Pub sections"
+                aria-label={t("pages.pubDetail.pubSectionsAria")}
               >
                 <div className="grid w-full min-w-0 grid-cols-3 gap-2 sm:gap-3">
                   {(
                     [
-                      ["promos", "Promos"],
-                      ["competitions", "Competitions"],
-                      ["wall", "Wall"],
+                      ["promos", t("pages.pubDetail.tabPromos")],
+                      ["competitions", t("pages.pubDetail.tabsCompetitions")],
+                      ["wall", t("pages.pubDetail.tabsWall")],
                     ] as const
                   ).map(([id, label]) => (
                     <button
@@ -965,34 +1012,37 @@ export default function PubDetail() {
                     id="pub-directory-heading"
                     className="type-card-title mb-1 text-guinness-gold"
                   >
-                    Guinness & promos
+                    {t("pages.pubDetail.guinnessPromosTitle")}
                   </h2>
                   <p className="type-meta mb-4 text-guinness-tan/70">
-                    Community notes — visible to everyone.
                     {canEditPubDirectory
-                      ? " Edit notes below. Listing hours appear in the left column when Google is linked."
-                      : " Updates are managed by the team."}
+                      ? t("pages.pubDetail.directoryPublicBlurbEdit")
+                      : t("pages.pubDetail.directoryPublicBlurbTeam")}
                   </p>
 
-                  <DirectorySection title="Guinness">
+                  <DirectorySection title={t("pages.pubDetail.sectionGuinness")}>
                     {placeDetails?.guinness_info?.trim() ? (
                       <p className="whitespace-pre-wrap">
                         {placeDetails.guinness_info.trim()}
                       </p>
                     ) : (
                       <p className="text-guinness-tan/55">
-                        Taps, pour quality, nitro — add below.
+                        {t("pages.pubDetail.guinnessEmptyHint")}
                       </p>
                     )}
                   </DirectorySection>
                   <div className={`${pubDivider} mt-5 pt-5`}>
-                    <DirectorySection title="Promotions & drinks">
+                    <DirectorySection
+                      title={t("pages.pubDetail.sectionPromotions")}
+                    >
                       {placeDetails?.alcohol_promotions?.trim() ? (
                         <p className="whitespace-pre-wrap">
                           {placeDetails.alcohol_promotions.trim()}
                         </p>
                       ) : (
-                        <p className="text-guinness-tan/55">Nothing added yet.</p>
+                        <p className="text-guinness-tan/55">
+                          {t("pages.pubDetail.promotionsNothingYet")}
+                        </p>
                       )}
                     </DirectorySection>
                   </div>
@@ -1003,12 +1053,10 @@ export default function PubDetail() {
                     className={`mt-6 ${pubPanel}`}
                   >
                     <h3 className="type-card-title mb-1 text-guinness-gold">
-                      Update pub details
+                      {t("pages.pubDetail.updatePubDetailsTitle")}
                     </h3>
                     <p className="type-meta mb-6 text-guinness-tan/65">
-                      Admin only. Import fills Google fields and the pour name/address
-                      below — saving updates every score tagged with this pub and moves
-                      directory data if the normalized name changes.
+                      {t("pages.pubDetail.updatePubDetailsBlurb")}
                     </p>
 
                     <div className="space-y-8">
@@ -1020,11 +1068,10 @@ export default function PubDetail() {
                             htmlFor="pub-admin-canonical-name"
                             className="type-meta block text-guinness-tan/80"
                           >
-                            Pub name on pours
+                            {t("pages.pubDetail.labelPubNameOnPours")}
                           </label>
                           <p className="type-meta text-guinness-tan/45">
-                            Must match one another on every pour for this listing.
-                            Import sets this from Google; edit if needed before save.
+                            {t("pages.pubDetail.hintPubNameOnPours")}
                           </p>
                           <input
                             id="pub-admin-canonical-name"
@@ -1040,11 +1087,10 @@ export default function PubDetail() {
                             htmlFor="pub-admin-canonical-address"
                             className="type-meta block text-guinness-tan/80"
                           >
-                            Address on pours
+                            {t("pages.pubDetail.labelAddressOnPours")}
                           </label>
                           <p className="type-meta text-guinness-tan/45">
-                            Shown on the pub card and map search. Leave empty to keep
-                            existing addresses on each pour unchanged.
+                            {t("pages.pubDetail.hintAddressOnPours")}
                           </p>
                           <input
                             id="pub-admin-canonical-address"
@@ -1052,7 +1098,9 @@ export default function PubDetail() {
                             value={canonicalBarAddress}
                             onChange={(e) => setCanonicalBarAddress(e.target.value)}
                             className={fieldInputClass}
-                            placeholder="From Google import or type manually"
+                            placeholder={t(
+                              "pages.pubDetail.canonicalAddressPlaceholder",
+                            )}
                             autoComplete="street-address"
                           />
                         </div>
@@ -1063,11 +1111,10 @@ export default function PubDetail() {
                           htmlFor="pub-admin-opening-hours"
                           className="type-meta block text-guinness-tan/80"
                         >
-                          Opening hours (admin backup)
+                          {t("pages.pubDetail.labelOpeningHoursAdmin")}
                         </label>
                         <p className="type-meta text-guinness-tan/45">
-                          Not shown on the public page — visitors only see Google listing
-                          hours. Use for internal notes or when Google has no hours.
+                          {t("pages.pubDetail.hintOpeningHoursAdmin")}
                         </p>
                         <textarea
                           id="pub-admin-opening-hours"
@@ -1075,7 +1122,9 @@ export default function PubDetail() {
                           onChange={(e) => setOpeningHours(e.target.value)}
                           rows={5}
                           className={fieldTextareaClass}
-                          placeholder="e.g. Mon–Thu 4pm–12am, Fri–Sun 2pm–1am"
+                          placeholder={t(
+                            "pages.pubDetail.placeholderOpeningHoursExample",
+                          )}
                         />
                       </div>
 
@@ -1087,7 +1136,7 @@ export default function PubDetail() {
                             htmlFor="pub-admin-guinness"
                             className="type-meta block text-guinness-tan/80"
                           >
-                            Guinness & pour notes
+                            {t("pages.pubDetail.labelGuinnessNotes")}
                           </label>
                           <textarea
                             id="pub-admin-guinness"
@@ -1095,7 +1144,7 @@ export default function PubDetail() {
                             onChange={(e) => setGuinnessInfo(e.target.value)}
                             rows={4}
                             className={fieldTextareaClass}
-                            placeholder="How’s the Guinness here?"
+                            placeholder={t("pages.pubDetail.placeholderGuinnessHow")}
                           />
                         </div>
                         <div className="space-y-2 sm:min-w-0">
@@ -1103,7 +1152,7 @@ export default function PubDetail() {
                             htmlFor="pub-admin-promos"
                             className="type-meta block text-guinness-tan/80"
                           >
-                            Promotions & other drinks
+                            {t("pages.pubDetail.labelPromosOther")}
                           </label>
                           <textarea
                             id="pub-admin-promos"
@@ -1111,7 +1160,7 @@ export default function PubDetail() {
                             onChange={(e) => setPromotions(e.target.value)}
                             rows={4}
                             className={fieldTextareaClass}
-                            placeholder="Happy hour, other stouts, etc."
+                            placeholder={t("pages.pubDetail.promotionsPlaceholder")}
                           />
                         </div>
                       </div>
@@ -1121,12 +1170,10 @@ export default function PubDetail() {
                       >
                         <div>
                           <p className="type-label text-guinness-gold">
-                            Google listing & import
+                            {t("pages.pubDetail.googleListingTitle")}
                           </p>
                           <p className="type-meta mt-1 text-guinness-tan/50">
-                            Link the business profile for hours on the left. Classic
-                            Places API + server key required for import. Name and address
-                            are applied to pour records when you save.
+                            {t("pages.pubDetail.googleListingBlurb")}
                           </p>
                         </div>
 
@@ -1135,7 +1182,7 @@ export default function PubDetail() {
                             htmlFor="pub-admin-place-id"
                             className="type-meta block text-guinness-tan/80"
                           >
-                            Google Place ID or Maps URL
+                            {t("pages.pubDetail.labelPlaceIdOrUrl")}
                           </label>
                           <input
                             id="pub-admin-place-id"
@@ -1145,7 +1192,7 @@ export default function PubDetail() {
                               setDirectoryGooglePlaceId(e.target.value)
                             }
                             className={fieldInputClass}
-                            placeholder="ChIJ… or paste a full google.com/maps/place/… link"
+                            placeholder={t("pages.pubDetail.placeholderPlaceId")}
                             autoComplete="off"
                             spellCheck={false}
                           />
@@ -1156,7 +1203,7 @@ export default function PubDetail() {
                             htmlFor="pub-admin-maps-url"
                             className="type-meta block text-guinness-tan/80"
                           >
-                            Custom Maps URL (optional)
+                            {t("pages.pubDetail.labelCustomMapsUrl")}
                           </label>
                           <input
                             id="pub-admin-maps-url"
@@ -1164,7 +1211,9 @@ export default function PubDetail() {
                             value={mapsPlaceUrl}
                             onChange={(e) => setMapsPlaceUrl(e.target.value)}
                             className={fieldInputClass}
-                            placeholder="https://maps.app.goo.gl/…"
+                            placeholder={t(
+                              "pages.pubDetail.placeholderMapsShortUrl",
+                            )}
                           />
                         </div>
 
@@ -1178,13 +1227,15 @@ export default function PubDetail() {
                             className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border ${pubStroke} bg-guinness-black/40 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/40 disabled:opacity-50`}
                           >
                             {importFetcher.state !== "idle"
-                              ? "Importing…"
-                              : "Import from Google Maps"}
+                              ? t("pages.pubDetail.importingMaps")
+                              : t("pages.pubDetail.importFromGoogleMaps")}
                           </button>
                           <p className="type-meta max-w-xl text-guinness-tan/50 sm:text-right">
-                            Uses Place ID field, custom URL, or pub name. Fills pour
-                            name/address fields — then{" "}
-                            <span className="text-guinness-tan/70">Save pub details</span>.
+                            {t("pages.pubDetail.importInlineBlurb")}{" "}
+                            <span className="text-guinness-tan/70">
+                              {t("pages.pubDetail.importInlineBlurbSave")}
+                            </span>
+                            {t("pages.pubDetail.importInlineBlurbSuffix")}
                           </p>
                         </div>
                       </div>
@@ -1202,10 +1253,10 @@ export default function PubDetail() {
                         >
                           <span className="min-w-0">
                             <span className="type-label block text-amber-100/95">
-                              Merge duplicate pub
+                              {t("pages.pubDetail.mergeDuplicateTitle")}
                             </span>
                             <span className="type-meta mt-0.5 block text-guinness-tan/50">
-                              Admin only — expand to combine with another listing
+                              {t("pages.pubDetail.mergeDuplicateSubtitle")}
                             </span>
                           </span>
                           <svg
@@ -1231,17 +1282,14 @@ export default function PubDetail() {
                             className={`space-y-4 border-t border-amber-500/20 px-4 pb-4 pt-3 sm:px-5 sm:pb-5`}
                           >
                             <p className="type-meta text-guinness-tan/55">
-                              Use when this page is a manual duplicate of another listing
-                              (e.g. “The Old English Pub” vs the full Google name). All
-                              pours here are re-tagged to match the target pub; this
-                              listing disappears from All pubs.
+                              {t("pages.pubDetail.mergeExplainer")}
                             </p>
                             <div className="space-y-2">
                               <label
                                 htmlFor="pub-admin-merge-target"
                                 className="type-meta block text-guinness-tan/80"
                               >
-                                Target bar key (from URL)
+                                {t("pages.pubDetail.labelTargetBarKey")}
                               </label>
                               <input
                                 id="pub-admin-merge-target"
@@ -1251,16 +1299,18 @@ export default function PubDetail() {
                                   setMergeTargetBarKey(e.target.value)
                                 }
                                 className={fieldInputClass}
-                                placeholder="e.g. the-old-english-bangkok-british-pub-and-restaurant"
+                                placeholder={t(
+                                  "pages.pubDetail.placeholderTargetBarKey",
+                                )}
                                 autoComplete="off"
                                 spellCheck={false}
                               />
                               <p className="type-meta text-guinness-tan/45">
-                                Open the canonical pub and copy the path after{" "}
+                                {t("pages.pubDetail.mergeTargetKeyHint")}{" "}
                                 <code className="rounded bg-guinness-black/50 px-1 text-guinness-gold/90">
                                   /pubs/
                                 </code>{" "}
-                                (hyphen slug or legacy name — both work).
+                                {t("pages.pubDetail.mergeTargetKeyHintAfter")}
                               </p>
                             </div>
                             <button
@@ -1269,7 +1319,9 @@ export default function PubDetail() {
                               onClick={() => void mergeIntoTargetPub()}
                               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-500/40 bg-guinness-black/40 px-4 py-2.5 text-sm font-semibold text-amber-100/95 transition-colors hover:border-amber-400/55 hover:bg-guinness-brown/40 disabled:opacity-50"
                             >
-                              {mergeBusy ? "Merging…" : "Merge into target pub"}
+                              {mergeBusy
+                                ? t("pages.pubDetail.mergeBusy")
+                                : t("pages.pubDetail.mergeIntoTarget")}
                             </button>
                           </div>
                         ) : null}
@@ -1281,7 +1333,9 @@ export default function PubDetail() {
                       disabled={directoryBusy}
                       className="mt-8 w-full rounded-lg bg-guinness-gold px-4 py-3 text-sm font-semibold text-guinness-black hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
                     >
-                      {directoryBusy ? "Saving…" : "Save pub details"}
+                      {directoryBusy
+                        ? t("pages.pubDetail.savingPubDetails")
+                        : t("pages.pubDetail.savePubDetails")}
                     </button>
                   </form>
                 ) : null}
@@ -1294,12 +1348,11 @@ export default function PubDetail() {
                     id="pub-comps-tab-heading"
                     className="type-card-title mb-3 text-guinness-gold"
                   >
-                    Competitions
+                    {t("pages.pubDetail.tabsCompetitions")}
                   </h2>
                   {linkedCompetitions.length === 0 ? (
                     <p className="type-meta text-guinness-tan/65">
-                      No active competition linked. Organizers can attach this
-                      pub when creating or editing a comp.
+                      {t("pages.pubDetail.linkedCompsEmpty")}
                     </p>
                   ) : (
                     <ul className="space-y-2">
@@ -1314,7 +1367,8 @@ export default function PubDetail() {
                               {c.title}
                             </span>
                             <span className="type-meta mt-0.5 block text-guinness-tan/65">
-                              Ends {new Date(c.ends_at).toLocaleString()}
+                              {t("pages.pubDetail.ends")}{" "}
+                              {new Date(c.ends_at).toLocaleString()}
                             </span>
                           </AppLink>
                         </li>
@@ -1330,11 +1384,12 @@ export default function PubDetail() {
                     id="pub-wall-heading"
                     className="type-card-title mb-1 text-guinness-gold"
                   >
-                    Wall
+                    {t("pages.pubDetail.tabsWall")}
                   </h2>
                   <p className="type-meta mb-4 text-guinness-tan/70">
-                    Pours tagged with this pub — same filters as the main Wall.
-                    Showing up to {PUB_WALL_PAGE_LIMIT} most recent.
+                    {t("pages.pubDetail.wallIntro", {
+                      limit: String(PUB_WALL_PAGE_LIMIT),
+                    })}
                   </p>
                   {wallError ? (
                     <p className="type-meta mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100/90">
@@ -1344,7 +1399,7 @@ export default function PubDetail() {
                   <Suspense
                     fallback={
                       <p className="type-meta rounded-lg border border-[#322914] bg-guinness-black/20 px-3 py-2 text-guinness-tan/70">
-                        Loading wall...
+                        {t("pages.pubDetail.loadingWall")}
                       </p>
                     }
                   >

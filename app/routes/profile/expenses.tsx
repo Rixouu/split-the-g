@@ -1,20 +1,16 @@
 import { AppLink } from "~/i18n/app-link";
 import { useMemo } from "react";
 import { scorePourPathFromFields } from "~/utils/scorePath";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { useProfileOutlet } from "./profile-context";
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Profile Expenses",
-    description: "See pint spend totals and price trends from your linked Split the G pours.",
-    path: seoPath(params, "/profile/expenses"),
-    keywords: ["pint spend", "beer expenses", "split the g prices"],
-  });
+  return seoMetaForRoute(params, "/profile/expenses", "expenses");
 }
 
 export default function ProfileExpensesPage() {
+  const { t } = useI18n();
   const { scores, progressStats } = useProfileOutlet();
 
   const pricedPours = useMemo(
@@ -48,8 +44,7 @@ export default function ProfileExpensesPage() {
   if (scores.length === 0) {
     return (
       <p className="type-meta text-guinness-tan/70">
-        No scores linked to this email yet. Claim a pour and add a pint price to
-        track spend here.
+        {t("pages.profile.expensesEmptyScores")}
       </p>
     );
   }
@@ -57,12 +52,13 @@ export default function ProfileExpensesPage() {
   return (
     <div className="space-y-6 sm:space-y-8">
       <p className="type-meta text-guinness-tan/75">
-        Spend totals use pint prices you enter on pours (optional field). Figures
-        below are from your recent linked scores loaded in this session.
+        {t("pages.profile.expensesIntroBlurb")}
       </p>
 
       <div className="rounded-2xl border border-[#322914] bg-guinness-brown/35 p-5 text-center sm:p-8">
-        <p className="type-meta text-guinness-tan/70">Spend tracked</p>
+        <p className="type-meta text-guinness-tan/70">
+          {t("pages.profile.expensesSpendTrackedLabel")}
+        </p>
         <p className="mt-2 text-3xl font-bold tabular-nums text-guinness-gold sm:text-5xl">
           {progressStats.totalSpend > 0
             ? progressStats.totalSpend.toLocaleString(undefined, {
@@ -72,26 +68,31 @@ export default function ProfileExpensesPage() {
             : "—"}
         </p>
         <p className="type-meta mx-auto mt-3 max-w-md text-guinness-tan/50">
-          Sum of pint prices you entered on pours (only pours with a price count
-          toward this total).
+          {t("pages.profile.expensesSpendTrackedHint")}
         </p>
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <div className="flex min-w-0 flex-col rounded-xl border border-[#322914] bg-guinness-brown/30 p-2.5 text-center sm:p-4">
           <p className="text-[10px] font-medium leading-tight text-guinness-tan/70 sm:type-meta sm:font-normal">
-            Priced pours
+            {t("pages.profile.expensesPricedPoursLabel")}
           </p>
           <p className="mt-1 text-lg font-bold tabular-nums text-guinness-gold sm:mt-1 sm:text-2xl">
             {pricedPours.length}
           </p>
           <p className="mt-1 hidden text-guinness-tan/50 sm:type-meta sm:block">
-            Of {scores.length} recent score{scores.length === 1 ? "" : "s"} shown
+            {scores.length === 1
+              ? t("pages.profile.expensesOfRecentScoresOne", {
+                  total: String(scores.length),
+                })
+              : t("pages.profile.expensesOfRecentScoresMany", {
+                  total: String(scores.length),
+                })}
           </p>
         </div>
         <div className="flex min-w-0 flex-col rounded-xl border border-[#322914] bg-guinness-brown/30 p-2.5 text-center sm:p-4">
           <p className="text-[10px] font-medium leading-tight text-guinness-tan/70 sm:type-meta sm:font-normal">
-            Avg price
+            {t("pages.profile.expensesAvgPriceLabel")}
           </p>
           <p className="mt-1 text-lg font-bold tabular-nums text-guinness-gold sm:text-2xl">
             {pricedPours.length > 0
@@ -102,12 +103,12 @@ export default function ProfileExpensesPage() {
               : "—"}
           </p>
           <p className="mt-1 hidden text-guinness-tan/50 sm:type-meta sm:block">
-            Across priced pours only
+            {t("pages.profile.expensesAcrossPricedOnly")}
           </p>
         </div>
         <div className="flex min-w-0 flex-col rounded-xl border border-[#322914] bg-guinness-brown/30 p-2.5 text-center sm:p-4">
           <p className="text-[10px] font-medium leading-tight text-guinness-tan/70 sm:type-meta sm:font-normal">
-            Highest pour
+            {t("pages.profile.expensesHighestPourLabel")}
           </p>
           <p className="mt-1 text-lg font-bold tabular-nums text-guinness-gold sm:text-2xl">
             {maxPour
@@ -123,17 +124,18 @@ export default function ProfileExpensesPage() {
             </p>
           ) : (
             <p className="mt-1 hidden text-guinness-tan/50 sm:type-meta sm:block">
-              From your priced pours
+              {t("pages.profile.expensesFromPricedPours")}
             </p>
           )}
         </div>
       </div>
 
       <section className="rounded-2xl border border-[#322914] bg-guinness-brown/25 p-4 sm:p-6">
-        <h2 className="type-card-title">Recent pours with a price</h2>
+        <h2 className="type-card-title">
+          {t("pages.profile.expensesRecentPricedTitle")}
+        </h2>
         <p className="type-meta mt-1 text-guinness-tan/65">
-          Tap through to the full score. Add or edit price from the pour flow if
-          you skipped it.
+          {t("pages.profile.expensesRecentPricedBlurb")}
         </p>
         {pricedPours.length > 0 ? (
           <ul className="mt-4 space-y-2">
@@ -180,8 +182,7 @@ export default function ProfileExpensesPage() {
           </ul>
         ) : (
           <p className="type-meta mt-4 text-guinness-tan/70">
-            No prices on your recent pours yet. Next time you split, add the pint
-            price to build a spend history.
+            {t("pages.profile.expensesNoPricesYet")}
           </p>
         )}
       </section>

@@ -4,7 +4,6 @@ import { AppLink } from "~/i18n/app-link";
 import { useEffect, useMemo, useState } from "react";
 import {
   PageHeader,
-  leaderboardPageDescription,
   homePourButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
@@ -15,8 +14,8 @@ import { SCORES_LEADERBOARD_COLUMNS } from "~/utils/scoresListColumns";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { normalizeEmail } from "~/routes/profile/profile-shared";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 
 type LeaderboardEntry = {
   id: string;
@@ -72,19 +71,15 @@ export const loader: LoaderFunction = async () => {
 };
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Leaderboard",
-    description: "See top Split the G scores across global, local, and friends tabs.",
-    path: seoPath(params, "/leaderboard"),
-    keywords: ["split the g leaderboard", "weekly guinness ranking"],
-  });
+  return seoMetaForRoute(params, "/leaderboard", "leaderboard");
 }
 
 function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
+  const { t } = useI18n();
   if (entries.length === 0) {
     return (
       <p className="type-meta rounded-2xl border border-[#322914] bg-guinness-brown/30 p-8 text-center text-guinness-tan/70">
-        No pours in this view for the last 7 days yet.
+        {t("pages.leaderboard.empty")}
       </p>
     );
   }
@@ -107,7 +102,9 @@ function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-guinness-black/50 sm:h-20 sm:w-20">
               <img
                 src={entry.split_image_url}
-                alt={`Split by ${entry.username}`}
+                alt={t("pages.leaderboard.splitImageAlt", {
+                  username: entry.username,
+                })}
                 className="h-full w-full object-cover"
                 loading="lazy"
               />
@@ -137,7 +134,7 @@ function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
                     {Number(entry.split_score).toFixed(2)}
                   </p>
                   <p className="type-meta whitespace-nowrap text-guinness-tan/60">
-                    out of 5.0
+                    {t("pages.leaderboard.outOfFive")}
                   </p>
                 </div>
               </div>
@@ -150,6 +147,7 @@ function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
 }
 
 export default function Leaderboard() {
+  const { t } = useI18n();
   const { entries: globalFromLoader } = useLoaderData<{
     entries: LeaderboardEntry[];
   }>();
@@ -179,9 +177,7 @@ export default function Leaderboard() {
         if (!uid) {
           if (!cancelled) {
             setEntries([]);
-            setHint(
-              "Sign in and set your country on Profile to see top pours from everyone in that country.",
-            );
+            setHint(t("pages.leaderboard.hintLocalSignIn"));
           }
           setLoading(false);
           return;
@@ -196,9 +192,7 @@ export default function Leaderboard() {
         if (perr || !prof?.country_code?.trim()) {
           if (!cancelled) {
             setEntries([]);
-            setHint(
-              "Add your country under Profile — Local lists top pours this week from every user who chose the same country.",
-            );
+            setHint(t("pages.leaderboard.hintLocalNoCountry"));
           }
           setLoading(false);
           return;
@@ -216,7 +210,7 @@ export default function Leaderboard() {
             setEntries([]);
             setHint(
               error.message.includes("function") || error.code === "42883"
-                ? "Run migration 20260328330000_leaderboard_local_profile_friends_flags (leaderboard_scores_for_country)."
+                ? t("pages.leaderboard.hintMigrationCountry")
                 : error.message,
             );
           }
@@ -238,7 +232,7 @@ export default function Leaderboard() {
         if (!user?.email) {
           if (!cancelled) {
             setEntries([]);
-            setHint("Sign in to see pours from you and your accepted friends.");
+            setHint(t("pages.leaderboard.hintFriendsSignIn"));
           }
           setLoading(false);
           return;
@@ -269,7 +263,7 @@ export default function Leaderboard() {
             setEntries([]);
             setHint(
               error.message.includes("function") || error.code === "42883"
-                ? "Run migration 20260328330000_leaderboard_local_profile_friends_flags (leaderboard_scores_for_emails)."
+                ? t("pages.leaderboard.hintMigrationEmails")
                 : error.message,
             );
           }
@@ -280,9 +274,7 @@ export default function Leaderboard() {
         if (!cancelled) {
           setEntries(mapRows(data));
           if (emails.length < 2) {
-            setHint(
-              "Add friends from Profile to compare more pours here. Showing yours only until then.",
-            );
+            setHint(t("pages.leaderboard.hintFriendsSolo"));
           } else {
             setHint(null);
           }
@@ -294,23 +286,26 @@ export default function Leaderboard() {
     return () => {
       cancelled = true;
     };
-  }, [tab, globalFromLoader]);
+  }, [tab, globalFromLoader, t]);
 
   const title = useMemo(() => {
     switch (tab) {
       case "local":
-        return "Your country this week";
+        return t("pages.leaderboard.titleLocalWeek");
       case "friends":
-        return "Friends & you this week";
+        return t("pages.leaderboard.titleFriendsWeek");
       default:
-        return "Top splits this week";
+        return t("pages.leaderboard.titleGlobalWeek");
     }
-  }, [tab]);
+  }, [tab, t]);
 
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title={title} description={leaderboardPageDescription}>
+        <PageHeader
+          title={title}
+          description={t("pages.descriptions.leaderboard")}
+        >
           <SubmissionsButton />
         </PageHeader>
 
@@ -320,11 +315,11 @@ export default function Leaderboard() {
           value={tab}
           onValueChange={(v) => setTab(v as LeaderboardTab)}
           items={[
-            { value: "global", label: "Global" },
-            { value: "local", label: "Local" },
-            { value: "friends", label: "Friends" },
+            { value: "global", label: t("pages.leaderboard.tabGlobal") },
+            { value: "local", label: t("pages.leaderboard.tabLocal") },
+            { value: "friends", label: t("pages.leaderboard.tabFriends") },
           ]}
-          aria-label="Leaderboard scope"
+          aria-label={t("pages.leaderboard.scopeAria")}
           role="tablist"
           tabIdPrefix="leaderboard-tab"
           panelId="leaderboard-panel"
@@ -342,7 +337,9 @@ export default function Leaderboard() {
           ) : null}
 
           {loading ? (
-            <p className="type-meta text-guinness-tan/70">Loading…</p>
+            <p className="type-meta text-guinness-tan/70">
+              {t("pages.leaderboard.loading")}
+            </p>
           ) : (
             <LeaderboardList entries={entries} />
           )}
@@ -350,7 +347,7 @@ export default function Leaderboard() {
 
         <div className="mt-10 flex justify-center pb-6">
           <AppLink to="/" viewTransition className={homePourButtonClass}>
-            New Pour
+            {t("pages.leaderboard.newPour")}
           </AppLink>
         </div>
       </div>

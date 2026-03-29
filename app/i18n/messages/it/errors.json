@@ -1,0 +1,22 @@
+{
+  "boundaryTitle": "Ops!",
+  "boundaryUnexpected": "Si è verificato un errore imprevisto.",
+  "boundaryError": "Errore",
+  "boundary404": "Impossibile trovare la pagina richiesta.",
+  "noGDetected": "Nessun G rilevato",
+  "noGPattern": "Nessun modello G rilevato",
+  "failedProcessImage": "Impossibile elaborare l'immagine",
+  "genericPourError": "Qualcosa è andato storto durante l'elaborazione del tuo versamento.",
+  "invalidImageType": "Scegli un file immagine (ad esempio JPG o PNG).",
+  "imageTooLarge": "L'immagine è troppo grande (massimo {maxMb} MB). Prova una foto più piccola.",
+  "readImageFailed": "Non siamo riusciti a leggere quell'immagine. Prova un'altra foto o esportala di nuovo.",
+  "readImageFailedShort": "Non sono riuscito a leggere quell'immagine. Prova un file diverso.",
+  "invalidAction": "Azione non valida",
+  "barNameRequired": "Inserisci il nome di una barra (cerca o digita il tuo).",
+  "ratingRange": "Il grado di versamento deve essere compreso tra 0 e 5.",
+  "pintPriceNonNegative": "Il prezzo della pinta deve essere zero o un numero positivo.",
+  "pintPriceTooLarge": "Il prezzo della pinta è troppo alto.",
+  "saveRatingFailed": "Impossibile salvare la valutazione.",
+  "signInGoogleFailed": "Impossibile avviare l'accesso Google. {detail}",
+  "couldNotUpdatePours": "Impossibile aggiornare i record dei getti."
+}

@@ -1,38 +1,37 @@
+import { useMemo } from "react";
 import { useLocation } from "react-router";
 import { useHasActiveCompetitionParticipation } from "~/components/competition/hooks/useCompeteParticipation";
+import { LanguageSwitcher } from "~/components/LanguageSwitcher";
 import { AppNavLink } from "~/i18n/app-link";
-import { useOptionalLang } from "~/i18n/context";
+import { useOptionalLang, useTChrome } from "~/i18n/context";
 import { localizePath, stripLocalePrefix } from "~/i18n/paths";
 
 /** Prefetch loader payloads and lazy chunks on hover, focus, or touch (before click). */
 const LINK_PREFETCH = "intent" as const;
 
-const primaryItems: { to: string; label: string; end?: boolean }[] = [
-  { to: "/", label: "Pour", end: true },
-  { to: "/feed", label: "Feed" },
-  { to: "/competitions", label: "Compete" },
-  { to: "/pubs", label: "Pubs" },
-  { to: "/profile", label: "Me" },
+const primaryDefs = [
+  { to: "/", key: "pour" as const, end: true },
+  { to: "/feed", key: "feed" as const },
+  { to: "/competitions", key: "compete" as const },
+  { to: "/pubs", key: "pubs" as const },
+  { to: "/profile", key: "me" as const },
 ];
 
-/** Desktop “More” nav */
-const secondaryItems: { to: string; label: string }[] = [
-  { to: "/wall", label: "Wall" },
-  { to: "/leaderboard", label: "Leaderboard" },
+const secondaryDefs = [
+  { to: "/wall", key: "wall" as const },
+  { to: "/leaderboard", key: "leaderboard" as const },
 ];
 
-/** Mobile dock row 2 — Compete · Leaderboard */
-const mobileSecondaryItems: { to: string; label: string }[] = [
-  { to: "/competitions", label: "Compete" },
-  { to: "/leaderboard", label: "Leaderboard" },
+const mobileSecondaryDefs = [
+  { to: "/competitions", key: "compete" as const },
+  { to: "/leaderboard", key: "leaderboard" as const },
 ];
 
-/** Mobile dock row 1: Feed · Wall · (Pour FAB) · Pubs · Me */
-const mobileDockItems: { to: string; label: string }[] = [
-  { to: "/feed", label: "Feed" },
-  { to: "/wall", label: "Wall" },
-  { to: "/pubs", label: "Pubs" },
-  { to: "/profile", label: "Me" },
+const mobileDockDefs = [
+  { to: "/feed", key: "feed" as const },
+  { to: "/wall", key: "wall" as const },
+  { to: "/pubs", key: "pubs" as const },
+  { to: "/profile", key: "me" as const },
 ];
 
 type MobileNavIconName =
@@ -74,15 +73,17 @@ const deskIdle =
 function CompetitionLiveBadge({
   size,
   className = "",
+  title,
 }: {
   size: "dock" | "desktop";
   className?: string;
+  title: string;
 }) {
   const dim = size === "desktop" ? "h-2.5 w-2.5" : "h-2 w-2";
   return (
     <span
       className={`pointer-events-none absolute z-[2] rounded-full border-2 border-[#322914] bg-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.5)] ${dim} ${className}`}
-      title="You're in an active competition"
+      title={title}
       aria-hidden
     />
   );
@@ -137,10 +138,39 @@ export const shouldShowMobileNav = shouldShowAppNav;
 export function AppNavigation() {
   const { pathname } = useLocation();
   const lang = useOptionalLang();
+  const t = useTChrome();
   const hasCompeteParticipation = useHasActiveCompetitionParticipation();
   const homePath = localizePath("/", lang);
   const isHome =
     pathname === homePath || pathname === `${homePath}/` || pathname === "/";
+
+  const primaryItems = useMemo(
+    () =>
+      primaryDefs.map((d) => ({
+        to: d.to,
+        label: t(`nav.${d.key}`),
+        end: d.end,
+      })),
+    [t],
+  );
+  const secondaryItems = useMemo(
+    () =>
+      secondaryDefs.map((d) => ({ to: d.to, label: t(`nav.${d.key}`) })),
+    [t],
+  );
+  const mobileSecondaryItems = useMemo(
+    () =>
+      mobileSecondaryDefs.map((d) => ({
+        to: d.to,
+        label: t(`nav.${d.key}`),
+      })),
+    [t],
+  );
+  const mobileDockItems = useMemo(
+    () =>
+      mobileDockDefs.map((d) => ({ to: d.to, label: t(`nav.${d.key}`) })),
+    [t],
+  );
 
   if (!shouldShowAppNav(pathname)) return null;
 
@@ -156,11 +186,11 @@ export function AppNavigation() {
             <AppNavLink
               to="/"
               prefetch={LINK_PREFETCH}
-              title={isHome ? "Split the G — home" : undefined}
-              aria-label={isHome ? "Split the G — home" : undefined}
+              title={isHome ? t("nav.homeLinkTitle") : undefined}
+              aria-label={isHome ? t("nav.homeLinkTitle") : undefined}
               className="group shrink-0 text-[0.8125rem] font-bold uppercase tracking-[0.12em] text-guinness-cream transition-colors hover:text-guinness-gold"
             >
-              {isHome ? "The scorer" : "Split the G"}
+              {isHome ? t("nav.theScorer") : t("nav.brandName")}
             </AppNavLink>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1 sm:gap-1.5">
@@ -179,7 +209,7 @@ export function AppNavigation() {
                       prefetch={LINK_PREFETCH}
                       aria-label={
                         showCompeteDot
-                          ? `${label} — you’re in an active competition`
+                          ? t("nav.competeAriaActive", { label })
                           : undefined
                       }
                       className={({ isActive }) =>
@@ -190,6 +220,7 @@ export function AppNavigation() {
                         <CompetitionLiveBadge
                           size="desktop"
                           className="-right-0.5 -top-1.5 translate-x-1/4 -translate-y-0"
+                          title={t("nav.activeCompetitionHint")}
                         />
                       ) : null}
                       {label}
@@ -213,6 +244,7 @@ export function AppNavigation() {
                     {label}
                   </AppNavLink>
                 ))}
+                <LanguageSwitcher variant="desktop" className="shrink-0 pl-0.5" />
               </nav>
             </div>
           </div>
@@ -228,8 +260,8 @@ export function AppNavigation() {
           <AppNavLink
             to="/"
             end
-            title="Pour"
-            aria-label="Pour"
+            title={t("nav.pour")}
+            aria-label={t("nav.pour")}
             prefetch={LINK_PREFETCH}
             className={({ isActive }) =>
               [
@@ -250,8 +282,8 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
-                    title={to === "/wall" ? "Wall" : undefined}
-                    aria-label={to === "/wall" ? "Wall" : undefined}
+                    title={to === "/wall" ? t("nav.wall") : undefined}
+                    aria-label={to === "/wall" ? t("nav.wall") : undefined}
                     className={({ isActive }) =>
                       `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
                     }
@@ -279,37 +311,61 @@ export function AppNavigation() {
                 ))}
               </li>
             </ul>
-            <div className="mt-0.5 flex w-full flex-row gap-0.5 border-t border-guinness-gold/10 pt-0.5">
-              {mobileSecondaryItems.map(({ to, label }) => {
-                const showCompeteDot =
-                  to === "/competitions" && hasCompeteParticipation;
-                return (
-                  <AppNavLink
-                    key={to}
-                    to={to}
-                    prefetch={LINK_PREFETCH}
-                    title={to === "/competitions" ? "Compete" : "Leaderboard"}
-                    aria-label={
-                      showCompeteDot
-                        ? `${label} — you’re in an active competition`
-                        : to === "/competitions"
-                          ? "Compete"
-                          : "Leaderboard"
-                    }
-                    className={({ isActive }) =>
-                      `${mobSecondaryItem} ${isActive ? mobActive : "text-guinness-tan/45 hover:text-guinness-tan/85"}`
-                    }
-                  >
-                    {showCompeteDot ? (
-                      <CompetitionLiveBadge
-                        size="dock"
-                        className="right-0 top-0 -translate-y-px"
-                      />
-                    ) : null}
-                    <span className="w-full text-center leading-none">{label}</span>
-                  </AppNavLink>
-                );
-              })}
+            <div className="mt-0.5 flex w-full flex-row items-stretch gap-0.5 border-t border-guinness-gold/10 pt-0.5">
+              {mobileSecondaryItems[0]
+                ? (() => {
+                    const { to, label } = mobileSecondaryItems[0];
+                    const showCompeteDot =
+                      to === "/competitions" && hasCompeteParticipation;
+                    return (
+                      <AppNavLink
+                        key={to}
+                        to={to}
+                        prefetch={LINK_PREFETCH}
+                        title={t("nav.compete")}
+                        aria-label={
+                          showCompeteDot
+                            ? t("nav.competeAriaActive", { label })
+                            : t("nav.compete")
+                        }
+                        className={({ isActive }) =>
+                          `${mobSecondaryItem} min-w-0 flex-1 ${isActive ? mobActive : "text-guinness-tan/45 hover:text-guinness-tan/85"}`
+                        }
+                      >
+                        {showCompeteDot ? (
+                          <CompetitionLiveBadge
+                            size="dock"
+                            className="right-0 top-0 -translate-y-px"
+                            title={t("nav.activeCompetitionHint")}
+                          />
+                        ) : null}
+                        <span className="w-full text-center leading-none">{label}</span>
+                      </AppNavLink>
+                    );
+                  })()
+                : null}
+              <div className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center px-0.5">
+                <LanguageSwitcher variant="mobile" className="w-full" />
+              </div>
+              {mobileSecondaryItems[1]
+                ? (() => {
+                    const { to, label } = mobileSecondaryItems[1];
+                    return (
+                      <AppNavLink
+                        key={to}
+                        to={to}
+                        prefetch={LINK_PREFETCH}
+                        title={t("nav.leaderboard")}
+                        aria-label={t("nav.leaderboard")}
+                        className={({ isActive }) =>
+                          `${mobSecondaryItem} min-w-0 flex-1 ${isActive ? mobActive : "text-guinness-tan/45 hover:text-guinness-tan/85"}`
+                        }
+                      >
+                        <span className="w-full text-center leading-none">{label}</span>
+                      </AppNavLink>
+                    );
+                  })()
+                : null}
             </div>
           </div>
         </div>

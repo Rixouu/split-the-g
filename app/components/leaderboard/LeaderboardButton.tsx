@@ -1,11 +1,13 @@
 import { AppLink } from "~/i18n/app-link";
 import { pageHeaderActionButtonClass } from "~/components/PageHeader";
+import { useI18n } from "~/i18n/context";
 
 interface LeaderboardButtonProps {
   className?: string;
 }
 
 export function LeaderboardButton({ className = "" }: LeaderboardButtonProps) {
+  const { t } = useI18n();
   return (
     <AppLink
       to="/leaderboard"
@@ -13,7 +15,7 @@ export function LeaderboardButton({ className = "" }: LeaderboardButtonProps) {
       viewTransition
       className={`${pageHeaderActionButtonClass} ${className}`}
     >
-      View Top Splits
+      {t("pages.leaderboard.viewTopSplits")}
     </AppLink>
   );
 }

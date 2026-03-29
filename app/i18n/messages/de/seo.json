@@ -1,0 +1,114 @@
+{
+  "defaultTitle": "Split The G",
+  "defaultDescription": "Bewerte deinen Guinness-Gieß mit KI, teile deinen Split und klettere in der Kneipen-, Freundes- und wöchentlichen Bestenliste nach oben.",
+  "ogDefaultImageAlt": "Split The G Wortmarke auf dunklem Markenhintergrund",
+  "routes": {
+    "root": {
+      "title": "Split The G",
+      "description": "Bewerte deinen Guinness-Gieß mit KI, teile deinen Split und klettere in der Kneipen-, Freundes- und wöchentlichen Bestenliste nach oben.",
+      "keywords": "KI-Bierbewertung | Kneipen-Bestenliste | Bierausguss-Herausforderung"
+    },
+    "home": {
+      "title": "Split the G Torschütze",
+      "description": "Trinken Sie Ihr Pint und erhalten Sie in Sekundenschnelle eine KI-Punktzahl von Split the G.",
+      "keywords": "Teilen Sie den G-Scorer|Guinness-Score-App|Pour-Analysator auf"
+    },
+    "feed": {
+      "title": "Live-Feed",
+      "description": "Durchsuchen Sie aktuelle Split the G-Güsse, Partituren und Kneipenaktivitäten.",
+      "keywords": "Teilen Sie den g-Feed auf|die letzten Guinness-Güsse"
+    },
+    "pubs": {
+      "title": "Kneipen",
+      "description": "Finden Sie Kneipen, vergleichen Sie die durchschnittlichen Bewertungen und öffnen Sie jede Kneipenwand.",
+      "keywords": "Guinness Pubs|Pub-Rangliste|Split the G Pubs"
+    },
+    "pubDetail": {
+      "title": "Kneipendetails",
+      "description": "Sehen Sie sich ein Pub-Profil, eine Karte und die neuesten Split the G-Güsse für diesen Veranstaltungsort an.",
+      "keywords": "Pub-Wand|Guinness-Pub-Scores"
+    },
+    "competitions": {
+      "title": "Wettbewerbe",
+      "description": "Erstellen oder nehmen Sie an Split the G-Wettbewerben mit Freunden und Live-Bestenlisten teil.",
+      "keywords": "Teilen Sie die G-Wettbewerbe|Guinness-Challenge|Bestenliste Ihrer Freunde"
+    },
+    "competitionDetail": {
+      "title": "Wettbewerbsdetails",
+      "description": "Verfolgen Sie den Stand, die Teilnehmer und die letzten Runden für diesen Split the G-Wettbewerb.",
+      "keywords": "Wettbewerbs-Rangliste | Split-the-G-Turnier"
+    },
+    "profile": {
+      "title": "Profil",
+      "description": "Verwalten Sie Ihr Split the G-Profil, Ihren Fortschritt, Ihre Punktestände, Favoriten, Ausgaben und Freunde.",
+      "keywords": "Teilen Sie das G-Profil|Pour-Fortschritt|Freunde-Bestenliste"
+    },
+    "account": {
+      "title": "Konto",
+      "description": "Aktualisieren Sie Ihren Anzeigenamen, Ihren Bestenlisten-Spitznamen, Ihre Landesflagge und Ihre Anmeldung für Split the G.",
+      "keywords": "Teilen Sie die G-Konto-/Profileinstellungen auf"
+    },
+    "progress": {
+      "title": "Profilfortschritt",
+      "description": "Verfolgen Sie in Split the G durchschnittliche Punktetrends, beste Pässe und den Fortschritt Ihrer Freunde.",
+      "keywords": "Teilen Sie die G-Progress|Pour-Statistiken auf"
+    },
+    "expenses": {
+      "title": "Profilkosten",
+      "description": "Sehen Sie sich die Pint-Ausgabensummen und Preistrends Ihrer verknüpften Split the G-Güsse an.",
+      "keywords": "Pint-Ausgaben|Bierausgaben|Split-the-G-Preise"
+    },
+    "scores": {
+      "title": "Profilwerte",
+      "description": "Sehen Sie sich Ihre aktuellen Split the G-Ergebnisse und den Punkteverlauf an.",
+      "keywords": "Teilen Sie den g-Verlauf | die letzten Güsse auf"
+    },
+    "favorites": {
+      "title": "Profil Lieblingsbars",
+      "description": "Speichern und verwalten Sie Ihre Lieblingskneipen in Split the G.",
+      "keywords": "Lieblingskneipen|Profilfavoriten"
+    },
+    "friends": {
+      "title": "Profil Freunde",
+      "description": "Verwalten Sie Freundschaftsanfragen und vergleichen Sie Ihre Split the G-Ergebnisse.",
+      "keywords": "Teilen Sie die G-Freunde|Freund-Einladungen auf"
+    },
+    "faq": {
+      "title": "Häufige Fragen",
+      "description": "Antworten zu Punkten, Teilen von Ausschüttungen, Pubs, Wettbewerben und Profilfunktionen in Split the G.",
+      "keywords": "Teilen Sie die Fragen zur G-FAQ|Guinness-App auf"
+    },
+    "leaderboard": {
+      "title": "Bestenliste",
+      "description": "Sehen Sie sich die besten Split the G-Ergebnisse auf den Registerkarten „Global“, „Lokal“ und „Freunde“ an.",
+      "keywords": "Teilen Sie die G-Bestenliste | das wöchentliche Guinness-Ranking"
+    },
+    "wall": {
+      "title": "Wand",
+      "description": "Entdecken Sie die Split the G-Wand mit den neuesten Würfen und Ergebnissen.",
+      "keywords": "Teilen Sie die G-Wall|Guinness-Collage|Pour-Galerie"
+    },
+    "past24hr": {
+      "title": "Bestenliste der letzten 24 Stunden",
+      "description": "Länderrankings für die letzten 24 Stunden der Split the G-Güsse.",
+      "keywords": "24-Stunden-Bestenliste|Split the G-Tagesranking"
+    },
+    "country": {
+      "title": "Länderbestenliste",
+      "description": "Allzeit-Länderranking nach Anzahl der Einsendungen und durchschnittlicher Split the G-Punktzahl.",
+      "keywords": "Länder-Bestenliste|Split the g-Länder"
+    },
+    "scoreFallback": {
+      "title": "Gussergebnis",
+      "description": "Öffnen Sie dieses Split the G für das Ergebnis und fordern Sie Ihre Freunde heraus.",
+      "keywords": "Teilen Sie das g-Ergebnis|Guinness-Pour-Score auf"
+    },
+    "scoreDetail": {
+      "title": "{scoreValue}/5 Geteilt durch {username}",
+      "description": "{username} erzielte {scoreValue}/5 bei Split the G. Allzeit #{allTimeRank} von {totalSplits}, wöchentlich #{weeklyRank} von {weeklyTotalSplits}.",
+      "imageAlt": "Guinness Pint aus {username}'s Pour am Split the G",
+      "keywords": "Teilen Sie den G-Score|die Herausforderung|die Guinness-Bewertung auf",
+      "anonymousUser": "Anonymer Ausgießer"
+    }
+  }
+}

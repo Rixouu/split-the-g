@@ -1,0 +1,22 @@
+{
+  "boundaryTitle": "Hoppla!",
+  "boundaryUnexpected": "Es ist ein unerwarteter Fehler aufgetreten.",
+  "boundaryError": "Fehler",
+  "boundary404": "Die angeforderte Seite konnte nicht gefunden werden.",
+  "noGDetected": "Kein G erkannt",
+  "noGPattern": "Kein G-Muster erkannt",
+  "failedProcessImage": "Bild konnte nicht verarbeitet werden",
+  "genericPourError": "Bei der Verarbeitung Ihres Gusses ist ein Fehler aufgetreten.",
+  "invalidImageType": "Bitte wählen Sie eine Bilddatei (zum Beispiel JPG oder PNG).",
+  "imageTooLarge": "Das Bild ist zu groß (maximal {maxMb} MB). Versuchen Sie es mit einem kleineren Foto.",
+  "readImageFailed": "Wir konnten dieses Bild nicht lesen. Versuchen Sie es mit einem anderen Foto oder exportieren Sie es erneut.",
+  "readImageFailedShort": "Das Bild konnte nicht gelesen werden. Versuchen Sie es mit einer anderen Datei.",
+  "invalidAction": "Ungültige Aktion",
+  "barNameRequired": "Geben Sie einen Barnamen ein (suchen Sie oder geben Sie Ihren eigenen ein).",
+  "ratingRange": "Die Gießbewertung muss zwischen 0 und 5 liegen.",
+  "pintPriceNonNegative": "Der Pint-Preis muss Null oder eine positive Zahl sein.",
+  "pintPriceTooLarge": "Der Pint-Preis ist zu hoch.",
+  "saveRatingFailed": "Bewertung konnte nicht gespeichert werden.",
+  "signInGoogleFailed": "Die Anmeldung für Google konnte nicht gestartet werden. {detail}",
+  "couldNotUpdatePours": "Die Ortungsdatensätze konnten nicht aktualisiert werden."
+}

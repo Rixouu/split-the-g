@@ -1,0 +1,22 @@
+{
+  "boundaryTitle": "おっと！",
+  "boundaryUnexpected": "予期しないエラーが発生しました。",
+  "boundaryError": "エラー",
+  "boundary404": "要求されたページが見つかりませんでした。",
+  "noGDetected": "G が検出されませんでした",
+  "noGPattern": "Gパターンが検出されませんでした",
+  "failedProcessImage": "画像の処理に失敗しました",
+  "genericPourError": "注ぐ処理で問題が発生しました。",
+  "invalidImageType": "画像ファイル (JPG または PNG など) を選択してください。",
+  "imageTooLarge": "その画像は大きすぎます (最大 {maxMb} MB)。小さい写真を試してください。",
+  "readImageFailed": "私たちはその画像を読み取ることができませんでした。別の写真を試すか、もう一度エクスポートしてください。",
+  "readImageFailedShort": "その画像を読み取れませんでした。別のファイルを試してください。",
+  "invalidAction": "無効なアクション",
+  "barNameRequired": "バーの名前を入力します (検索するか、独自に入力します)。",
+  "ratingRange": "流し込み評価は 0 ～ 5 でなければなりません。",
+  "pintPriceNonNegative": "パイント価格はゼロまたは正の数でなければなりません。",
+  "pintPriceTooLarge": "パイントの価格が高すぎます。",
+  "saveRatingFailed": "評価を保存できませんでした。",
+  "signInGoogleFailed": "Google サインインを開始できませんでした。 {detail}",
+  "couldNotUpdatePours": "打設記録を更新できませんでした。"
+}

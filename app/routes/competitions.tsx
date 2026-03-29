@@ -9,8 +9,6 @@ import {
 } from "react";
 import {
   PageHeader,
-  competitionsOpenListingsDescription,
-  competitionsPageDescription,
   pageHeaderActionButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
@@ -29,8 +27,8 @@ import {
   type CompetitionScoreJoin,
 } from "~/utils/competitionLeaderboard";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
-import { seoMeta } from "~/utils/seo";
-import { seoPath } from "~/utils/seo-path";
+import { useI18n } from "~/i18n/context";
+import { seoMetaForRoute } from "~/i18n/seo-meta";
 import type { loader as competitionsLoader } from "./competitions.loader";
 import {
   COMPETITION_ROW_SELECT,
@@ -44,24 +42,55 @@ import {
   type FriendPick,
   type InviteRow,
   type WinRuleChoice,
-  winRuleLabel,
 } from "./competitions.shared";
 
 export { loader } from "./competitions.loader";
 
 export function meta({ params }: { params: { lang?: string } }) {
-  return seoMeta({
-    title: "Competitions",
-    description: "Create or join Split the G competitions with friends and live leaderboards.",
-    path: seoPath(params, "/competitions"),
-    keywords: ["split the g competitions", "guinness challenge", "friends leaderboard"],
-  });
+  return seoMetaForRoute(params, "/competitions", "competitions");
 }
 
 export default function Competitions() {
+  const { t } = useI18n();
   const { competitions, listError, participantCounts: loaderCounts } =
     useLoaderData<typeof competitionsLoader>();
   const revalidator = useRevalidator();
+
+  const competitionDateCopy = useMemo(
+    () => ({
+      chooseWindow: t("pages.competitions.dateChooseWindow"),
+      dialogAriaLabel: t("pages.competitions.dateDialogAria"),
+      timesLocal: t("pages.competitions.dateTimesLocal"),
+      start: t("pages.competitions.dateStart"),
+      end: t("pages.competitions.dateEnd"),
+      clear: t("pages.competitions.dateClear"),
+      done: t("pages.competitions.dateDone"),
+      sectionLabel: t("pages.competitions.dateSectionLabel"),
+      hint: t("pages.competitions.dateHint"),
+    }),
+    [t],
+  );
+
+  const competitionLocationCopy = useMemo(
+    () => ({
+      locationLabel: t("pages.competitions.locationLabel"),
+      optionalSuffix: t("pages.competitions.locationOptional"),
+      hint: t("pages.competitions.locationHint"),
+      mapPreviewTitle: t("pages.competitions.mapPreviewTitle"),
+    }),
+    [t],
+  );
+
+  function winRuleLabelI18n(rule: string): string {
+    switch (rule) {
+      case "closest_to_target":
+        return t("pages.competitions.winRuleOptionClosest");
+      case "most_submissions":
+        return t("pages.competitions.winRuleOptionMost");
+      default:
+        return t("pages.competitions.winRuleOptionHighest");
+    }
+  }
   const [title, setTitle] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(8);
   const [glassesPerPerson, setGlassesPerPerson] = useState(1);
@@ -390,34 +419,34 @@ export default function Competitions() {
       const supabase = await getSupabaseBrowserClient();
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
-        setFormError("Sign in with Google from your profile or a score page first.");
+        setFormError(t("pages.competitions.errSignInGoogleFirst"));
         return;
       }
 
       if (!title.trim()) {
-        setFormError("Give the competition a name.");
+        setFormError(t("pages.competitions.errGiveName"));
         return;
       }
       if (!startsAt || !endsAt) {
-        setFormError("Choose start and end times.");
+        setFormError(t("pages.competitions.errChooseTimes"));
         return;
       }
 
       const starts = new Date(startsAt);
       const ends = new Date(endsAt);
       if (ends <= starts) {
-        setFormError("End must be after start.");
+        setFormError(t("pages.competitions.errEndAfterStart"));
         return;
       }
 
       let target: number | null = null;
       if (createWinRule === "closest_to_target") {
-        const t = parseFloat(createTargetScore);
-        if (!Number.isFinite(t) || t < 0 || t > 5) {
-          setFormError("Target score must be between 0 and 5.");
+        const parsedTarget = parseFloat(createTargetScore);
+        if (!Number.isFinite(parsedTarget) || parsedTarget < 0 || parsedTarget > 5) {
+          setFormError(t("pages.competitions.errTargetScoreRange"));
           return;
         }
-        target = t;
+        target = parsedTarget;
       }
 
       const { error } = await supabase.from("competitions").insert({
@@ -448,7 +477,7 @@ export default function Competitions() {
       setCreateLinkedBarKey("");
       revalidator.revalidate();
       setUiToast({
-        text: "Competition created. You’re on the board.",
+        text: t("pages.competitions.msgCreated"),
         variant: "success",
       });
     } finally {
@@ -465,42 +494,44 @@ export default function Competitions() {
       const supabase = await getSupabaseBrowserClient();
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user || userData.user.id !== editing.created_by) {
-        setFormError("You can only edit your own competition.");
+        setFormError(t("pages.competitions.errEditOwnOnly"));
         return;
       }
 
       if (!editTitle.trim()) {
-        setFormError("Give the competition a name.");
+        setFormError(t("pages.competitions.errGiveName"));
         return;
       }
       if (!editStart || !editEnd) {
-        setFormError("Choose start and end times.");
+        setFormError(t("pages.competitions.errChooseTimes"));
         return;
       }
 
       const starts = new Date(editStart);
       const ends = new Date(editEnd);
       if (ends <= starts) {
-        setFormError("End must be after start.");
+        setFormError(t("pages.competitions.errEndAfterStart"));
         return;
       }
 
       const count = counts[editing.id] ?? 0;
       if (editMax < count) {
         setFormError(
-          `Max people cannot be below current participants (${count}).`,
+          t("pages.competitions.errMaxBelowParticipants", {
+            count: String(count),
+          }),
         );
         return;
       }
 
       let target: number | null = null;
       if (editWinRule === "closest_to_target") {
-        const t = parseFloat(editTargetScore);
-        if (!Number.isFinite(t) || t < 0 || t > 5) {
-          setFormError("Target score must be between 0 and 5.");
+        const parsedTarget = parseFloat(editTargetScore);
+        if (!Number.isFinite(parsedTarget) || parsedTarget < 0 || parsedTarget > 5) {
+          setFormError(t("pages.competitions.errTargetScoreRange"));
           return;
         }
-        target = t;
+        target = parsedTarget;
       }
 
       const { error } = await supabase
@@ -528,7 +559,7 @@ export default function Competitions() {
       cancelEdit();
       revalidator.revalidate();
       setUiToast({
-        text: "Competition updated.",
+        text: t("pages.competitions.msgUpdated"),
         variant: "success",
       });
     } finally {
@@ -541,7 +572,7 @@ export default function Competitions() {
     const supabase = await getSupabaseBrowserClient();
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user || userData.user.id !== c.created_by) {
-      setFormError("You can only delete your own competition.");
+      setFormError(t("pages.competitions.errDeleteOwnOnly"));
       return;
     }
     setDeleteTarget(c);
@@ -560,7 +591,7 @@ export default function Competitions() {
     if (editing?.id === c.id) cancelEdit();
     revalidator.revalidate();
     setUiToast({
-      text: "Competition deleted.",
+      text: t("pages.competitions.msgDeleted"),
       variant: "success",
     });
   }
@@ -570,13 +601,13 @@ export default function Competitions() {
     const supabase = await getSupabaseBrowserClient();
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      setFormError("Sign in to join a competition.");
+      setFormError(t("pages.competitions.errSignInToJoin"));
       return;
     }
     const comp = mergedCompetitions.find((x) => x.id === compId);
     const count = counts[compId] ?? 0;
     if (!comp || count >= comp.max_participants) {
-      setFormError("This competition is full.");
+      setFormError(t("pages.competitions.errCompetitionFull"));
       return;
     }
     if (joinedIds.has(compId)) return;
@@ -591,7 +622,7 @@ export default function Competitions() {
     }
     setJoinedIds((prev) => new Set(prev).add(compId));
     revalidator.revalidate();
-    setUiToast({ text: "You’ve joined this competition.", variant: "success" });
+    setUiToast({ text: t("pages.competitions.msgJoined"), variant: "success" });
   }
 
   async function handleLeave(compId: string) {
@@ -616,13 +647,13 @@ export default function Competitions() {
       return next;
     });
     revalidator.revalidate();
-    setUiToast({ text: "You’ve left this competition.", variant: "info" });
+    setUiToast({ text: t("pages.competitions.msgLeft"), variant: "info" });
   }
 
   async function addEmailInvite(compId: string) {
     const raw = (inviteInputs[compId] ?? "").trim().toLowerCase();
     if (!raw || !raw.includes("@")) {
-      setFormError("Enter a valid email to invite.");
+      setFormError(t("pages.competitions.errValidEmailInvite"));
       return;
     }
     setInviteBusy(compId);
@@ -631,7 +662,7 @@ export default function Competitions() {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user?.email) {
       setInviteBusy(null);
-      setFormError("Sign in to send invites.");
+      setFormError(t("pages.competitions.errSignInToInvite"));
       return;
     }
     const { error } = await supabase.from("competition_invites").insert({
@@ -676,12 +707,12 @@ export default function Competitions() {
     setInviteBusy(null);
     if (emailOk) {
       setUiToast({
-        text: "Competition invite email sent.",
+        text: t("pages.competitions.msgInviteEmailSent"),
         variant: "success",
       });
     } else {
       setUiToast({
-        text: "Invite saved. They can join when they sign in with that email, but the invite email could not be sent (check RESEND_API_KEY and APP_URL on the server).",
+        text: t("pages.competitions.msgInviteSavedNoEmail"),
         variant: "warning",
       });
     }
@@ -696,7 +727,7 @@ export default function Competitions() {
     if (error) setFormError(error.message);
     else {
       revalidator.revalidate();
-      setUiToast({ text: "Invite removed.", variant: "info" });
+      setUiToast({ text: t("pages.competitions.msgInviteRemoved"), variant: "info" });
     }
   }
 
@@ -711,7 +742,7 @@ export default function Competitions() {
     else {
       revalidator.revalidate();
       setUiToast({
-        text: "Friend added to this competition.",
+        text: t("pages.competitions.msgFriendAddedToComp"),
         variant: "success",
       });
     }
@@ -735,34 +766,40 @@ export default function Competitions() {
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
-        <PageHeader title="Competitions" description={competitionsPageDescription}>
+        <PageHeader
+          title={t("pages.competitions.title")}
+          description={t("pages.descriptions.competitions")}
+        >
           <AppLink
             to="/profile"
             viewTransition
             className={pageHeaderActionButtonClass}
           >
-            Profile & friends
+            {t("pages.competitions.profileFriends")}
           </AppLink>
         </PageHeader>
 
         {invitedTitles.length > 0 ? (
           <div className="mb-6 rounded-lg border border-guinness-gold/30 bg-guinness-gold/10 px-4 py-3 text-sm text-guinness-cream">
-            <p className="font-semibold text-guinness-gold">You&apos;re invited</p>
+            <p className="font-semibold text-guinness-gold">
+              {t("pages.competitions.youreInvited")}
+            </p>
             <ul className="mt-2 list-inside list-disc space-y-1 text-guinness-tan/90">
-              {invitedTitles.map((t) => (
-                <li key={t.competition_id}>{t.title}</li>
+              {invitedTitles.map((row) => (
+                <li key={row.competition_id}>{row.title}</li>
               ))}
             </ul>
             <p className="type-meta mt-2 text-guinness-tan/70">
-              Open the competition below and tap Join when signed in with this
-              email.
+              {t("pages.competitions.invitedHint")}
             </p>
           </div>
         ) : null}
 
         {editing ? (
           <section className="mb-10 rounded-2xl border border-guinness-gold/35 bg-guinness-brown/50 p-5 sm:p-6 lg:p-8">
-            <h2 className="type-card-title mb-6">Edit competition</h2>
+            <h2 className="type-card-title mb-6">
+              {t("pages.competitions.editSectionTitle")}
+            </h2>
             <form onSubmit={(ev) => void handleUpdate(ev)}>
               <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
                 <div className="space-y-4">
@@ -774,12 +811,12 @@ export default function Competitions() {
                       className="rounded border-guinness-gold/40"
                     />
                     <span className="text-sm text-guinness-tan/85">
-                      Public (anyone can join)
+                      {t("pages.competitions.publicAnyoneJoin")}
                     </span>
                   </label>
                   <div>
                     <label htmlFor="edit-win-rule" className="type-label mb-1 block">
-                      Win rule
+                      {t("pages.competitions.winRuleField")}
                     </label>
                     <select
                       id="edit-win-rule"
@@ -789,15 +826,21 @@ export default function Competitions() {
                       }
                       className={nativeSelectClass}
                     >
-                      <option value="highest_score">Highest split score</option>
-                      <option value="closest_to_target">Closest to target score</option>
-                      <option value="most_submissions">Most submissions</option>
+                      <option value="highest_score">
+                        {t("pages.competitions.winRuleOptionHighest")}
+                      </option>
+                      <option value="closest_to_target">
+                        {t("pages.competitions.winRuleOptionClosest")}
+                      </option>
+                      <option value="most_submissions">
+                        {t("pages.competitions.winRuleOptionMost")}
+                      </option>
                     </select>
                   </div>
                   {editWinRule === "closest_to_target" ? (
                     <div>
                       <label htmlFor="edit-target" className="type-label mb-1 block">
-                        Target score (0–5)
+                        {t("pages.competitions.targetScoreLabel")}
                       </label>
                       <input
                         id="edit-target"
@@ -813,7 +856,7 @@ export default function Competitions() {
                   ) : null}
                   <div>
                     <label htmlFor="edit-title" className="type-label mb-1 block">
-                      Name
+                      {t("pages.competitions.formName")}
                     </label>
                     <input
                       id="edit-title"
@@ -826,6 +869,7 @@ export default function Competitions() {
                   <CompetitionLocationField
                     key={editing.id}
                     fieldClass={fieldClass}
+                    copy={competitionLocationCopy}
                     locationName={editLocationName}
                     locationAddress={editLocationAddress}
                     onLocationNameChange={setEditLocationName}
@@ -836,7 +880,7 @@ export default function Competitions() {
                       htmlFor="edit-linked-pub"
                       className="type-label mb-1 block"
                     >
-                      Pub for listings (optional)
+                      {t("pages.competitions.pubListingsOptional")}
                     </label>
                     <select
                       id="edit-linked-pub"
@@ -844,7 +888,7 @@ export default function Competitions() {
                       onChange={(e) => setEditLinkedBarKey(e.target.value)}
                       className={nativeSelectClass}
                     >
-                      <option value="">— Not linked —</option>
+                      <option value="">{t("pages.competitions.pubNotLinked")}</option>
                       {barLinkOptions.map((o) => (
                         <option key={o.bar_key} value={o.bar_key}>
                           {o.display_name}
@@ -852,8 +896,7 @@ export default function Competitions() {
                       ))}
                     </select>
                     <p className="type-meta mt-1 text-guinness-tan/60">
-                      Shows this competition on that pub&apos;s detail page while
-                      it&apos;s active.
+                      {t("pages.competitions.pubListingsHintEdit")}
                     </p>
                   </div>
                 </div>
@@ -862,7 +905,7 @@ export default function Competitions() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label htmlFor="edit-max" className="type-label mb-1 block">
-                        Max people
+                        {t("pages.competitions.maxPeople")}
                       </label>
                       <input
                         id="edit-max"
@@ -878,7 +921,7 @@ export default function Competitions() {
                     </div>
                     <div>
                       <label htmlFor="edit-glasses" className="type-label mb-1 block">
-                        Glasses / person
+                        {t("pages.competitions.glassesPerPerson")}
                       </label>
                       <input
                         id="edit-glasses"
@@ -901,6 +944,7 @@ export default function Competitions() {
                       setEditEnd(e);
                     }}
                     inputClass={fieldClass}
+                    copy={competitionDateCopy}
                   />
                   <div className="flex flex-wrap gap-2 pt-2">
                     <button
@@ -908,14 +952,16 @@ export default function Competitions() {
                       disabled={editBusy}
                       className="rounded-lg bg-guinness-gold px-4 py-2.5 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50"
                     >
-                      {editBusy ? "Saving…" : "Save changes"}
+                      {editBusy
+                        ? t("pages.competitions.saving")
+                        : t("pages.competitions.saveChanges")}
                     </button>
                     <button
                       type="button"
                       onClick={cancelEdit}
                       className="rounded-lg border border-guinness-gold/30 px-4 py-2.5 text-sm font-medium text-guinness-gold hover:bg-guinness-brown/50"
                     >
-                      Cancel
+                      {t("pages.competitions.formCancel")}
                     </button>
                   </div>
                 </div>
@@ -927,14 +973,18 @@ export default function Competitions() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start xl:gap-10">
           <section className="rounded-2xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 shadow-[0_18px_40px_rgba(0,0,0,0.18)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
             <div className="mb-4 flex items-center justify-between gap-2">
-              <h2 className="type-card-title">New competition</h2>
+              <h2 className="type-card-title">
+                {t("pages.competitions.newCompetition")}
+              </h2>
               <button
                 type="button"
                 aria-expanded={createFormOpen ? "true" : "false"}
                 onClick={() => setCreateFormOpen((o) => !o)}
                 className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
               >
-                {createFormOpen ? "Hide" : "Show"}
+                {createFormOpen
+                  ? t("pages.competitions.hide")
+                  : t("pages.competitions.show")}
               </button>
             </div>
             <form
@@ -949,12 +999,12 @@ export default function Competitions() {
                   className="rounded border-guinness-gold/40"
                 />
                 <span className="text-sm text-guinness-tan/85">
-                  Public listing
+                  {t("pages.competitions.publicListing")}
                 </span>
               </label>
               <div>
                 <label htmlFor="create-win-rule" className="type-label mb-1 block">
-                  Win rule
+                  {t("pages.competitions.winRuleField")}
                 </label>
                 <select
                   id="create-win-rule"
@@ -964,15 +1014,21 @@ export default function Competitions() {
                   }
                   className={nativeSelectClass}
                 >
-                  <option value="highest_score">Highest split score</option>
-                  <option value="closest_to_target">Closest to target score</option>
-                  <option value="most_submissions">Most submissions</option>
+                  <option value="highest_score">
+                    {t("pages.competitions.winRuleOptionHighest")}
+                  </option>
+                  <option value="closest_to_target">
+                    {t("pages.competitions.winRuleOptionClosest")}
+                  </option>
+                  <option value="most_submissions">
+                    {t("pages.competitions.winRuleOptionMost")}
+                  </option>
                 </select>
               </div>
               {createWinRule === "closest_to_target" ? (
                 <div>
                   <label htmlFor="create-target" className="type-label mb-1 block">
-                    Target score (0–5)
+                    {t("pages.competitions.targetScoreLabel")}
                   </label>
                   <input
                     id="create-target"
@@ -988,19 +1044,20 @@ export default function Competitions() {
               ) : null}
               <div>
                 <label htmlFor="comp-title" className="type-label mb-1 block">
-                  Name
+                  {t("pages.competitions.formName")}
                 </label>
                 <input
                   id="comp-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className={fieldClass}
-                  placeholder="Birthday Jon"
+                  placeholder={t("pages.competitions.namePlaceholder")}
                   autoComplete="off"
                 />
               </div>
               <CompetitionLocationField
                 fieldClass={fieldClass}
+                copy={competitionLocationCopy}
                 locationName={createLocationName}
                 locationAddress={createLocationAddress}
                 onLocationNameChange={setCreateLocationName}
@@ -1011,7 +1068,7 @@ export default function Competitions() {
                   htmlFor="comp-linked-pub"
                   className="type-label mb-1 block"
                 >
-                  Pub for listings (optional)
+                  {t("pages.competitions.pubListingsOptional")}
                 </label>
                 <select
                   id="comp-linked-pub"
@@ -1019,7 +1076,7 @@ export default function Competitions() {
                   onChange={(e) => setCreateLinkedBarKey(e.target.value)}
                   className={nativeSelectClass}
                 >
-                  <option value="">— Not linked —</option>
+                  <option value="">{t("pages.competitions.pubNotLinked")}</option>
                   {barLinkOptions.map((o) => (
                     <option key={o.bar_key} value={o.bar_key}>
                       {o.display_name}
@@ -1027,13 +1084,13 @@ export default function Competitions() {
                   ))}
                 </select>
                 <p className="type-meta mt-1 text-guinness-tan/60">
-                  Lists the competition on that pub&apos;s page while active.
+                  {t("pages.competitions.pubListingsHintCreate")}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="comp-max" className="type-label mb-1 block">
-                    Max people
+                    {t("pages.competitions.maxPeople")}
                   </label>
                   <input
                     id="comp-max"
@@ -1049,7 +1106,7 @@ export default function Competitions() {
                 </div>
                 <div>
                   <label htmlFor="comp-glasses" className="type-label mb-1 block">
-                    Glasses / person
+                    {t("pages.competitions.glassesPerPerson")}
                   </label>
                   <input
                     id="comp-glasses"
@@ -1074,18 +1131,19 @@ export default function Competitions() {
                   setEndsAt(e);
                 }}
                 inputClass={fieldClass}
+                copy={competitionDateCopy}
               />
               <p className="type-meta text-guinness-tan/65">
-                Private: only you, participants, and invited emails see the
-                competition. Add friends from Profile after they accept your
-                request.
+                {t("pages.competitions.privateExplainer")}
               </p>
               <button
                 type="submit"
                 disabled={saving}
                 className="w-full rounded-lg bg-guinness-gold py-3 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50"
               >
-                {saving ? "Creating…" : "Create competition"}
+                {saving
+                  ? t("pages.competitions.creating")
+                  : t("pages.competitions.createCompetition")}
               </button>
             </form>
           </section>
@@ -1093,13 +1151,18 @@ export default function Competitions() {
           <section className="rounded-2xl border border-guinness-gold/15 bg-guinness-brown/20 p-5 sm:p-6">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
-                <h2 className="type-card-title">Your competitions</h2>
+                <h2 className="type-card-title">
+                  {t("pages.competitions.mineHeading")}
+                </h2>
                 <p className="type-meta mt-1 max-w-2xl text-guinness-tan/75">
-                  {competitionsOpenListingsDescription}
+                  {t("pages.descriptions.competitionsOpenListings")}
                 </p>
               </div>
               <p className="type-meta shrink-0 text-guinness-tan/60">
-                {openCompetitions.length} open · {pastCompetitions.length} past
+                {t("pages.competitions.openPastCounts", {
+                  open: String(openCompetitions.length),
+                  past: String(pastCompetitions.length),
+                })}
               </p>
             </div>
 
@@ -1107,32 +1170,28 @@ export default function Competitions() {
               className="mb-5 w-full"
               layoutClassName="flex w-full"
               variant="rowEqual"
-              aria-label="Competition list scope"
+              aria-label={t("pages.competitions.ariaListScope")}
               value={listingsTab}
               onValueChange={(v) => setListingsTab(v === "past" ? "past" : "open")}
               items={[
-                { value: "open", label: "Open" },
-                { value: "past", label: "Past" },
+                { value: "open", label: t("pages.competitions.tabOpen") },
+                { value: "past", label: t("pages.competitions.tabPast") },
               ]}
             />
 
             {listError ? (
               <p className="type-meta rounded-lg border border-guinness-gold/20 bg-guinness-brown/30 p-4 text-guinness-tan/80">
-                Could not load competitions. Apply Supabase migrations including{" "}
-                <code className="mx-1 rounded bg-guinness-black/50 px-1 text-guinness-gold">
-                  20260328200000_competition_invites_fix_and_win_rules
-                </code>
-                . ({listError})
+                {t("pages.competitions.listError", { detail: listError })}
               </p>
             ) : mergedCompetitions.length === 0 ? (
               <p className="type-meta text-guinness-tan/70">
-                No competitions yet. Create one on the left.
+                {t("pages.competitions.noCompsYet")}
               </p>
             ) : visibleCompetitions.length === 0 ? (
               <p className="type-meta text-guinness-tan/70">
                 {listingsTab === "open"
-                  ? "No open or upcoming competitions. Check Past for finished ones."
-                  : "No past competitions yet."}
+                  ? t("pages.competitions.noOpenComps")
+                  : t("pages.competitions.noPastComps")}
               </p>
             ) : (
               <ul className="space-y-3">
@@ -1147,9 +1206,9 @@ export default function Competitions() {
                   const rawWinner = pastWinnerByCompId[c.id];
                   const winnerLine =
                     rawWinner === undefined
-                      ? "—"
+                      ? t("pages.competitions.winnerDash")
                       : rawWinner === null
-                        ? "No pours logged"
+                        ? t("pages.competitions.noPoursLogged")
                         : rawWinner;
 
                   return (
@@ -1170,7 +1229,7 @@ export default function Competitions() {
                               </h3>
                               {isPastTab ? (
                                 <span className="rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200/95">
-                                  Ended
+                                  {t("pages.competitions.badgeEnded")}
                                 </span>
                               ) : null}
                               {isJoined ? (
@@ -1181,7 +1240,9 @@ export default function Competitions() {
                                       : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200/95"
                                   }`}
                                 >
-                                  {isPastTab ? "You participated" : "You&apos;re in"}
+                                  {isPastTab
+                                    ? t("pages.competitions.badgeYouParticipated")
+                                    : t("pages.competitions.badgeYoureIn")}
                                 </span>
                               ) : null}
                               <span
@@ -1191,7 +1252,9 @@ export default function Competitions() {
                                     : "bg-guinness-gold/20 text-guinness-gold"
                                 }`}
                               >
-                                {priv ? "Private" : "Public"}
+                                {priv
+                                  ? t("pages.competitions.badgePrivate")
+                                  : t("pages.competitions.badgePublic")}
                               </span>
                             </div>
                             <p className="type-meta mt-1 text-guinness-tan/55">
@@ -1201,7 +1264,7 @@ export default function Competitions() {
                             {isPastTab ? (
                               <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-guinness-gold">
                                 <span className="type-meta font-bold uppercase tracking-wide text-amber-200/90">
-                                  Winner
+                                  {t("pages.competitions.winner")}
                                 </span>
                                 <span className="text-guinness-cream">{winnerLine}</span>
                               </p>
@@ -1214,7 +1277,7 @@ export default function Competitions() {
                               viewTransition
                               className={`${pageHeaderActionButtonClass} w-full justify-center text-xs sm:w-auto sm:min-w-[5.5rem] sm:text-sm`}
                             >
-                              View
+                              {t("pages.competitions.view")}
                             </AppLink>
                             {isOwner ? (
                               <>
@@ -1224,14 +1287,14 @@ export default function Competitions() {
                                   disabled={editing !== null && editing.id !== c.id}
                                   className={`${outlineBtn} w-full sm:w-auto`}
                                 >
-                                  Edit
+                                  {t("pages.competitions.edit")}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => void requestDeleteCompetition(c)}
                                   className="w-full rounded-lg border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-400/90 hover:bg-red-950/30 sm:w-auto sm:py-1.5"
                                 >
-                                  Delete
+                                  {t("pages.competitions.delete")}
                                 </button>
                               </>
                             ) : userId ? (
@@ -1241,11 +1304,11 @@ export default function Competitions() {
                                   onClick={() => void handleLeave(c.id)}
                                   className="w-full rounded-lg border border-guinness-gold/30 px-3 py-2 text-xs font-semibold text-guinness-tan hover:bg-guinness-brown/50 sm:w-auto sm:py-1.5"
                                 >
-                                  Leave
+                                  {t("pages.competitions.leave")}
                                 </button>
                               ) : isPastTab ? (
                                 <span className="type-meta w-full py-2 text-center text-guinness-tan/50 sm:text-right">
-                                  Closed
+                                  {t("pages.competitions.closed")}
                                 </span>
                               ) : (
                                 <button
@@ -1254,12 +1317,14 @@ export default function Competitions() {
                                   onClick={() => void handleJoin(c.id)}
                                   className="w-full rounded-lg bg-guinness-gold/15 px-3 py-2 text-xs font-semibold text-guinness-gold hover:bg-guinness-gold/25 disabled:opacity-40 sm:w-auto sm:py-1.5"
                                 >
-                                  {full ? "Full" : "Join"}
+                                  {full
+                                    ? t("pages.competitions.full")
+                                    : t("pages.competitions.join")}
                                 </button>
                               )
                             ) : isPastTab ? null : (
                               <p className="type-meta w-full text-center text-guinness-tan/55 sm:text-left">
-                                Sign in to join.
+                                {t("pages.competitions.signInToJoinShort")}
                               </p>
                             )}
                           </div>
@@ -1268,7 +1333,7 @@ export default function Competitions() {
                         <div className="flex flex-wrap gap-2 border-t border-guinness-gold/10 pt-3">
                           <div className="flex min-w-[6.5rem] flex-1 flex-col rounded-xl border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5">
                             <span className="type-meta block text-guinness-tan/60">
-                              Joined
+                              {t("pages.competitions.statJoined")}
                             </span>
                             <span className="mt-1 text-base font-semibold text-guinness-gold">
                               {count}{" "}
@@ -1278,7 +1343,7 @@ export default function Competitions() {
                           </div>
                           <div className="flex min-w-[6.5rem] flex-1 flex-col rounded-xl border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5">
                             <span className="type-meta block text-guinness-tan/60">
-                              Glasses each
+                              {t("pages.competitions.statGlassesEach")}
                             </span>
                             <span className="mt-1 text-base font-semibold text-guinness-cream">
                               {c.glasses_per_person}
@@ -1286,10 +1351,10 @@ export default function Competitions() {
                           </div>
                           <div className="flex min-w-[min(100%,10rem)] flex-[2] flex-col rounded-xl border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5 sm:flex-1">
                             <span className="type-meta block text-guinness-tan/60">
-                              Rule
+                              {t("pages.competitions.statRule")}
                             </span>
                             <span className="mt-1 block text-sm font-semibold leading-snug text-guinness-cream">
-                              {winRuleLabel(c.win_rule)}
+                              {winRuleLabelI18n(c.win_rule)}
                               {c.win_rule === "closest_to_target" &&
                               c.target_score != null
                                 ? ` · ${Number(c.target_score).toFixed(2)}`
@@ -1303,7 +1368,9 @@ export default function Competitions() {
                         <details className="group border-t border-guinness-gold/10 bg-guinness-black/20">
                           <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/30 sm:px-5 [&::-webkit-details-marker]:hidden">
                             <span className="flex items-center justify-between gap-2">
-                              <span>Invites &amp; friends</span>
+                              <span>
+                                {t("pages.competitions.invitesFriendsSection")}
+                              </span>
                               <span className="text-guinness-tan/50 transition-transform group-open:rotate-180">
                                 ⌄
                               </span>
@@ -1312,11 +1379,10 @@ export default function Competitions() {
                           <div className="space-y-4 border-t border-guinness-gold/10 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
                             <div>
                               <p className="type-label text-guinness-tan/85">
-                                Invite by email
+                                {t("pages.competitions.inviteByEmail")}
                               </p>
                               <p className="type-meta mt-1 text-guinness-tan/60">
-                                They can join manually after signing up with that email. This
-                                does not add them as a friend or auto-join them.
+                                {t("pages.competitions.inviteByEmailHint")}
                               </p>
                               <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch">
                                 <input
@@ -1328,7 +1394,9 @@ export default function Competitions() {
                                       [c.id]: e.target.value,
                                     }))
                                   }
-                                  placeholder="friend@email.com"
+                                  placeholder={t(
+                                    "pages.competitions.invitePlaceholder",
+                                  )}
                                   className={fieldClass}
                                 />
                                 <button
@@ -1337,7 +1405,7 @@ export default function Competitions() {
                                   onClick={() => void addEmailInvite(c.id)}
                                   className="min-h-11 rounded-lg bg-guinness-gold/20 px-4 py-2 text-xs font-semibold text-guinness-gold hover:bg-guinness-gold/30 disabled:opacity-50 sm:min-w-[8.5rem]"
                                 >
-                                  Send invite
+                                  {t("pages.competitions.sendInvite")}
                                 </button>
                               </div>
                               {invites.length > 0 ? (
@@ -1357,7 +1425,7 @@ export default function Competitions() {
                                         }
                                         className="shrink-0 text-red-400/90 hover:underline"
                                       >
-                                        Remove
+                                        {t("pages.competitions.remove")}
                                       </button>
                                     </li>
                                   ))}
@@ -1368,11 +1436,10 @@ export default function Competitions() {
                             {myFriends.length > 0 ? (
                               <div className="border-t border-guinness-gold/10 pt-4">
                                 <p className="type-label text-guinness-tan/85">
-                                  Add accepted friends
+                                  {t("pages.competitions.addFriendsTitle")}
                                 </p>
                                 <p className="type-meta mt-1 text-guinness-tan/60">
-                                  Friends must be accepted in Profile first; then you can add
-                                  them here.
+                                  {t("pages.competitions.addFriendsHint")}
                                 </p>
                                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                                   {myFriends.map((f) => (
@@ -1394,7 +1461,7 @@ export default function Competitions() {
                                         }
                                         className={`${outlineBtn} shrink-0 self-start sm:self-auto`}
                                       >
-                                        Add to comp
+                                        {t("pages.competitions.addToComp")}
                                       </button>
                                     </li>
                                   ))}
@@ -1418,7 +1485,7 @@ export default function Competitions() {
         message={toastMessage}
         variant={toastVariant}
         title={
-          formError && !uiToast ? "Couldn’t complete that" : undefined
+          formError && !uiToast ? t("toasts.toastDangerTitle") : undefined
         }
         onClose={() => {
           setFormError(null);
@@ -1433,12 +1500,16 @@ export default function Competitions() {
           if (!open) setDeleteTarget(null);
         }}
         title={
-          deleteTarget ? `Delete “${deleteTarget.title}”?` : "Delete competition?"
+          deleteTarget
+            ? t("pages.competitions.deleteConfirmNamed", {
+                title: deleteTarget.title,
+              })
+            : t("pages.competitions.deleteConfirmGeneric")
         }
-        description="This cannot be undone. Invites and participant links for this competition will be removed."
+        description={t("pages.competitions.deleteDescription")}
         variant="danger"
-        secondaryLabel="Keep competition"
-        primaryLabel="Delete competition"
+        secondaryLabel={t("pages.competitions.keepCompetition")}
+        primaryLabel={t("pages.competitions.deleteCompetition")}
         onPrimary={() => void confirmDeleteCompetition()}
       />
     </main>
