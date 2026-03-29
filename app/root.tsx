@@ -19,6 +19,7 @@ import {
 } from "~/components/AppNavigation";
 import { GoogleMapsScript } from "~/components/GoogleMapsScript";
 import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
+import { seoMeta, SITE_URL } from "~/utils/seo";
 
 declare global {
   interface Window {
@@ -49,11 +50,26 @@ export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
 ];
 
-export async function loader() {
+export function meta() {
+  return seoMeta({
+    title: "Split The G",
+    description:
+      "Score your Guinness pour with AI, share your split, and climb pub, friend, and weekly leaderboards.",
+    path: "/",
+    keywords: ["AI beer scoring", "pub leaderboard", "pour challenge"],
+  });
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const requestOrigin = new URL(request.url).origin;
   return {
     SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
     GOOGLE_PLACES_API_KEY: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    SITE_ORIGIN: (import.meta.env.VITE_SITE_URL ?? requestOrigin ?? SITE_URL).replace(
+      /\/$/,
+      "",
+    ),
   };
 }
 
@@ -91,6 +107,7 @@ export default function App() {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Split the G" />
         <Meta />
+        <link rel="canonical" href={`${env.SITE_ORIGIN}${pathname || "/"}`} />
         <Links />
       </head>
       <body suppressHydrationWarning>

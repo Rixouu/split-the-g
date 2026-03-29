@@ -17,6 +17,7 @@ import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
+import { seoMeta } from "~/utils/seo";
 
 const isClient = typeof window !== "undefined";
 
@@ -84,13 +85,12 @@ export async function loader(_args: LoaderFunctionArgs) {
 }
 
 export function meta() {
-  return [
-    { title: "Split the G Scorer" },
-    {
-      name: "description",
-      content: "Test your Split the G skills with AI-powered analysis",
-    },
-  ];
+  return seoMeta({
+    title: "Split the G Scorer",
+    description: "Snap your pint and get an AI Split the G score in seconds.",
+    path: "/",
+    keywords: ["split the g scorer", "guinness score app", "pour analyzer"],
+  });
 }
 
 const UUID_RE =

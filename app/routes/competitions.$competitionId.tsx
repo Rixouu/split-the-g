@@ -20,6 +20,7 @@ import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
+import { seoMeta } from "~/utils/seo";
 import {
   buildLeaderboard,
   COMPETITION_SCORE_LIMIT,
@@ -41,6 +42,20 @@ import {
 } from "./competitions.$competitionId.shared";
 
 export { loader } from "./competitions.$competitionId.loader";
+
+export function meta({
+  params,
+}: {
+  params: { competitionId?: string };
+}) {
+  const competitionId = params.competitionId?.trim();
+  return seoMeta({
+    title: "Competition Details",
+    description: "Track standings, participants, and recent pours for this Split the G competition.",
+    path: competitionId ? `/competitions/${encodeURIComponent(competitionId)}` : "/competitions",
+    keywords: ["competition leaderboard", "split the g tournament"],
+  });
+}
 
 export default function CompetitionDetail() {
   const { competitionId, competition: loaderComp, loadError } =

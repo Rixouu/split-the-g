@@ -31,6 +31,7 @@ import {
 } from "~/utils/post-oauth-return";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
 import { pubDetailPath } from "~/utils/pubPath";
+import { seoMeta } from "~/utils/seo";
 
 const COMPETITION_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -42,6 +43,45 @@ function emailsMatchClaim(
   const x = a?.trim().toLowerCase() ?? "";
   const y = b?.trim().toLowerCase() ?? "";
   return Boolean(x && y && x === y);
+}
+
+export function meta({
+  data,
+}: {
+  data?: {
+    score?: Score;
+    allTimeRank?: number;
+    totalSplits?: number;
+    weeklyRank?: number;
+    weeklyTotalSplits?: number;
+  };
+}) {
+  const score = data?.score;
+  if (!score) {
+    return seoMeta({
+      title: "Pour Result",
+      description: "Open this Split the G pour result and challenge your friends.",
+      path: "/",
+      keywords: ["split the g result", "guinness pour score"],
+    });
+  }
+
+  const scoreValue = Number(score.split_score).toFixed(2);
+  const username = score.username?.trim() || "Anonymous pourer";
+  const allTimeRank = data?.allTimeRank ?? 0;
+  const totalSplits = data?.totalSplits ?? 0;
+  const weeklyRank = data?.weeklyRank ?? 0;
+  const weeklyTotalSplits = data?.weeklyTotalSplits ?? 0;
+  const image = score.pint_image_url || score.split_image_url || undefined;
+
+  return seoMeta({
+    title: `${scoreValue}/5 Split by ${username}`,
+    description: `${username} scored ${scoreValue}/5 on Split the G. All-time #${allTimeRank} of ${totalSplits}, weekly #${weeklyRank} of ${weeklyTotalSplits}.`,
+    path: scorePourPath(score),
+    image,
+    type: "article",
+    keywords: ["split the g score", "pour challenge", "guinness rating"],
+  });
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {

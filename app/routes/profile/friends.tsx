@@ -1,6 +1,16 @@
 import { NavLink } from "react-router";
+import { seoMeta } from "~/utils/seo";
 import { normalizeEmail } from "./profile-shared";
 import { useProfileOutlet } from "./profile-context";
+
+export function meta() {
+  return seoMeta({
+    title: "Profile Friends",
+    description: "Manage friend requests and compare your Split the G scores.",
+    path: "/profile/friends",
+    keywords: ["split the g friends", "friend invites"],
+  });
+}
 
 export default function ProfileFriendsPage() {
   const {

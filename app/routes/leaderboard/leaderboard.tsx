@@ -14,6 +14,7 @@ import { SCORES_LEADERBOARD_COLUMNS } from "~/utils/scoresListColumns";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { normalizeEmail } from "~/routes/profile/profile-shared";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
+import { seoMeta } from "~/utils/seo";
 
 type LeaderboardEntry = {
   id: string;
@@ -67,6 +68,15 @@ export const loader: LoaderFunction = async () => {
 
   return { entries: (data ?? []) as LeaderboardEntry[] };
 };
+
+export function meta() {
+  return seoMeta({
+    title: "Leaderboard",
+    description: "See top Split the G scores across global, local, and friends tabs.",
+    path: "/leaderboard",
+    keywords: ["split the g leaderboard", "weekly guinness ranking"],
+  });
+}
 
 function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
   if (entries.length === 0) {

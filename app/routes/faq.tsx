@@ -7,16 +7,16 @@ import {
   homePourButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
+import { seoMeta } from "~/utils/seo";
 
 export function meta() {
-  return [
-    { title: "FAQ: Split the G" },
-    {
-      name: "description",
-      content:
-        "Frequently asked questions about Split the G: scoring your pour, pubs, competitions, accounts, and supporting the project.",
-    },
-  ];
+  return seoMeta({
+    title: "FAQ",
+    description:
+      "Answers about scoring, sharing pours, pubs, competitions, and profile features in Split the G.",
+    path: "/faq",
+    keywords: ["split the g faq", "guinness app questions"],
+  });
 }
 
 const faqItems: { question: string; answer: ReactNode }[] = [

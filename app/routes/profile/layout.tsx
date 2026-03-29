@@ -47,6 +47,7 @@ import {
   flagEmojiFromIso2,
   getCountryOptions,
 } from "~/utils/countryDisplay";
+import { seoMeta } from "~/utils/seo";
 
 const profileNavItems = [
   { to: "/profile/progress", label: "Progress" },
@@ -55,6 +56,16 @@ const profileNavItems = [
   { to: "/profile/favorites", label: "Favorite bars" },
   { to: "/profile/friends", label: "Friends" },
 ] as const;
+
+export function meta() {
+  return seoMeta({
+    title: "Profile",
+    description:
+      "Manage your Split the G profile, progress, scores, favorites, expenses, and friends.",
+    path: "/profile/progress",
+    keywords: ["split the g profile", "pour progress", "friends leaderboard"],
+  });
+}
 
 export default function ProfileLayout() {
   const location = useLocation();

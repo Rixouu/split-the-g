@@ -2,6 +2,7 @@ import { type LoaderFunction } from "react-router";
 import { useLoaderData } from "react-router";
 import { supabase } from "~/utils/supabase";
 import { CountryLeaderboardLayout } from "~/components/leaderboard/CountryLeaderboardLayout";
+import { seoMeta } from "~/utils/seo";
 
 type CountryStats = {
   country: string;
@@ -18,6 +19,15 @@ export const loader: LoaderFunction = async () => {
 
   return { submissions: data || [] };
 };
+
+export function meta() {
+  return seoMeta({
+    title: "Country Leaderboard",
+    description: "All-time country rankings by submission count and average Split the G score.",
+    path: "/countryleaderboard",
+    keywords: ["country leaderboard", "split the g countries"],
+  });
+}
 
 export default function Collage() {
   const { submissions } = useLoaderData<{ submissions: CountryStats[] }>();

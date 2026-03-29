@@ -1,7 +1,17 @@
 import { Link } from "react-router";
 import { useMemo } from "react";
 import { scorePourPathFromFields } from "~/utils/scorePath";
+import { seoMeta } from "~/utils/seo";
 import { useProfileOutlet } from "./profile-context";
+
+export function meta() {
+  return seoMeta({
+    title: "Profile Expenses",
+    description: "See pint spend totals and price trends from your linked Split the G pours.",
+    path: "/profile/expenses",
+    keywords: ["pint spend", "beer expenses", "split the g prices"],
+  });
+}
 
 export default function ProfileExpensesPage() {
   const { scores, progressStats } = useProfileOutlet();

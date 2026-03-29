@@ -36,6 +36,7 @@ import {
   pubDetailPath,
   resolveBarKeyFromPubPathSegment,
 } from "~/utils/pubPath";
+import { seoMeta } from "~/utils/seo";
 import type { loader as pubDetailLoader } from "./pubs.$barKey.loader";
 import {
   PUB_WALL_PAGE_LIMIT,
@@ -50,6 +51,19 @@ import {
 } from "./pubs.$barKey.shared";
 
 export { loader } from "./pubs.$barKey.loader";
+export function meta({
+  params,
+}: {
+  params: { barKey?: string };
+}) {
+  const barKey = params.barKey?.trim();
+  return seoMeta({
+    title: "Pub Details",
+    description: "View a pub profile, map, and latest Split the G pours for that venue.",
+    path: barKey ? `/pubs/${encodeURIComponent(barKey)}` : "/pubs",
+    keywords: ["pub wall", "guinness pub scores"],
+  });
+}
 const PubWallTab = lazy(async () => {
   const mod = await import("~/components/pub/PubWallTab");
   return { default: mod.PubWallTab };

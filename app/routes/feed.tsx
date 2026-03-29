@@ -10,6 +10,7 @@ import { supabase } from "~/utils/supabase";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { SCORES_LIST_COLUMNS } from "~/utils/scoresListColumns";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
+import { seoMeta } from "~/utils/seo";
 
 type FeedRow = {
   id: string;
@@ -50,6 +51,15 @@ export async function loader(_args: LoaderFunctionArgs) {
   }
 
   return { items: (data ?? []) as FeedRow[] };
+}
+
+export function meta() {
+  return seoMeta({
+    title: "Live Feed",
+    description: "Browse recent Split the G pours, scores, and pub activity.",
+    path: "/feed",
+    keywords: ["split the g feed", "recent guinness pours"],
+  });
 }
 
 function formatWhen(iso: string) {

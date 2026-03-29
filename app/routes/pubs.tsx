@@ -19,6 +19,7 @@ import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
+import { seoMeta } from "~/utils/seo";
 
 export type BarStat = {
   bar_key: string;
@@ -30,6 +31,15 @@ export type BarStat = {
   rating_count: number;
   submission_count: number;
 };
+
+export function meta() {
+  return seoMeta({
+    title: "Pubs",
+    description: "Find pubs, compare average pour ratings, and open each pub wall.",
+    path: "/pubs",
+    keywords: ["guinness pubs", "pub leaderboard", "split the g pubs"],
+  });
+}
 
 function aggregateFromScores(
   rows: {

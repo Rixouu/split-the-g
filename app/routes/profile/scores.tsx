@@ -1,6 +1,16 @@
 import { Link } from "react-router";
 import { scorePourPathFromFields } from "~/utils/scorePath";
+import { seoMeta } from "~/utils/seo";
 import { useProfileOutlet } from "./profile-context";
+
+export function meta() {
+  return seoMeta({
+    title: "Profile Scores",
+    description: "Review your recent Split the G results and score history.",
+    path: "/profile/scores",
+    keywords: ["split the g history", "recent pours"],
+  });
+}
 
 export default function ProfileScoresPage() {
   const { scores } = useProfileOutlet();

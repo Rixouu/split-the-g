@@ -14,6 +14,7 @@ import { SCORES_COLLAGE_COLUMNS } from "~/utils/scoresListColumns";
 import { WallDateRangeField } from "~/components/wall/WallDateRangeField";
 import { flagEmojiFromIso2, getCountryOptions } from "~/utils/countryDisplay";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
+import { seoMeta } from "~/utils/seo";
 
 type Submission = {
   id: string;
@@ -58,6 +59,15 @@ export const loader: LoaderFunction = async () => {
 
   return { submissions: (data ?? []) as Submission[] };
 };
+
+export function meta() {
+  return seoMeta({
+    title: "Wall",
+    description: "Explore the Split the G wall of recent pours and scores.",
+    path: "/wall",
+    keywords: ["split the g wall", "guinness collage", "pour gallery"],
+  });
+}
 
 function formatLocation(submission: Submission) {
   const parts: string[] = [];

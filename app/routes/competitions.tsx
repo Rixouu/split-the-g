@@ -28,6 +28,7 @@ import {
   type CompetitionScoreJoin,
 } from "~/utils/competitionLeaderboard";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { seoMeta } from "~/utils/seo";
 import type { loader as competitionsLoader } from "./competitions.loader";
 import {
   COMPETITION_ROW_SELECT,
@@ -45,6 +46,15 @@ import {
 } from "./competitions.shared";
 
 export { loader } from "./competitions.loader";
+
+export function meta() {
+  return seoMeta({
+    title: "Competitions",
+    description: "Create or join Split the G competitions with friends and live leaderboards.",
+    path: "/competitions",
+    keywords: ["split the g competitions", "guinness challenge", "friends leaderboard"],
+  });
+}
 
 export default function Competitions() {
   const { competitions, listError, participantCounts: loaderCounts } =
