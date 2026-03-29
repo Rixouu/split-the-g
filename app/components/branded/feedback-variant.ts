@@ -5,6 +5,8 @@ export function feedbackVariantFromMessage(message: string): BrandedNoticeVarian
   if (
     message === "Profile saved." ||
     lower.includes("signed out successfully") ||
+    lower.includes("you're signed out") ||
+    lower.includes("you’re signed out") ||
     lower.includes("friend request sent") ||
     lower.includes("invite email sent again") ||
     lower.includes("competition invite sent") ||

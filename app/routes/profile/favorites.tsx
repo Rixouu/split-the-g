@@ -1,4 +1,10 @@
+import {
+  PubVenueCard,
+  pubVenueCardActionDangerClass,
+  pubVenueCardActionOutlineClass,
+} from "~/components/pub-venue-card";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
+import { pubDetailPath } from "~/utils/pubPath";
 import { seoMeta } from "~/utils/seo";
 import { barKey, favoriteMapsUrl } from "./profile-shared";
 import { useProfileOutlet } from "./profile-context";
@@ -64,41 +70,30 @@ export default function ProfileFavoritesPage() {
       </form>
 
       {favorites.length > 0 ? (
-        <ul className="mt-5 space-y-2 border-t border-guinness-gold/15 pt-5">
+        <ul className="mt-5 grid gap-3 border-t border-guinness-gold/15 pt-5 sm:gap-4">
           {favorites.map((f) => {
             const stats =
               favoriteStats[barKey(f.bar_name, f.bar_address)] ??
               favoriteStats[barKey(f.bar_name)] ??
               null;
+            const wallTo = pubDetailPath(f.bar_name.trim().toLowerCase());
+            const pourCount = stats?.count ?? 0;
             return (
-              <li
+              <PubVenueCard
                 key={f.id}
-                className="rounded-lg border border-[#372C16] bg-guinness-black/35 p-3 sm:p-4"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <p className="font-semibold leading-snug text-guinness-cream">{f.bar_name}</p>
-                      {stats ? (
-                        <span className="rounded-full bg-guinness-gold/12 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-guinness-gold">
-                          {stats.avg.toFixed(1)} · {stats.count} rated
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-guinness-tan/60">No ratings yet</span>
-                      )}
-                    </div>
-                    {f.bar_address ? (
-                      <p className="type-meta mt-1 line-clamp-2 text-guinness-tan/60">
-                        {f.bar_address}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex w-full shrink-0 gap-2 sm:w-auto sm:justify-end">
+                title={f.bar_name}
+                address={f.bar_address}
+                primaryTo={wallTo}
+                submissionCount={pourCount}
+                avgPourRating={stats?.avg ?? null}
+                ratingCount={stats?.count ?? 0}
+                actions={
+                  <>
                     <a
                       href={favoriteMapsUrl(f)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-1 items-center justify-center rounded-lg border border-guinness-gold/30 px-3 py-2 text-xs font-medium text-guinness-gold hover:bg-guinness-gold/10 sm:flex-initial"
+                      className={pubVenueCardActionOutlineClass}
                     >
                       Maps
                     </a>
@@ -106,13 +101,13 @@ export default function ProfileFavoritesPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => void removeFavorite(f.id)}
-                      className="inline-flex flex-1 items-center justify-center rounded-lg border border-red-400/45 px-3 py-2 text-xs font-medium text-red-400/95 hover:bg-red-950/25 sm:flex-initial"
+                      className={pubVenueCardActionDangerClass}
                     >
                       Remove
                     </button>
-                  </div>
-                </div>
-              </li>
+                  </>
+                }
+              />
             );
           })}
         </ul>

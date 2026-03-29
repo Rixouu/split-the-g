@@ -49,6 +49,7 @@ import {
   flagEmojiFromIso2,
   getCountryOptions,
 } from "~/utils/countryDisplay";
+import { signOutToastCopy } from "~/utils/auth-toast-messages";
 import { seoMeta } from "~/utils/seo";
 import { useIsDesktopMd } from "~/utils/useDesktopMd";
 
@@ -1240,7 +1241,12 @@ export default function ProfileLayout() {
                 ? "Heads up"
                 : messageVariant === "info"
                   ? "Update"
-                  : undefined
+                  : messageVariant === "success" &&
+                      (message ?? "")
+                        .toLowerCase()
+                        .includes("signed out")
+                    ? "Signed out"
+                    : undefined
           }
           onClose={() => setMessage(null)}
           autoCloseMs={toastAutoCloseForVariant(messageVariant)}
@@ -1256,8 +1262,12 @@ export default function ProfileLayout() {
           primaryLabel="Sign out"
           onPrimary={async () => {
             setSignOutConfirmOpen(false);
+            const preferredName =
+              nickname.trim() ||
+              fullName.trim() ||
+              (user?.email ? emailDisplayName(user.email) : "");
             await signOut();
-            setMessage("Signed out successfully.");
+            setMessage(signOutToastCopy(preferredName || "there"));
           }}
         />
 
