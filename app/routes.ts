@@ -16,6 +16,11 @@ export default [
     index("routes/home.tsx"),
     route("feed", "./routes/feed.tsx"),
     route("competitions", "./routes/competitions.tsx"),
+    route("competitions/new", "./routes/competitions.new.tsx"),
+    route(
+      "competitions/:competitionId/edit",
+      "./routes/competitions.$competitionId.edit.tsx",
+    ),
     route(
       "competitions/:competitionId",
       "./routes/competitions.$competitionId.tsx",

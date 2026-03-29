@@ -21,8 +21,36 @@ export interface CompetitionRow {
 
 export type WinRuleChoice =
   | "highest_score"
+  | "lowest_score"
+  | "best_average"
   | "closest_to_target"
   | "most_submissions";
+
+/** Stored when pours per person are unlimited (most-submissions rule). */
+export const GLASSES_PER_PERSON_UNLIMITED_SENTINEL = 9999;
+
+export function winRuleUsesUnlimitedGlasses(winRule: string): boolean {
+  return winRule === "most_submissions";
+}
+
+export function isStoredGlassesUnlimited(n: number): boolean {
+  return n >= GLASSES_PER_PERSON_UNLIMITED_SENTINEL;
+}
+
+export function normalizeWinRuleChoice(
+  raw: string | null | undefined,
+): WinRuleChoice {
+  switch (raw) {
+    case "highest_score":
+    case "lowest_score":
+    case "best_average":
+    case "closest_to_target":
+    case "most_submissions":
+      return raw;
+    default:
+      return "highest_score";
+  }
+}
 
 export interface FriendPick {
   friend_user_id: string;
@@ -59,6 +87,10 @@ export function winRuleLabel(rule: string): string {
       return "Closest to target";
     case "most_submissions":
       return "Most submissions";
+    case "lowest_score":
+      return "Lowest split score";
+    case "best_average":
+      return "Best average score";
     default:
       return "Highest score";
   }

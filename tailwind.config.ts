@@ -13,7 +13,9 @@ export default {
           cream: '#FDFBF3',
           gold: '#B38B2D',
           brown: '#1D180F',
-          tan: '#D4B78F'
+          tan: '#D4B78F',
+          /** Warm panel/card stroke (competitions, detail summary) */
+          frame: '#332B13',
         }
       },
       fontFamily: {

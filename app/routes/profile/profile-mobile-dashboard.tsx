@@ -397,12 +397,12 @@ export function ProfileMobileSignedInHub({
                     ? t("pages.profile.mobileHubLeaderboardTop")
                     : aheadEntry
                       ? t("pages.profile.mobileHubLeaderboardBehind", {
-                          rank: weekRank,
+                          rank: weekRank ?? undefined,
                           gap: (aheadEntry.avg - selfWeek.avg).toFixed(2),
                           name: aheadEntry.label,
                         })
                       : t("pages.profile.mobileHubLeaderboardRankOnly", {
-                          rank: weekRank,
+                          rank: weekRank ?? undefined,
                         })}
             </p>
           </div>
@@ -412,7 +412,7 @@ export function ProfileMobileSignedInHub({
       <AppLink
         to="/"
         viewTransition
-        className={`${homePourButtonClass} max-w-none text-base`}
+        className={`${homePourButtonClass} text-base`}
       >
         {t("common.pour")}
       </AppLink>

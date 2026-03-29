@@ -1,7 +1,11 @@
 import { redirect, type LoaderFunctionArgs } from "react-router";
 import { langFromParams } from "~/i18n/lang-param";
 import { localizePath, stripLocalePrefix } from "~/i18n/paths";
-import { isCompetitionUuidParam } from "~/utils/competitionPath";
+import {
+  competitionPathHasEditSuffix,
+  competitionRouteParamFromPathname,
+  isCompetitionUuidParam,
+} from "~/utils/competitionPath";
 import { supabase } from "~/utils/supabase";
 import {
   COMPETITION_ROW_SELECT,
@@ -30,18 +34,24 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   }
 
   const row = (data ?? null) as CompetitionRow | null;
-  if (!row) throw new Response("Not found", { status: 404 });
+  // Anon server client cannot see private rows (RLS). Client resolves with session.
+  if (!row) {
+    return {
+      competitionId: "",
+      competition: null as CompetitionRow | null,
+      loadError: null as string | null,
+    };
+  }
 
   const url = new URL(request.url);
   const expectedTail = row.path_segment?.trim() || row.id;
   const pathSansLang = stripLocalePrefix(url.pathname);
-  const currentTail = decodeURIComponent(
-    pathSansLang.replace(/^\/competitions\//i, "").replace(/\/+$/, ""),
-  );
+  const currentTail = competitionRouteParamFromPathname(pathSansLang);
   if (currentTail !== expectedTail) {
     const lang = langFromParams(params);
+    const editSuffix = competitionPathHasEditSuffix(pathSansLang) ? "/edit" : "";
     throw redirect(
-      `${localizePath(`/competitions/${encodeURIComponent(expectedTail)}`, lang)}${url.search}`,
+      `${localizePath(`/competitions/${encodeURIComponent(expectedTail)}${editSuffix}`, lang)}${url.search}`,
     );
   }
 

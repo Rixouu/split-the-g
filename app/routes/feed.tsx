@@ -278,21 +278,20 @@ export default function Feed() {
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
       <div className={pageShellClass}>
         <PageHeader
+          variant="stacked"
           title={t("pages.feed.title")}
           description={t("pages.descriptions.feed")}
         >
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <AppLink to="/" viewTransition className={pageHeaderActionButtonClass}>
-              {t("common.pour")}
-            </AppLink>
-            <AppLink
-              to="/pubs"
-              viewTransition
-              className={`inline-flex min-h-11 items-center justify-center rounded-lg border ${FEED_STROKE} bg-guinness-black/60 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/50 sm:px-5 sm:text-base`}
-            >
-              {t("pages.feed.headerBrowsePubs")}
-            </AppLink>
-          </div>
+          <AppLink to="/" viewTransition className={pageHeaderActionButtonClass}>
+            {t("common.pour")}
+          </AppLink>
+          <AppLink
+            to="/pubs"
+            viewTransition
+            className={`inline-flex min-h-11 items-center justify-center rounded-lg border ${FEED_STROKE} bg-guinness-black/60 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/50 sm:px-5 sm:text-base`}
+          >
+            {t("pages.feed.headerBrowsePubs")}
+          </AppLink>
         </PageHeader>
 
         {/* ─── two-column layout on desktop ─── */}

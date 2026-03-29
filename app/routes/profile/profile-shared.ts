@@ -142,7 +142,7 @@ export function pourStreakCalendarDays(scores: ScoreSummary[]): number {
       return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
     }),
   );
-  let probe = new Date();
+  const probe = new Date();
   probe.setHours(12, 0, 0, 0);
   const key = (d: Date) =>
     `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;

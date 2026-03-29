@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { BrandedNoticeVariant } from "./BrandedNotice";
 
 const variantBorder: Record<BrandedNoticeVariant, string> = {
@@ -44,14 +45,15 @@ export function BrandedToast({
   const border = variantBorder[variant];
   const dot = variantDot[variant];
 
-  return (
+  /** Portal to `body` so z-index wins over mobile dock; top on small screens so the dock stays usable. */
+  const node = (
     <div
-      className="pointer-events-none fixed bottom-6 left-4 right-4 z-[190] flex justify-center md:left-auto md:right-6 md:justify-end"
+      className="pointer-events-none fixed left-4 right-4 z-[190] flex justify-center top-[max(1.25rem,env(safe-area-inset-top,0px))] md:top-auto md:bottom-6 md:left-auto md:right-6 md:justify-end"
       role="status"
       aria-live="polite"
     >
       <div
-        className={`pointer-events-auto flex max-w-md animate-branded-toast-in gap-3 rounded-xl border bg-gradient-to-br from-guinness-brown/98 to-guinness-black/95 px-4 py-3.5 backdrop-blur-md sm:px-5 ${border}`}
+        className={`pointer-events-auto flex max-w-md animate-branded-toast-responsive gap-3 rounded-xl border bg-gradient-to-br from-guinness-brown/98 to-guinness-black/95 px-4 py-3.5 backdrop-blur-md sm:px-5 ${border}`}
       >
         <span
           className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`}
@@ -91,4 +93,9 @@ export function BrandedToast({
       </div>
     </div>
   );
+
+  if (typeof document !== "undefined") {
+    return createPortal(node, document.body);
+  }
+  return null;
 }

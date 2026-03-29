@@ -1,8 +1,7 @@
-import {
-  Link,
-  useLoaderData,
-  useParams,
-} from "react-router";
+import { ChevronDown } from "lucide-react";
+import { Link, useLoaderData, useParams } from "react-router";
+import { useCompetitionRouteResolution } from "~/components/competition/hooks/useCompetitionRouteResolution";
+import { AppLink } from "~/i18n/app-link";
 import { format } from "date-fns";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
@@ -29,7 +28,11 @@ import {
   unwrapScore,
   type CompetitionScoreJoin,
 } from "~/utils/competitionLeaderboard";
-import type { CompetitionRow } from "./competitions.shared";
+import {
+  isStoredGlassesUnlimited,
+  winRuleUsesUnlimitedGlasses,
+  type CompetitionRow,
+} from "./competitions.shared";
 import type { loader as competitionDetailLoader } from "./competitions.$competitionId.loader";
 import {
   CrownIcon,
@@ -60,9 +63,16 @@ export function meta({
 
 export default function CompetitionDetail() {
   const { t, lang } = useI18n();
-  const { competitionId, competition: loaderComp, loadError } =
+  const { competition: loaderComp, loadError } =
     useLoaderData<typeof competitionDetailLoader>();
   const params = useParams();
+  const {
+    competition,
+    pending: clientResolvePending,
+    notFound: clientNotFound,
+    resolveError,
+    effectiveId,
+  } = useCompetitionRouteResolution(loaderComp, params.competitionId);
 
   function winRuleLabelI18n(rule: string): string {
     switch (rule) {
@@ -70,14 +80,15 @@ export default function CompetitionDetail() {
         return t("pages.competitions.winRuleOptionClosest");
       case "most_submissions":
         return t("pages.competitions.winRuleOptionMost");
+      case "lowest_score":
+        return t("pages.competitions.winRuleOptionLowest");
+      case "best_average":
+        return t("pages.competitions.winRuleOptionBestAverage");
       default:
         return t("pages.competitions.winRuleOptionHighest");
     }
   }
 
-  const [competition, setCompetition] = useState<CompetitionRow | null>(
-    loaderComp,
-  );
   const [joined, setJoined] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -107,16 +118,18 @@ export default function CompetitionDetail() {
   }, []);
 
   useEffect(() => {
+    if (!effectiveId) return;
     try {
-      const v = localStorage.getItem(`comp:joined-banner:${competitionId}`);
+      const v = localStorage.getItem(`comp:joined-banner:${effectiveId}`);
       setJoinedBannerExpanded(v !== "0");
     } catch {
       setJoinedBannerExpanded(true);
     }
-  }, [competitionId]);
+  }, [effectiveId]);
 
   const refreshAll = useCallback(async () => {
-    const id = competitionId;
+    const id = effectiveId;
+    if (!id) return;
     const supabase = await getSupabaseBrowserClient();
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id ?? null;
@@ -212,15 +225,11 @@ export default function CompetitionDetail() {
     const list = (csRows ?? []) as CompetitionScoreJoin[];
     setScoresJoined(list);
     setScoresLimited(list.length >= COMPETITION_SCORE_LIMIT);
-  }, [competitionId]);
+  }, [effectiveId]);
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
-
-  useEffect(() => {
-    if (loaderComp) setCompetition(loaderComp);
-  }, [loaderComp]);
 
   const ranked = useMemo(() => {
     if (!competition) return [];
@@ -446,7 +455,7 @@ export default function CompetitionDetail() {
       return;
     }
     const { error } = await supabase.from("competition_participants").insert({
-      competition_id: competitionId,
+      competition_id: effectiveId,
       user_id: u.user.id,
     });
     if (error) setMessage(error.message);
@@ -465,7 +474,7 @@ export default function CompetitionDetail() {
     const { error } = await supabase
       .from("competition_participants")
       .delete()
-      .eq("competition_id", competitionId)
+      .eq("competition_id", effectiveId)
       .eq("user_id", u.user.id);
     if (error) setMessage(error.message);
     else {
@@ -479,18 +488,39 @@ export default function CompetitionDetail() {
     return null;
   }
 
-  if (loadError && !competition) {
+  const combinedLoadError = loadError ?? resolveError;
+
+  if (combinedLoadError && !competition && !clientResolvePending) {
     return (
       <main className="min-h-screen bg-guinness-black text-guinness-cream">
         <div className={pageShellClass}>
-          <p className="type-meta text-red-400/90">{loadError}</p>
-          <Link
+          <p className="type-meta text-red-400/90">{combinedLoadError}</p>
+          <AppLink
             to="/competitions"
             viewTransition
             className="mt-4 inline-block text-guinness-gold underline"
           >
             {t("pages.competitionDetail.backToListError")}
-          </Link>
+          </AppLink>
+        </div>
+      </main>
+    );
+  }
+
+  if (clientNotFound && !clientResolvePending) {
+    return (
+      <main className="min-h-screen bg-guinness-black text-guinness-cream">
+        <div className={pageShellClass}>
+          <p className="type-meta text-guinness-tan/80">
+            {t("pages.competitionDetail.competitionNotFound")}
+          </p>
+          <AppLink
+            to="/competitions"
+            viewTransition
+            className="mt-4 inline-block text-guinness-gold underline"
+          >
+            {t("pages.competitionDetail.backToListError")}
+          </AppLink>
         </div>
       </main>
     );
@@ -521,13 +551,13 @@ export default function CompetitionDetail() {
           title={competition.title}
           description={t("pages.descriptions.competitionDetail")}
         >
-          <Link
+          <AppLink
             to="/competitions"
             viewTransition
             className={pageHeaderActionButtonClass}
           >
             {t("pages.competitionDetail.backToList")}
-          </Link>
+          </AppLink>
         </PageHeader>
 
         {joined ? (
@@ -552,7 +582,7 @@ export default function CompetitionDetail() {
                   const next = !prev;
                   try {
                     localStorage.setItem(
-                      `comp:joined-banner:${competitionId}`,
+                      `comp:joined-banner:${competition.id}`,
                       next ? "1" : "0",
                     );
                   } catch {
@@ -680,51 +710,56 @@ export default function CompetitionDetail() {
             aria-expanded={mobileSummaryOpen ? "true" : "false"}
             aria-controls="comp-summary-body"
             onClick={() => setMobileSummaryOpen((o) => !o)}
-            className="mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[#312814] bg-guinness-brown/25 px-3 py-2.5 text-left transition-colors hover:bg-guinness-brown/35 lg:hidden"
+            className="group mb-3 flex w-full overflow-hidden rounded-2xl border border-solid border-guinness-frame bg-gradient-to-br from-guinness-brown/55 via-guinness-black/40 to-guinness-black/70 text-left shadow-[0_12px_40px_rgba(0,0,0,0.45)] transition-all active:scale-[0.995] lg:hidden"
           >
-            <div className="min-w-0">
-              <p className="text-base font-semibold text-guinness-gold">
-                {t("pages.competitionDetail.tabSummary")}
-              </p>
-              <p className="type-meta mt-0.5 truncate text-guinness-tan/70">
-                {timePhase?.phase === "before"
-                  ? t("pages.competitionDetail.summaryLineUpcoming", {
-                      duration: timePhase
-                        ? formatDuration(timePhase.ms)
-                        : "…",
-                    })
-                  : timePhase?.phase === "live"
-                    ? t("pages.competitionDetail.summaryLineLive", {
+            <div
+              className="w-1 shrink-0 bg-gradient-to-b from-guinness-gold via-guinness-gold/60 to-guinness-gold/25"
+              aria-hidden
+            />
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3.5 py-3 sm:px-4 sm:py-3.5">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-guinness-gold/75">
+                  {t("pages.competitionDetail.summaryOverview")}
+                </p>
+                <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-guinness-cream/95">
+                  {timePhase?.phase === "before"
+                    ? t("pages.competitionDetail.summaryLineUpcoming", {
                         duration: timePhase
                           ? formatDuration(timePhase.ms)
                           : "…",
                       })
-                    : t("pages.competitionDetail.summaryLineEnded")}
-                <span className="text-guinness-tan/45"> · </span>
-                {t("pages.competitionDetail.summaryParticipantsIn", {
-                  current: String(participantUserIds.length),
-                  max: String(competition.max_participants),
-                })}
-              </p>
+                    : timePhase?.phase === "live"
+                      ? t("pages.competitionDetail.summaryLineLive", {
+                          duration: timePhase
+                            ? formatDuration(timePhase.ms)
+                            : "…",
+                        })
+                      : t("pages.competitionDetail.summaryLineEnded")}
+                  <span className="text-guinness-tan/45"> · </span>
+                  {t("pages.competitionDetail.summaryParticipantsIn", {
+                    current: String(participantUserIds.length),
+                    max: String(competition.max_participants),
+                  })}
+                </p>
+              </div>
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-guinness-gold/70 transition-transform duration-200 group-hover:text-guinness-gold ${
+                  mobileSummaryOpen ? "rotate-180" : ""
+                }`}
+                aria-hidden
+                strokeWidth={2.25}
+              />
             </div>
-            <span
-              className={`shrink-0 text-guinness-tan/50 transition-transform duration-200 ${
-                mobileSummaryOpen ? "rotate-180" : ""
-              }`}
-              aria-hidden
-            >
-              ⌄
-            </span>
           </button>
           <div
             id="comp-summary-body"
-            className={`rounded-2xl border border-guinness-gold/15 bg-guinness-brown/25 p-4 sm:p-5 ${
+            className={`rounded-2xl border border-solid border-guinness-frame bg-guinness-brown/20 p-3 shadow-inner shadow-black/20 sm:p-4 ${
               mobileSummaryOpen ? "max-lg:block" : "max-lg:hidden"
             } lg:block`}
           >
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-guinness-gold/10 pb-4">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-solid border-guinness-frame pb-3">
               <span
-                className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                   timePhase?.phase === "live"
                     ? "bg-emerald-500/20 text-emerald-200"
                     : timePhase?.phase === "before"
@@ -738,18 +773,18 @@ export default function CompetitionDetail() {
                     ? t("pages.competitionDetail.live")
                     : t("pages.competitionDetail.ended")}
               </span>
-              <span className="text-guinness-tan/40" aria-hidden>
+              <span className="text-guinness-tan/35" aria-hidden>
                 ·
               </span>
-              <span className="text-sm text-guinness-tan/80">
+              <span className="text-xs text-guinness-tan/80">
                 {isPrivate
                   ? t("pages.competitionDetail.private")
                   : t("pages.competitionDetail.public")}
               </span>
-              <span className="text-guinness-tan/40" aria-hidden>
+              <span className="text-guinness-tan/35" aria-hidden>
                 ·
               </span>
-              <span className="text-sm font-medium text-guinness-gold">
+              <span className="text-xs font-medium text-guinness-gold">
                 {winRuleLabelI18n(competition.win_rule)}
                 {competition.win_rule === "closest_to_target" &&
                 competition.target_score != null
@@ -760,16 +795,16 @@ export default function CompetitionDetail() {
               </span>
             </div>
 
-            <div className="mt-4 flex flex-col gap-5">
-              <div className="rounded-xl border border-[#312814] bg-[#312814]/40 px-4 py-4">
-                <p className="type-meta text-guinness-tan/55">
+            <div className="mt-3 grid gap-3 sm:grid-cols-12 sm:gap-3">
+              <div className="rounded-xl border border-solid border-guinness-frame bg-black/25 px-3 py-2.5 sm:col-span-5 sm:py-3">
+                <p className="type-meta text-[11px] text-guinness-tan/50">
                   {timePhase?.phase === "before"
                     ? t("pages.competitionDetail.startsIn")
                     : timePhase?.phase === "live"
                       ? t("pages.competitionDetail.endsIn")
                       : t("pages.competitionDetail.window")}
                 </p>
-                <p className="mt-2 text-2xl font-semibold tabular-nums leading-tight text-guinness-cream sm:text-[1.65rem]">
+                <p className="mt-1 text-lg font-semibold tabular-nums leading-tight text-guinness-cream sm:text-xl">
                   {timePhase?.phase === "after"
                     ? t("pages.competitionDetail.ended")
                     : timePhase
@@ -777,34 +812,41 @@ export default function CompetitionDetail() {
                       : "…"}
                 </p>
               </div>
-              <div>
-                <p className="type-meta text-guinness-tan/55">
+              <div className="flex flex-col justify-center rounded-xl border border-solid border-guinness-frame bg-black/15 px-3 py-2.5 sm:col-span-7 sm:py-3">
+                <p className="type-meta text-[11px] text-guinness-tan/50">
                   {t("pages.competitionDetail.schedule")}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-guinness-cream">
+                <p className="mt-1 text-xs leading-snug text-guinness-cream/95 sm:text-sm">
                   {format(new Date(competition.starts_at), "EEE MMM d, h:mm a")}
-                  <span className="text-guinness-tan/45"> → </span>
+                  <span className="text-guinness-tan/40"> → </span>
                   {format(new Date(competition.ends_at), "EEE MMM d, h:mm a")}
                 </p>
               </div>
-              <div className="flex flex-col gap-4 rounded-xl border border-[#312814] bg-[#312814]/25 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
-                <div>
-                  <p className="type-meta text-guinness-tan/55">
+              <div className="flex flex-wrap items-stretch gap-2 rounded-xl border border-solid border-guinness-frame bg-black/20 px-3 py-2.5 sm:col-span-12 sm:flex-nowrap sm:gap-0 sm:divide-x sm:divide-guinness-frame">
+                <div className="min-w-0 flex-1 sm:pr-4">
+                  <p className="type-meta text-[11px] text-guinness-tan/50">
                     {t("pages.competitionDetail.roster")}
                   </p>
-                  <p className="mt-2 text-xl font-semibold tabular-nums text-guinness-cream">
+                  <p className="mt-0.5 text-base font-semibold tabular-nums text-guinness-cream sm:text-lg">
                     {participantUserIds.length}/{competition.max_participants}
                   </p>
                 </div>
-                <div className="sm:min-w-[8rem] sm:text-right">
-                  <p className="type-meta text-guinness-tan/55">
+                <div className="min-w-0 flex-1 sm:pl-4">
+                  <p className="type-meta text-[11px] text-guinness-tan/50">
                     {t("pages.competitionDetail.pourLimit")}
                   </p>
-                  <p className="mt-2 text-base font-medium text-guinness-tan/90">
-                    {competition.glasses_per_person}{" "}
-                    {competition.glasses_per_person === 1
-                      ? t("pages.competitionDetail.pourEachOne")
-                      : t("pages.competitionDetail.pourEachMany")}
+                  <p className="mt-0.5 text-sm font-medium leading-snug text-guinness-tan/90">
+                    {winRuleUsesUnlimitedGlasses(competition.win_rule) ||
+                    isStoredGlassesUnlimited(competition.glasses_per_person)
+                      ? t("pages.competitionDetail.pourLimitUnlimited")
+                      : (
+                          <>
+                            {competition.glasses_per_person}{" "}
+                            {competition.glasses_per_person === 1
+                              ? t("pages.competitionDetail.pourEachOne")
+                              : t("pages.competitionDetail.pourEachMany")}
+                          </>
+                        )}
                   </p>
                 </div>
               </div>
@@ -813,7 +855,7 @@ export default function CompetitionDetail() {
             {competition.linked_bar_key?.trim() ||
             competition.location_name?.trim() ||
             competition.location_address?.trim() ? (
-              <div className="mt-4 space-y-2 border-t border-guinness-gold/10 pt-4 text-sm leading-relaxed">
+              <div className="mt-3 space-y-1.5 border-t border-solid border-guinness-frame pt-3 text-sm leading-relaxed">
                 {competition.linked_bar_key?.trim() ? (
                   <p className="text-guinness-tan/85">
                     <span className="text-guinness-tan/50">
@@ -855,7 +897,7 @@ export default function CompetitionDetail() {
             ) : null}
 
             <div
-              className="mt-6 flex flex-col gap-5 border-t border-[#312814] pt-6"
+              className="mt-4 flex flex-col gap-4 border-t border-solid border-guinness-frame pt-4"
               aria-label={t("pages.competitionDetail.ariaCompetitionActions")}
             >
               {!userId ? (
@@ -867,7 +909,7 @@ export default function CompetitionDetail() {
                   <div className="flex flex-col gap-3">
                     {canSubmit ? (
                       <Link
-                        to={`/?competition=${encodeURIComponent(competitionId)}`}
+                        to={`/?competition=${encodeURIComponent(competition.id)}`}
                         viewTransition
                         className={`${pageHeaderActionButtonClass} w-full`}
                       >
@@ -950,7 +992,7 @@ export default function CompetitionDetail() {
               </p>
             ) : null}
             {ranked.length === 0 ? (
-              <p className="type-meta rounded-2xl border border-[#322914] bg-guinness-brown/30 p-8 text-center text-guinness-tan/70">
+              <p className="type-meta mx-auto max-w-md rounded-xl border border-solid border-guinness-frame bg-black/25 px-4 py-5 text-center text-sm leading-relaxed text-guinness-tan/75 sm:px-5">
                 {timePhase?.phase === "after" ? (
                   t("pages.competitionDetail.emptyLeaderboardAfter")
                 ) : (
@@ -979,7 +1021,7 @@ export default function CompetitionDetail() {
                         className={`flex flex-col overflow-hidden rounded-2xl border bg-guinness-brown/35 transition-colors sm:flex-row sm:items-stretch ${
                           isEndedWinner
                             ? "border-guinness-gold/45 shadow-md shadow-amber-900/20 hover:border-guinness-gold/55 hover:bg-guinness-brown/50"
-                            : "border-[#322914] hover:border-guinness-gold/30 hover:bg-guinness-brown/50"
+                            : "border border-solid border-guinness-frame hover:border-guinness-gold/30 hover:bg-guinness-brown/50"
                         }`}
                       >
                         <Link
@@ -1039,7 +1081,7 @@ export default function CompetitionDetail() {
                           </div>
                         </Link>
                         {friendSlot ? (
-                          <div className="flex min-w-0 shrink-0 flex-col justify-center border-t border-[#322914] px-4 py-3 sm:max-w-[12rem] sm:border-l sm:border-t-0 sm:px-4">
+                          <div className="flex min-w-0 shrink-0 flex-col justify-center border-t border-solid border-guinness-frame px-4 py-3 sm:max-w-[12rem] sm:border-l sm:border-t-0 sm:px-4">
                             {friendSlot}
                           </div>
                         ) : null}

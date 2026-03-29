@@ -1,12 +1,6 @@
 import { useLoaderData, useRevalidator } from "react-router";
 import { AppLink } from "~/i18n/app-link";
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PageHeader,
   pageHeaderActionButtonClass,
@@ -16,10 +10,13 @@ import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedNotice } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
-import { CompetitionDateTimeRangeField } from "~/components/competitions/CompetitionDateTimeRangeField";
-import { CompetitionLocationField } from "~/components/competitions/CompetitionLocationField";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
-import { competitionDetailPath } from "~/utils/competitionPath";
+import { ChevronDown, Pencil, Trash2 } from "lucide-react";
+import {
+  competitionDetailPath,
+  competitionEditPath,
+  competitionNewPath,
+} from "~/utils/competitionPath";
 import {
   buildLeaderboard,
   COMPETITION_SCORE_LIMIT,
@@ -34,14 +31,12 @@ import {
   COMPETITION_ROW_SELECT,
   competitionFieldClass,
   competitionOutlineButtonClass,
-  competitionSelectFieldClass,
   isPrivateCompetition,
-  toDatetimeLocalValue,
-  type BarLinkOption,
+  isStoredGlassesUnlimited,
+  winRuleUsesUnlimitedGlasses,
   type CompetitionRow,
   type FriendPick,
   type InviteRow,
-  type WinRuleChoice,
 } from "./competitions.shared";
 
 export { loader } from "./competitions.loader";
@@ -56,89 +51,32 @@ export default function Competitions() {
     useLoaderData<typeof competitionsLoader>();
   const revalidator = useRevalidator();
 
-  const competitionDateCopy = useMemo(
-    () => ({
-      chooseWindow: t("pages.competitions.dateChooseWindow"),
-      dialogAriaLabel: t("pages.competitions.dateDialogAria"),
-      timesLocal: t("pages.competitions.dateTimesLocal"),
-      start: t("pages.competitions.dateStart"),
-      end: t("pages.competitions.dateEnd"),
-      clear: t("pages.competitions.dateClear"),
-      done: t("pages.competitions.dateDone"),
-      sectionLabel: t("pages.competitions.dateSectionLabel"),
-      hint: t("pages.competitions.dateHint"),
-    }),
-    [t],
-  );
-
-  const competitionLocationCopy = useMemo(
-    () => ({
-      locationLabel: t("pages.competitions.locationLabel"),
-      optionalSuffix: t("pages.competitions.locationOptional"),
-      hint: t("pages.competitions.locationHint"),
-      mapPreviewTitle: t("pages.competitions.mapPreviewTitle"),
-    }),
-    [t],
-  );
-
   function winRuleLabelI18n(rule: string): string {
     switch (rule) {
       case "closest_to_target":
         return t("pages.competitions.winRuleOptionClosest");
       case "most_submissions":
         return t("pages.competitions.winRuleOptionMost");
+      case "lowest_score":
+        return t("pages.competitions.winRuleOptionLowest");
+      case "best_average":
+        return t("pages.competitions.winRuleOptionBestAverage");
       default:
         return t("pages.competitions.winRuleOptionHighest");
     }
   }
-  const [title, setTitle] = useState("");
-  const [maxParticipants, setMaxParticipants] = useState(8);
-  const [glassesPerPerson, setGlassesPerPerson] = useState(1);
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [createPublic, setCreatePublic] = useState(true);
-  const [createWinRule, setCreateWinRule] = useState<WinRuleChoice>("highest_score");
-  const [createTargetScore, setCreateTargetScore] = useState("2.50");
-  const [createLocationName, setCreateLocationName] = useState("");
-  const [createLocationAddress, setCreateLocationAddress] = useState("");
-  const [createLinkedBarKey, setCreateLinkedBarKey] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [uiToast, setUiToast] = useState<{
     text: string;
     variant: BrandedNoticeVariant;
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CompetitionRow | null>(null);
-  const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
-  const [editing, setEditing] = useState<CompetitionRow | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editMax, setEditMax] = useState(8);
-  const [editGlasses, setEditGlasses] = useState(1);
-  const [editStart, setEditStart] = useState("");
-  const [editEnd, setEditEnd] = useState("");
-  const [editPublic, setEditPublic] = useState(true);
-  const [editWinRule, setEditWinRule] = useState<WinRuleChoice>("highest_score");
-  const [editTargetScore, setEditTargetScore] = useState("2.50");
-  const [editLocationName, setEditLocationName] = useState("");
-  const [editLocationAddress, setEditLocationAddress] = useState("");
-  const [editLinkedBarKey, setEditLinkedBarKey] = useState("");
-  const [editBusy, setEditBusy] = useState(false);
   const [clientComps, setClientComps] = useState<CompetitionRow[] | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>(loaderCounts);
   const [myFriends, setMyFriends] = useState<FriendPick[]>([]);
-  const [createFormOpen, setCreateFormOpen] = useState(false);
-
-  useLayoutEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    function sync() {
-      setCreateFormOpen(mq.matches);
-    }
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
 
   const [invitesByComp, setInvitesByComp] = useState<
     Record<string, InviteRow[]>
@@ -148,7 +86,6 @@ export default function Competitions() {
   const [invitedTitles, setInvitedTitles] = useState<
     { competition_id: string; title: string }[]
   >([]);
-  const [barLinkOptions, setBarLinkOptions] = useState<BarLinkOption[]>([]);
   const [listingsTab, setListingsTab] = useState<"open" | "past">("open");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [pastWinnerByCompId, setPastWinnerByCompId] = useState<
@@ -164,20 +101,10 @@ export default function Competitions() {
     setCounts(loaderCounts);
   }, [loaderCounts]);
 
-  useEffect(() => {
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data } = await supabase
-        .from("bar_pub_stats")
-        .select("bar_key, display_name")
-        .order("submission_count", { ascending: false })
-        .limit(200);
-      setBarLinkOptions((data ?? []) as BarLinkOption[]);
-    })();
-  }, []);
-
   const mergedCompetitions = useMemo(() => {
-    if (!userId || !clientComps) return competitions;
+    // Loader uses anon Supabase (no session): RLS only returns public rows. Signed-in
+    // users merge in clientComps (participant + created_by); null means not loaded yet.
+    if (!userId || clientComps === null) return competitions;
     const map = new Map<string, CompetitionRow>();
     for (const c of competitions) map.set(c.id, c);
     for (const c of clientComps) map.set(c.id, c);
@@ -258,14 +185,23 @@ export default function Competitions() {
       setJoinedIds(new Set((rows ?? []).map((r) => r.competition_id as string)));
 
       const joinedCompIds = (rows ?? []).map((r) => r.competition_id as string);
-      if (joinedCompIds.length === 0) {
-        setClientComps(null);
+
+      const { data: ownedRows } = await supabase
+        .from("competitions")
+        .select("id")
+        .eq("created_by", uid);
+      if (cancelled) return;
+      const ownedIds = (ownedRows ?? []).map((r) => r.id as string);
+
+      const idSet = new Set<string>([...joinedCompIds, ...ownedIds]);
+      if (idSet.size === 0) {
+        setClientComps([]);
         return;
       }
       const { data: comps } = await supabase
         .from("competitions")
         .select(COMPETITION_ROW_SELECT)
-        .in("id", joinedCompIds);
+        .in("id", [...idSet]);
       if (cancelled) return;
       setClientComps((comps ?? []) as CompetitionRow[]);
     }
@@ -282,7 +218,7 @@ export default function Competitions() {
       cancelled = true;
       unsubscribe?.();
     };
-  }, []);
+  }, [revalidator.state]);
 
   useEffect(() => {
     const list = mergedCompetitions;
@@ -382,191 +318,6 @@ export default function Competitions() {
     })();
   }, [userId, userEmail]);
 
-  function beginEdit(c: CompetitionRow) {
-    setEditing(c);
-    setEditTitle(c.title);
-    setEditMax(c.max_participants);
-    setEditGlasses(c.glasses_per_person);
-    setEditStart(toDatetimeLocalValue(c.starts_at));
-    setEditEnd(toDatetimeLocalValue(c.ends_at));
-    setEditPublic(!isPrivateCompetition(c));
-    const wr = (c.win_rule ?? "highest_score") as WinRuleChoice;
-    setEditWinRule(
-      wr === "closest_to_target" || wr === "most_submissions"
-        ? wr
-        : "highest_score",
-    );
-    setEditTargetScore(
-      c.target_score != null ? String(c.target_score) : "2.50",
-    );
-    setEditLocationName(c.location_name?.trim() ?? "");
-    setEditLocationAddress(c.location_address?.trim() ?? "");
-    setEditLinkedBarKey(c.linked_bar_key?.trim() ?? "");
-    setFormError(null);
-  }
-
-  function cancelEdit() {
-    setEditing(null);
-    setFormError(null);
-  }
-
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    setFormError(null);
-    setSaving(true);
-
-    try {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user) {
-        setFormError(t("pages.competitions.errSignInGoogleFirst"));
-        return;
-      }
-
-      if (!title.trim()) {
-        setFormError(t("pages.competitions.errGiveName"));
-        return;
-      }
-      if (!startsAt || !endsAt) {
-        setFormError(t("pages.competitions.errChooseTimes"));
-        return;
-      }
-
-      const starts = new Date(startsAt);
-      const ends = new Date(endsAt);
-      if (ends <= starts) {
-        setFormError(t("pages.competitions.errEndAfterStart"));
-        return;
-      }
-
-      let target: number | null = null;
-      if (createWinRule === "closest_to_target") {
-        const parsedTarget = parseFloat(createTargetScore);
-        if (!Number.isFinite(parsedTarget) || parsedTarget < 0 || parsedTarget > 5) {
-          setFormError(t("pages.competitions.errTargetScoreRange"));
-          return;
-        }
-        target = parsedTarget;
-      }
-
-      const { error } = await supabase.from("competitions").insert({
-        title: title.trim(),
-        created_by: userData.user.id,
-        max_participants: maxParticipants,
-        glasses_per_person: glassesPerPerson,
-        starts_at: starts.toISOString(),
-        ends_at: ends.toISOString(),
-        win_rule: createWinRule,
-        target_score: target,
-        visibility: createPublic ? "public" : "private",
-        location_name: createLocationName.trim() || null,
-        location_address: createLocationAddress.trim() || null,
-        linked_bar_key: createLinkedBarKey.trim() || null,
-      });
-
-      if (error) {
-        setFormError(error.message);
-        return;
-      }
-
-      setTitle("");
-      setStartsAt("");
-      setEndsAt("");
-      setCreateLocationName("");
-      setCreateLocationAddress("");
-      setCreateLinkedBarKey("");
-      revalidator.revalidate();
-      setUiToast({
-        text: t("pages.competitions.msgCreated"),
-        variant: "success",
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleUpdate(e: FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
-    setFormError(null);
-    setEditBusy(true);
-    try {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user || userData.user.id !== editing.created_by) {
-        setFormError(t("pages.competitions.errEditOwnOnly"));
-        return;
-      }
-
-      if (!editTitle.trim()) {
-        setFormError(t("pages.competitions.errGiveName"));
-        return;
-      }
-      if (!editStart || !editEnd) {
-        setFormError(t("pages.competitions.errChooseTimes"));
-        return;
-      }
-
-      const starts = new Date(editStart);
-      const ends = new Date(editEnd);
-      if (ends <= starts) {
-        setFormError(t("pages.competitions.errEndAfterStart"));
-        return;
-      }
-
-      const count = counts[editing.id] ?? 0;
-      if (editMax < count) {
-        setFormError(
-          t("pages.competitions.errMaxBelowParticipants", {
-            count: String(count),
-          }),
-        );
-        return;
-      }
-
-      let target: number | null = null;
-      if (editWinRule === "closest_to_target") {
-        const parsedTarget = parseFloat(editTargetScore);
-        if (!Number.isFinite(parsedTarget) || parsedTarget < 0 || parsedTarget > 5) {
-          setFormError(t("pages.competitions.errTargetScoreRange"));
-          return;
-        }
-        target = parsedTarget;
-      }
-
-      const { error } = await supabase
-        .from("competitions")
-        .update({
-          title: editTitle.trim(),
-          max_participants: editMax,
-          glasses_per_person: editGlasses,
-          starts_at: starts.toISOString(),
-          ends_at: ends.toISOString(),
-          win_rule: editWinRule,
-          target_score: editWinRule === "closest_to_target" ? target : null,
-          visibility: editPublic ? "public" : "private",
-          location_name: editLocationName.trim() || null,
-          location_address: editLocationAddress.trim() || null,
-          linked_bar_key: editLinkedBarKey.trim() || null,
-        })
-        .eq("id", editing.id);
-
-      if (error) {
-        setFormError(error.message);
-        return;
-      }
-
-      cancelEdit();
-      revalidator.revalidate();
-      setUiToast({
-        text: t("pages.competitions.msgUpdated"),
-        variant: "success",
-      });
-    } finally {
-      setEditBusy(false);
-    }
-  }
-
   async function requestDeleteCompetition(c: CompetitionRow) {
     setFormError(null);
     const supabase = await getSupabaseBrowserClient();
@@ -588,7 +339,6 @@ export default function Competitions() {
       setFormError(error.message);
       return;
     }
-    if (editing?.id === c.id) cancelEdit();
     revalidator.revalidate();
     setUiToast({
       text: t("pages.competitions.msgDeleted"),
@@ -749,9 +499,16 @@ export default function Competitions() {
   }
 
   const fieldClass = competitionFieldClass;
-  const nativeSelectClass = competitionSelectFieldClass;
   const outlineBtn = competitionOutlineButtonClass;
   const isPrivate = isPrivateCompetition;
+  /** Gold band along the top inside each competition row (profile hub pattern). */
+  const compCardTopLight =
+    "pointer-events-none absolute inset-x-0 top-0 z-[1] h-1 bg-gradient-to-r from-transparent via-guinness-gold/55 to-transparent opacity-90";
+  const compCardFrame =
+    "rounded-2xl border border-solid border-guinness-frame bg-gradient-to-br from-guinness-brown/45 via-guinness-black/20 to-guinness-black/40 shadow-[0_10px_36px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(212,175,55,0.08)]";
+  const compCardDivider = "border-solid border-guinness-frame";
+  const compStatCell =
+    "flex flex-col rounded-xl border border-solid border-guinness-frame bg-black/30 px-3 py-2.5";
 
   const toastOpen = Boolean(formError || uiToast);
   const toastMessage = uiToast?.text ?? formError ?? "";
@@ -771,11 +528,11 @@ export default function Competitions() {
           description={t("pages.descriptions.competitions")}
         >
           <AppLink
-            to="/profile"
+            to={competitionNewPath()}
             viewTransition
             className={pageHeaderActionButtonClass}
           >
-            {t("pages.competitions.profileFriends")}
+            {t("pages.competitions.newCompetition")}
           </AppLink>
         </PageHeader>
 
@@ -795,360 +552,7 @@ export default function Competitions() {
           </div>
         ) : null}
 
-        {editing ? (
-          <section className="mb-10 rounded-2xl border border-guinness-gold/35 bg-guinness-brown/50 p-5 sm:p-6 lg:p-8">
-            <h2 className="type-card-title mb-6">
-              {t("pages.competitions.editSectionTitle")}
-            </h2>
-            <form onSubmit={(ev) => void handleUpdate(ev)}>
-              <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
-                <div className="space-y-4">
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editPublic}
-                      onChange={(e) => setEditPublic(e.target.checked)}
-                      className="rounded border-guinness-gold/40"
-                    />
-                    <span className="text-sm text-guinness-tan/85">
-                      {t("pages.competitions.publicAnyoneJoin")}
-                    </span>
-                  </label>
-                  <div>
-                    <label htmlFor="edit-win-rule" className="type-label mb-1 block">
-                      {t("pages.competitions.winRuleField")}
-                    </label>
-                    <select
-                      id="edit-win-rule"
-                      value={editWinRule}
-                      onChange={(e) =>
-                        setEditWinRule(e.target.value as WinRuleChoice)
-                      }
-                      className={nativeSelectClass}
-                    >
-                      <option value="highest_score">
-                        {t("pages.competitions.winRuleOptionHighest")}
-                      </option>
-                      <option value="closest_to_target">
-                        {t("pages.competitions.winRuleOptionClosest")}
-                      </option>
-                      <option value="most_submissions">
-                        {t("pages.competitions.winRuleOptionMost")}
-                      </option>
-                    </select>
-                  </div>
-                  {editWinRule === "closest_to_target" ? (
-                    <div>
-                      <label htmlFor="edit-target" className="type-label mb-1 block">
-                        {t("pages.competitions.targetScoreLabel")}
-                      </label>
-                      <input
-                        id="edit-target"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        max={5}
-                        value={editTargetScore}
-                        onChange={(e) => setEditTargetScore(e.target.value)}
-                        className={fieldClass}
-                      />
-                    </div>
-                  ) : null}
-                  <div>
-                    <label htmlFor="edit-title" className="type-label mb-1 block">
-                      {t("pages.competitions.formName")}
-                    </label>
-                    <input
-                      id="edit-title"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className={fieldClass}
-                      autoComplete="off"
-                    />
-                  </div>
-                  <CompetitionLocationField
-                    key={editing.id}
-                    fieldClass={fieldClass}
-                    copy={competitionLocationCopy}
-                    locationName={editLocationName}
-                    locationAddress={editLocationAddress}
-                    onLocationNameChange={setEditLocationName}
-                    onLocationAddressChange={setEditLocationAddress}
-                  />
-                  <div>
-                    <label
-                      htmlFor="edit-linked-pub"
-                      className="type-label mb-1 block"
-                    >
-                      {t("pages.competitions.pubListingsOptional")}
-                    </label>
-                    <select
-                      id="edit-linked-pub"
-                      value={editLinkedBarKey}
-                      onChange={(e) => setEditLinkedBarKey(e.target.value)}
-                      className={nativeSelectClass}
-                    >
-                      <option value="">{t("pages.competitions.pubNotLinked")}</option>
-                      {barLinkOptions.map((o) => (
-                        <option key={o.bar_key} value={o.bar_key}>
-                          {o.display_name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="type-meta mt-1 text-guinness-tan/60">
-                      {t("pages.competitions.pubListingsHintEdit")}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label htmlFor="edit-max" className="type-label mb-1 block">
-                        {t("pages.competitions.maxPeople")}
-                      </label>
-                      <input
-                        id="edit-max"
-                        type="number"
-                        min={2}
-                        max={500}
-                        value={editMax}
-                        onChange={(e) =>
-                          setEditMax(Number.parseInt(e.target.value, 10) || 2)
-                        }
-                        className={fieldClass}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="edit-glasses" className="type-label mb-1 block">
-                        {t("pages.competitions.glassesPerPerson")}
-                      </label>
-                      <input
-                        id="edit-glasses"
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={editGlasses}
-                        onChange={(e) =>
-                          setEditGlasses(Number.parseInt(e.target.value, 10) || 1)
-                        }
-                        className={fieldClass}
-                      />
-                    </div>
-                  </div>
-                  <CompetitionDateTimeRangeField
-                    startLocal={editStart}
-                    endLocal={editEnd}
-                    onChange={(s, e) => {
-                      setEditStart(s);
-                      setEditEnd(e);
-                    }}
-                    inputClass={fieldClass}
-                    copy={competitionDateCopy}
-                  />
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <button
-                      type="submit"
-                      disabled={editBusy}
-                      className="rounded-lg bg-guinness-gold px-4 py-2.5 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50"
-                    >
-                      {editBusy
-                        ? t("pages.competitions.saving")
-                        : t("pages.competitions.saveChanges")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="rounded-lg border border-guinness-gold/30 px-4 py-2.5 text-sm font-medium text-guinness-gold hover:bg-guinness-brown/50"
-                    >
-                      {t("pages.competitions.formCancel")}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </section>
-        ) : null}
-
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start xl:gap-10">
-          <section className="rounded-2xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 shadow-[0_18px_40px_rgba(0,0,0,0.18)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
-            <div className="mb-4 flex items-center justify-between gap-2">
-              <h2 className="type-card-title">
-                {t("pages.competitions.newCompetition")}
-              </h2>
-              <button
-                type="button"
-                aria-expanded={createFormOpen ? "true" : "false"}
-                onClick={() => setCreateFormOpen((o) => !o)}
-                className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
-              >
-                {createFormOpen
-                  ? t("pages.competitions.hide")
-                  : t("pages.competitions.show")}
-              </button>
-            </div>
-            <form
-              onSubmit={(ev) => void handleCreate(ev)}
-              className={`space-y-4 ${createFormOpen ? "" : "hidden md:block"}`}
-            >
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={createPublic}
-                  onChange={(e) => setCreatePublic(e.target.checked)}
-                  className="rounded border-guinness-gold/40"
-                />
-                <span className="text-sm text-guinness-tan/85">
-                  {t("pages.competitions.publicListing")}
-                </span>
-              </label>
-              <div>
-                <label htmlFor="create-win-rule" className="type-label mb-1 block">
-                  {t("pages.competitions.winRuleField")}
-                </label>
-                <select
-                  id="create-win-rule"
-                  value={createWinRule}
-                  onChange={(e) =>
-                    setCreateWinRule(e.target.value as WinRuleChoice)
-                  }
-                  className={nativeSelectClass}
-                >
-                  <option value="highest_score">
-                    {t("pages.competitions.winRuleOptionHighest")}
-                  </option>
-                  <option value="closest_to_target">
-                    {t("pages.competitions.winRuleOptionClosest")}
-                  </option>
-                  <option value="most_submissions">
-                    {t("pages.competitions.winRuleOptionMost")}
-                  </option>
-                </select>
-              </div>
-              {createWinRule === "closest_to_target" ? (
-                <div>
-                  <label htmlFor="create-target" className="type-label mb-1 block">
-                    {t("pages.competitions.targetScoreLabel")}
-                  </label>
-                  <input
-                    id="create-target"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    max={5}
-                    value={createTargetScore}
-                    onChange={(e) => setCreateTargetScore(e.target.value)}
-                    className={fieldClass}
-                  />
-                </div>
-              ) : null}
-              <div>
-                <label htmlFor="comp-title" className="type-label mb-1 block">
-                  {t("pages.competitions.formName")}
-                </label>
-                <input
-                  id="comp-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className={fieldClass}
-                  placeholder={t("pages.competitions.namePlaceholder")}
-                  autoComplete="off"
-                />
-              </div>
-              <CompetitionLocationField
-                fieldClass={fieldClass}
-                copy={competitionLocationCopy}
-                locationName={createLocationName}
-                locationAddress={createLocationAddress}
-                onLocationNameChange={setCreateLocationName}
-                onLocationAddressChange={setCreateLocationAddress}
-              />
-              <div>
-                <label
-                  htmlFor="comp-linked-pub"
-                  className="type-label mb-1 block"
-                >
-                  {t("pages.competitions.pubListingsOptional")}
-                </label>
-                <select
-                  id="comp-linked-pub"
-                  value={createLinkedBarKey}
-                  onChange={(e) => setCreateLinkedBarKey(e.target.value)}
-                  className={nativeSelectClass}
-                >
-                  <option value="">{t("pages.competitions.pubNotLinked")}</option>
-                  {barLinkOptions.map((o) => (
-                    <option key={o.bar_key} value={o.bar_key}>
-                      {o.display_name}
-                    </option>
-                  ))}
-                </select>
-                <p className="type-meta mt-1 text-guinness-tan/60">
-                  {t("pages.competitions.pubListingsHintCreate")}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="comp-max" className="type-label mb-1 block">
-                    {t("pages.competitions.maxPeople")}
-                  </label>
-                  <input
-                    id="comp-max"
-                    type="number"
-                    min={2}
-                    max={500}
-                    value={maxParticipants}
-                    onChange={(e) =>
-                      setMaxParticipants(Number.parseInt(e.target.value, 10) || 2)
-                    }
-                    className={fieldClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="comp-glasses" className="type-label mb-1 block">
-                    {t("pages.competitions.glassesPerPerson")}
-                  </label>
-                  <input
-                    id="comp-glasses"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={glassesPerPerson}
-                    onChange={(e) =>
-                      setGlassesPerPerson(
-                        Number.parseInt(e.target.value, 10) || 1,
-                      )
-                    }
-                    className={fieldClass}
-                  />
-                </div>
-              </div>
-              <CompetitionDateTimeRangeField
-                startLocal={startsAt}
-                endLocal={endsAt}
-                onChange={(s, e) => {
-                  setStartsAt(s);
-                  setEndsAt(e);
-                }}
-                inputClass={fieldClass}
-                copy={competitionDateCopy}
-              />
-              <p className="type-meta text-guinness-tan/65">
-                {t("pages.competitions.privateExplainer")}
-              </p>
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full rounded-lg bg-guinness-gold py-3 font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50"
-              >
-                {saving
-                  ? t("pages.competitions.creating")
-                  : t("pages.competitions.createCompetition")}
-              </button>
-            </form>
-          </section>
-
-          <section className="rounded-2xl border border-guinness-gold/15 bg-guinness-brown/20 p-5 sm:p-6">
+        <section className="rounded-2xl border border-solid border-guinness-frame bg-gradient-to-b from-guinness-brown/25 to-guinness-black/30 p-4 shadow-inner shadow-black/20 sm:p-6">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
                 <h2 className="type-card-title">
@@ -1214,21 +618,18 @@ export default function Competitions() {
                   return (
                     <li
                       key={c.id}
-                      className={`overflow-hidden rounded-2xl border bg-guinness-brown/35 ${
-                        isPastTab
-                          ? "border-amber-500/20"
-                          : "border-guinness-gold/15"
-                      }`}
+                      className={`group/card relative overflow-hidden ${compCardFrame}`}
                     >
-                      <div className="flex flex-col gap-4 p-4 sm:p-5">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <div className={compCardTopLight} aria-hidden />
+                      <div className="relative z-0 flex flex-col gap-4 px-3.5 pb-4 pt-6 sm:gap-4 sm:p-5">
+                        <div className="flex flex-col gap-4 min-[520px]:flex-row min-[520px]:items-start min-[520px]:justify-between min-[520px]:gap-4">
                           <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-lg font-semibold text-guinness-cream">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                              <h3 className="text-base font-semibold leading-snug text-guinness-cream sm:text-lg">
                                 {c.title}
                               </h3>
                               {isPastTab ? (
-                                <span className="rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200/95">
+                                <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200/95">
                                   {t("pages.competitions.badgeEnded")}
                                 </span>
                               ) : null}
@@ -1236,8 +637,8 @@ export default function Competitions() {
                                 <span
                                   className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                                     isPastTab
-                                      ? "border-guinness-tan/30 bg-guinness-black/40 text-guinness-tan/85"
-                                      : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200/95"
+                                      ? "border-guinness-tan/35 bg-guinness-black/45 text-guinness-tan/85"
+                                      : "border-emerald-500/45 bg-emerald-500/12 text-emerald-200/95"
                                   }`}
                                 >
                                   {isPastTab
@@ -1246,10 +647,10 @@ export default function Competitions() {
                                 </span>
                               ) : null}
                               <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                                   priv
-                                    ? "bg-guinness-black/50 text-guinness-tan"
-                                    : "bg-guinness-gold/20 text-guinness-gold"
+                                    ? "border border-solid border-guinness-frame bg-guinness-black/55 text-guinness-tan/90"
+                                    : "bg-guinness-gold text-guinness-black shadow-sm shadow-black/20"
                                 }`}
                               >
                                 {priv
@@ -1257,7 +658,7 @@ export default function Competitions() {
                                   : t("pages.competitions.badgePublic")}
                               </span>
                             </div>
-                            <p className="type-meta mt-1 text-guinness-tan/55">
+                            <p className="mt-1.5 text-[11px] leading-relaxed text-guinness-tan/50 sm:text-xs sm:text-guinness-tan/55">
                               {new Date(c.starts_at).toLocaleString()} →{" "}
                               {new Date(c.ends_at).toLocaleString()}
                             </p>
@@ -1271,30 +672,42 @@ export default function Competitions() {
                             ) : null}
                           </div>
 
-                          <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[20rem] sm:flex-row sm:flex-wrap sm:justify-end">
+                          <div
+                            className={`grid w-full gap-3 min-[520px]:w-auto min-[520px]:max-w-none min-[520px]:shrink-0 min-[520px]:justify-end min-[520px]:gap-2 ${
+                              isOwner
+                                ? "grid-cols-3 min-[520px]:flex min-[520px]:flex-wrap"
+                                : "grid-cols-1"
+                            }`}
+                          >
                             <AppLink
                               to={competitionDetailPath(c)}
                               viewTransition
-                              className={`${pageHeaderActionButtonClass} w-full justify-center text-xs sm:w-auto sm:min-w-[5.5rem] sm:text-sm`}
+                              className={`${pageHeaderActionButtonClass} inline-flex min-h-10 w-full items-center justify-center px-3 text-xs min-[520px]:min-w-[6.25rem] min-[520px]:w-auto sm:px-4 sm:text-sm`}
                             >
                               {t("pages.competitions.view")}
                             </AppLink>
                             {isOwner ? (
                               <>
-                                <button
-                                  type="button"
-                                  onClick={() => beginEdit(c)}
-                                  disabled={editing !== null && editing.id !== c.id}
-                                  className={`${outlineBtn} w-full sm:w-auto`}
+                                <AppLink
+                                  to={competitionEditPath(c)}
+                                  viewTransition
+                                  className={`${outlineBtn} inline-flex min-h-10 w-full items-center justify-center gap-1.5 px-2.5 text-xs min-[520px]:w-auto sm:px-3 sm:text-sm`}
                                 >
-                                  {t("pages.competitions.edit")}
-                                </button>
+                                  <Pencil
+                                    className="h-3.5 w-3.5 shrink-0 opacity-90"
+                                    aria-hidden
+                                  />
+                                  <span className="truncate">
+                                    {t("pages.competitions.edit")}
+                                  </span>
+                                </AppLink>
                                 <button
                                   type="button"
                                   onClick={() => void requestDeleteCompetition(c)}
-                                  className="w-full rounded-lg border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-400/90 hover:bg-red-950/30 sm:w-auto sm:py-1.5"
+                                  className="inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-red-400/40 bg-red-950/20 text-red-400/95 transition-colors hover:border-red-400/55 hover:bg-red-950/40 min-[520px]:w-11 min-[520px]:px-0"
+                                  aria-label={t("pages.competitions.delete")}
                                 >
-                                  {t("pages.competitions.delete")}
+                                  <Trash2 className="h-4 w-4" aria-hidden />
                                 </button>
                               </>
                             ) : userId ? (
@@ -1330,30 +743,37 @@ export default function Competitions() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 border-t border-guinness-gold/10 pt-3">
-                          <div className="flex min-w-[6.5rem] flex-1 flex-col rounded-xl border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5">
-                            <span className="type-meta block text-guinness-tan/60">
+                        <div
+                          className={`grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-5 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-3 sm:pt-4 ${compCardDivider}`}
+                        >
+                          <div className={`${compStatCell} col-span-1`}>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-guinness-gold/65">
                               {t("pages.competitions.statJoined")}
                             </span>
-                            <span className="mt-1 text-base font-semibold text-guinness-gold">
-                              {count}{" "}
-                              <span className="text-guinness-tan/50">/</span>{" "}
+                            <span className="mt-0.5 text-sm font-semibold tabular-nums text-guinness-gold sm:text-base">
+                              {count}
+                              <span className="text-guinness-tan/45"> / </span>
                               {c.max_participants}
                             </span>
                           </div>
-                          <div className="flex min-w-[6.5rem] flex-1 flex-col rounded-xl border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5">
-                            <span className="type-meta block text-guinness-tan/60">
+                          <div className={`${compStatCell} col-span-1`}>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-guinness-gold/65">
                               {t("pages.competitions.statGlassesEach")}
                             </span>
-                            <span className="mt-1 text-base font-semibold text-guinness-cream">
-                              {c.glasses_per_person}
+                            <span className="mt-0.5 text-sm font-semibold text-guinness-cream sm:text-base">
+                              {winRuleUsesUnlimitedGlasses(c.win_rule) ||
+                              isStoredGlassesUnlimited(c.glasses_per_person)
+                                ? t("pages.competitions.glassesPerPersonUnlimited")
+                                : c.glasses_per_person}
                             </span>
                           </div>
-                          <div className="flex min-w-[min(100%,10rem)] flex-[2] flex-col rounded-xl border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5 sm:flex-1">
-                            <span className="type-meta block text-guinness-tan/60">
+                          <div
+                            className={`${compStatCell} col-span-2 sm:col-span-1`}
+                          >
+                            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-guinness-gold/65">
                               {t("pages.competitions.statRule")}
                             </span>
-                            <span className="mt-1 block text-sm font-semibold leading-snug text-guinness-cream">
+                            <span className="mt-0.5 block text-sm font-semibold leading-snug text-guinness-cream">
                               {winRuleLabelI18n(c.win_rule)}
                               {c.win_rule === "closest_to_target" &&
                               c.target_score != null
@@ -1365,18 +785,24 @@ export default function Competitions() {
                       </div>
 
                       {isOwner && !isPastTab ? (
-                        <details className="group border-t border-guinness-gold/10 bg-guinness-black/20">
-                          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/30 sm:px-5 [&::-webkit-details-marker]:hidden">
+                        <details
+                          className={`group relative border-t bg-guinness-black/25 ${compCardDivider}`}
+                        >
+                          <summary className="cursor-pointer list-none px-3.5 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/35 sm:px-5 sm:py-3 [&::-webkit-details-marker]:hidden">
                             <span className="flex items-center justify-between gap-2">
                               <span>
                                 {t("pages.competitions.invitesFriendsSection")}
                               </span>
-                              <span className="text-guinness-tan/50 transition-transform group-open:rotate-180">
-                                ⌄
-                              </span>
+                              <ChevronDown
+                                className="h-4 w-4 shrink-0 text-guinness-gold/60 transition-transform duration-200 group-open:rotate-180"
+                                aria-hidden
+                                strokeWidth={2.25}
+                              />
                             </span>
                           </summary>
-                          <div className="space-y-4 border-t border-guinness-gold/10 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
+                          <div
+                            className={`space-y-4 border-t px-3.5 pb-3.5 pt-3.5 sm:px-5 sm:pb-5 sm:pt-4 ${compCardDivider}`}
+                          >
                             <div>
                               <p className="type-label text-guinness-tan/85">
                                 {t("pages.competitions.inviteByEmail")}
@@ -1409,7 +835,9 @@ export default function Competitions() {
                                 </button>
                               </div>
                               {invites.length > 0 ? (
-                                <ul className="mt-3 space-y-2 rounded-lg border border-guinness-gold/10 bg-guinness-black/25 px-3 py-2 text-xs text-guinness-tan/80">
+                                <ul
+                                  className={`mt-3 space-y-2 rounded-lg border bg-guinness-black/30 px-3 py-2 text-xs text-guinness-tan/80 ${compCardDivider}`}
+                                >
                                   {invites.map((inv) => (
                                     <li
                                       key={inv.id}
@@ -1434,7 +862,7 @@ export default function Competitions() {
                             </div>
 
                             {myFriends.length > 0 ? (
-                              <div className="border-t border-guinness-gold/10 pt-4">
+                              <div className={`border-t pt-4 ${compCardDivider}`}>
                                 <p className="type-label text-guinness-tan/85">
                                   {t("pages.competitions.addFriendsTitle")}
                                 </p>
@@ -1445,7 +873,7 @@ export default function Competitions() {
                                   {myFriends.map((f) => (
                                     <li
                                       key={f.friend_user_id}
-                                      className="flex flex-col gap-2 rounded-lg border border-guinness-gold/10 bg-guinness-black/30 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                                      className={`flex flex-col gap-2 rounded-lg border bg-guinness-black/30 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between ${compCardDivider}`}
                                     >
                                       <span className="min-w-0 truncate text-sm text-guinness-cream">
                                         {f.peer_email ||
@@ -1477,7 +905,6 @@ export default function Competitions() {
               </ul>
             )}
           </section>
-        </div>
       </div>
 
       <BrandedToast

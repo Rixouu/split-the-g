@@ -16,6 +16,7 @@ import {
   toastAutoCloseForVariant,
 } from "~/components/branded/feedback-variant";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { isValidNickname } from "~/utils/profile-nickname";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 import {
   clearPostOAuthReturnIfMatchesCurrentPath,
@@ -610,8 +611,6 @@ export default function ProfileLayout() {
     setCountryCode("");
   };
 
-  const nicknamePattern = /^[a-zA-Z0-9 _-]{2,30}$/;
-
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
     if (!user?.email) return;
@@ -622,7 +621,7 @@ export default function ProfileLayout() {
       return;
     }
     const nickTrim = nickname.trim();
-    if (nickTrim && !nicknamePattern.test(nickTrim)) {
+    if (nickTrim && !isValidNickname(nickTrim)) {
       showToast(t("pages.profile.msgNicknameRules"));
       return;
     }

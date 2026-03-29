@@ -19,6 +19,10 @@ export function winRuleLabel(rule: string): string {
       return "Closest to target";
     case "most_submissions":
       return "Most submissions";
+    case "lowest_score":
+      return "Lowest split score";
+    case "best_average":
+      return "Best average score";
     case "highest_score":
     default:
       return "Highest score";
@@ -46,6 +50,8 @@ export function competitionLeaderboardSecondaryMeta(
 ): string | null {
   if (winRule === "closest_to_target") return r.metric;
   if (winRule === "most_submissions") return r.detail;
+  if (winRule === "best_average") return r.detail;
+  if (winRule === "lowest_score") return r.detail;
   return null;
 }
 
@@ -56,7 +62,7 @@ export function CompetitionLeaderboardScoreAside({
   row: RankedRow;
   winRule: WinRule;
 }) {
-  if (winRule === "highest_score") {
+  if (winRule === "highest_score" || winRule === "lowest_score") {
     const m = row.metric.match(/^(\d+\.\d{2})\s*\/\s*5$/);
     const num = m ? m[1] : row.metric.replace(/\s*\/\s*5.*$/, "").trim() || "…";
     return (
@@ -65,6 +71,18 @@ export function CompetitionLeaderboardScoreAside({
           {num}
         </p>
         <p className="type-meta whitespace-nowrap text-guinness-tan/60">out of 5.0</p>
+      </div>
+    );
+  }
+  if (winRule === "best_average") {
+    const m = row.metric.match(/^Avg\s+(\d+\.\d{2})/);
+    const num = m ? m[1] : "…";
+    return (
+      <div className="shrink-0 text-right">
+        <p className="text-2xl font-bold tabular-nums text-guinness-gold sm:text-3xl">
+          {num}
+        </p>
+        <p className="type-meta whitespace-nowrap text-guinness-tan/60">avg / 5.0</p>
       </div>
     );
   }

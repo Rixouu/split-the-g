@@ -66,6 +66,19 @@ function pickRepresentativePour(pours: PourEntry[]): PourEntry {
   return best;
 }
 
+function pickRepresentativePourLowest(pours: PourEntry[]): PourEntry {
+  let best = pours[0];
+  for (const p of pours) {
+    if (
+      p.value < best.value ||
+      (p.value === best.value && p.at < best.at)
+    ) {
+      best = p;
+    }
+  }
+  return best;
+}
+
 export function buildLeaderboard(
   rows: CompetitionScoreJoin[],
   winRule: CompetitionWinRule,
@@ -137,6 +150,90 @@ export function buildLeaderboard(
           : y.tie !== x.tie
             ? y.tie - x.tie
             : x.username.localeCompare(y.username),
+      )
+      .map((r, i) => ({
+        rank: i + 1,
+        userId: r.userId,
+        username: r.username,
+        metric: r.metric,
+        detail: r.detail,
+        pourPath: r.pourPath,
+        countryCode: r.countryCode,
+        representativeCreatedAt: r.representativeCreatedAt,
+        splitImageUrl: r.splitImageUrl,
+      }));
+  }
+
+  if (winRule === "best_average") {
+    return list
+      .map((a) => {
+        const sum = a.pours.reduce((s, p) => s + p.value, 0);
+        const avg = sum / a.pours.length;
+        const bestSingle = Math.max(...a.pours.map((x) => x.value));
+        const linkPour = pickRepresentativePour(a.pours);
+        return {
+          userId: a.userId,
+          username: a.username,
+          sortKey: avg,
+          tie: bestSingle,
+          tie2: -a.pours.length,
+          metric: `Avg ${avg.toFixed(2)} / 5`,
+          detail: `${a.pours.length} pour(s)`,
+          pourPath: scorePourPathFromFields({
+            id: linkPour.scoreId,
+            slug: linkPour.slug,
+          }),
+          countryCode: linkPour.countryCode,
+          representativeCreatedAt: linkPour.createdAt,
+          splitImageUrl: linkPour.splitImageUrl,
+        };
+      })
+      .sort((x, y) =>
+        y.sortKey !== x.sortKey
+          ? y.sortKey - x.sortKey
+          : y.tie !== x.tie
+            ? y.tie - x.tie
+            : y.tie2 !== x.tie2
+              ? y.tie2 - x.tie2
+              : x.username.localeCompare(y.username),
+      )
+      .map((r, i) => ({
+        rank: i + 1,
+        userId: r.userId,
+        username: r.username,
+        metric: r.metric,
+        detail: r.detail,
+        pourPath: r.pourPath,
+        countryCode: r.countryCode,
+        representativeCreatedAt: r.representativeCreatedAt,
+        splitImageUrl: r.splitImageUrl,
+      }));
+  }
+
+  if (winRule === "lowest_score") {
+    return list
+      .map((a) => {
+        const linkPour = pickRepresentativePourLowest(a.pours);
+        return {
+          userId: a.userId,
+          username: a.username,
+          sortKey: linkPour.value,
+          tie: linkPour.at,
+          metric: `${linkPour.value.toFixed(2)} / 5`,
+          detail: "Lowest pour",
+          pourPath: scorePourPathFromFields({
+            id: linkPour.scoreId,
+            slug: linkPour.slug,
+          }),
+          countryCode: linkPour.countryCode,
+          representativeCreatedAt: linkPour.createdAt,
+          splitImageUrl: linkPour.splitImageUrl,
+        };
+      })
+      .sort((x, y) =>
+        x.sortKey !== y.sortKey
+          ? x.sortKey - y.sortKey
+          : x.tie - y.tie,
       )
       .map((r, i) => ({
         rank: i + 1,

@@ -14,3 +14,30 @@ export function competitionDetailPath(c: {
   if (seg) return `/competitions/${encodeURIComponent(seg)}`;
   return `/competitions/${c.id}`;
 }
+
+/** Create flow — must stay a static segment before `:competitionId` routes. */
+export function competitionNewPath(): string {
+  return "/competitions/new";
+}
+
+/** `/competitions/:segment/edit` (or `/competitions/:uuid/edit`). */
+export function competitionEditPath(c: {
+  id: string;
+  path_segment?: string | null;
+}): string {
+  return `${competitionDetailPath(c)}/edit`;
+}
+
+/**
+ * Path after `/competitions/` without locale, with optional `/edit` stripped
+ * (e.g. `/competitions/foo-bar-abc/edit` → `foo-bar-abc`).
+ */
+export function competitionRouteParamFromPathname(pathSansLang: string): string {
+  let rest = pathSansLang.replace(/^\/competitions\//i, "");
+  rest = rest.replace(/\/edit\/?$/i, "");
+  return decodeURIComponent(rest.replace(/\/+$/, ""));
+}
+
+export function competitionPathHasEditSuffix(pathSansLang: string): boolean {
+  return /\/competitions\/.+\/edit\/?$/i.test(pathSansLang);
+}
