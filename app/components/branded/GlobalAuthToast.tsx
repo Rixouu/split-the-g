@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { BrandedToast } from "./BrandedToast";
 import { toastAutoCloseForVariant } from "./feedback-variant";
 
@@ -17,16 +17,29 @@ export function GlobalAuthToast() {
   }, []);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        setText("You're signed in. Welcome back.");
-        setOpen(true);
-      }
-      if (event === "SIGNED_OUT") {
-        onClose();
-      }
+    let unsubscribe: (() => void) | null = null;
+    let isDisposed = false;
+
+    void getSupabaseBrowserClient().then((supabase) => {
+      if (isDisposed) return;
+
+      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          setText("You're signed in. Welcome back.");
+          setOpen(true);
+        }
+        if (event === "SIGNED_OUT") {
+          onClose();
+        }
+      });
+
+      unsubscribe = () => sub.subscription.unsubscribe();
     });
-    return () => sub.subscription.unsubscribe();
+
+    return () => {
+      isDisposed = true;
+      unsubscribe?.();
+    };
   }, [onClose]);
 
   return (

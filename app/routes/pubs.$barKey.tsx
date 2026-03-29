@@ -1,4 +1,5 @@
 import {
+  Await,
   data,
   Link,
   useFetcher,
@@ -285,6 +286,37 @@ function PubOpeningHoursReadOnly({
         visitors see hours from the business listing when available.
       </p>
     </div>
+  );
+}
+
+function PubOpeningHoursDeferred({
+  googleOpeningHoursLines,
+}: {
+  googleOpeningHoursLines: Promise<string[] | null>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className={`mt-1 rounded-xl border ${pubStroke} bg-guinness-black/25 px-3 py-4 text-center sm:px-4`}
+        >
+          <p className="type-meta leading-relaxed text-guinness-tan/55">
+            Loading live listing hours...
+          </p>
+        </div>
+      }
+    >
+      <Await
+        resolve={googleOpeningHoursLines}
+        errorElement={<PubOpeningHoursReadOnly googleOpeningHoursLines={null} />}
+      >
+        {(resolvedGoogleOpeningHoursLines: string[] | null) => (
+          <PubOpeningHoursReadOnly
+            googleOpeningHoursLines={resolvedGoogleOpeningHoursLines}
+          />
+        )}
+      </Await>
+    </Suspense>
   );
 }
 
@@ -576,7 +608,7 @@ export default function PubDetail() {
       setToastOk(true);
       setToast("Pub details saved. Thanks for helping the community.");
       if (newBarKey !== barKey) {
-        navigate(pubDetailPath(newBarKey), { replace: true, viewTransition: true });
+        navigate(pubDetailPath(newBarKey), { replace: true });
       }
       revalidator.revalidate();
     } finally {
@@ -633,7 +665,7 @@ export default function PubDetail() {
       setToastOk(true);
       setToast("Merged into target pub. Redirecting…");
       setMergeTargetBarKey("");
-      navigate(pubDetailPath(tgt), { replace: true, viewTransition: true });
+      navigate(pubDetailPath(tgt), { replace: true });
       revalidator.revalidate();
     } finally {
       setMergeBusy(false);
@@ -697,7 +729,6 @@ export default function PubDetail() {
             </button>
             <Link
               to="/pubs"
-              viewTransition
               className={pageHeaderActionButtonClass}
             >
               All pubs
@@ -782,7 +813,7 @@ export default function PubDetail() {
               <p className="type-meta mb-3 text-guinness-tan/70">
                 Hours from the linked Google Business Profile listing.
               </p>
-              <PubOpeningHoursReadOnly
+              <PubOpeningHoursDeferred
                 googleOpeningHoursLines={googleOpeningHoursLines}
               />
             </section>

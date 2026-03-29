@@ -16,7 +16,7 @@ import {
   pubsPageDescription,
 } from "~/components/PageHeader";
 import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 
 export type BarStat = {
@@ -186,6 +186,7 @@ function StatPill({ icon, children }: { icon: ReactNode; children: ReactNode }) 
 const selectFieldClass = `w-full min-h-11 rounded-lg border ${PUB_LIST_STROKE} bg-guinness-black/60 px-3 py-2 text-sm text-guinness-cream focus:border-guinness-gold focus:outline-none`;
 
 export async function loader(_args: LoaderFunctionArgs) {
+  const { supabase } = await import("~/utils/supabase");
   const projection =
     "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
   const mv = await supabase
@@ -248,6 +249,7 @@ export default function Pubs() {
   }, []);
 
   const loadFavorites = useCallback(async (uid: string) => {
+    const supabase = await getSupabaseBrowserClient();
     const { data, error } = await supabase
       .from("user_favorite_bars")
       .select("id, bar_name")
@@ -268,8 +270,10 @@ export default function Pubs() {
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
 
     async function run() {
+      const supabase = await getSupabaseBrowserClient();
       const { data } = await supabase.auth.getUser();
       if (cancelled) return;
       const uid = data.user?.id ?? null;
@@ -279,12 +283,16 @@ export default function Pubs() {
     }
 
     void run();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      void run();
+    void getSupabaseBrowserClient().then((supabase) => {
+      if (cancelled) return;
+      const { data: sub } = supabase.auth.onAuthStateChange(() => {
+        void run();
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
     });
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, [loadFavorites]);
 
@@ -314,6 +322,7 @@ export default function Pubs() {
       return;
     }
 
+    const supabase = await getSupabaseBrowserClient();
     const existingId = favIdByBarKey[b.bar_key];
     setFavBusyKey(b.bar_key);
 
@@ -389,7 +398,7 @@ export default function Pubs() {
               </span>
               <button
                 type="button"
-                aria-expanded={filtersOpen}
+                aria-expanded={filtersOpen ? "true" : "false"}
                 onClick={() => setFiltersOpen((o) => !o)}
                 className={`rounded-lg border ${PUB_LIST_STROKE} px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden`}
               >

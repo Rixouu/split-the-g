@@ -152,7 +152,6 @@ export function AppNavigation() {
             <NavLink
               to="/"
               prefetch={LINK_PREFETCH}
-              viewTransition
               title={isHome ? "Split the G — home" : undefined}
               aria-label={isHome ? "Split the G — home" : undefined}
               className="group shrink-0 text-[0.8125rem] font-bold uppercase tracking-[0.12em] text-guinness-cream transition-colors hover:text-guinness-gold"
@@ -174,7 +173,6 @@ export function AppNavigation() {
                       to={to}
                       end={end}
                       prefetch={LINK_PREFETCH}
-                      viewTransition
                       aria-label={
                         showCompeteDot
                           ? `${label} — you’re in an active competition`
@@ -204,7 +202,6 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
-                    viewTransition
                     className={({ isActive }) =>
                       `${deskPill} text-xs ${isActive ? deskActive : deskIdle}`
                     }
@@ -230,7 +227,6 @@ export function AppNavigation() {
             title="Pour"
             aria-label="Pour"
             prefetch={LINK_PREFETCH}
-            viewTransition
             className={({ isActive }) =>
               [
                 "absolute left-1/2 top-0 z-10 flex h-[3.85rem] w-[3.85rem] -translate-x-1/2 -translate-y-[38%] items-center justify-center rounded-full border-2 border-guinness-black/30 bg-guinness-gold text-guinness-black shadow-[0_8px_28px_rgba(0,0,0,0.45),0_0_0_1px_rgba(197,160,89,0.35)] transition-transform duration-200 active:scale-95",
@@ -242,7 +238,7 @@ export function AppNavigation() {
           >
             <MobileNavIcon name="pour" className="h-8 w-8" />
           </NavLink>
-          <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)] backdrop-blur-xl">
+          <div className="overflow-visible rounded-2xl border border-guinness-gold/25 bg-guinness-brown/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] pt-3 shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(197,160,89,0.08)]">
             <ul className="flex list-none items-stretch gap-0.5">
               <li className="flex min-w-0 flex-1 gap-0.5">
                 {mobileDockItems.slice(0, 2).map(({ to, label }) => (
@@ -250,7 +246,6 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
-                    viewTransition
                     title={to === "/leaderboard" ? "Leaderboard" : undefined}
                     aria-label={to === "/leaderboard" ? "Leaderboard" : undefined}
                     className={({ isActive }) =>
@@ -271,7 +266,6 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
-                    viewTransition
                     className={({ isActive }) =>
                       `${mobItem} flex-1 ${isActive ? mobActive : mobIdle}`
                     }
@@ -290,7 +284,6 @@ export function AppNavigation() {
                     key={to}
                     to={to}
                     prefetch={LINK_PREFETCH}
-                    viewTransition
                     title={
                       to === "/faq"
                         ? "FAQ"

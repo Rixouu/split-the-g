@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -7,6 +8,7 @@ import {
   ScrollRestoration,
   useLoaderData,
   useLocation,
+  useNavigation,
 } from "react-router";
 
 import type { Route } from "./+types/root";
@@ -15,9 +17,6 @@ import {
   AppNavigation,
   shouldShowAppNav,
 } from "~/components/AppNavigation";
-import { GlobalAuthToast } from "~/components/branded/GlobalAuthToast";
-import { GlobalCompetitionPourToast } from "~/components/branded/GlobalCompetitionPourToast";
-import { PostOAuthReturnRedirect } from "~/components/PostOAuthReturnRedirect";
 import { GoogleMapsScript } from "~/components/GoogleMapsScript";
 import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
 
@@ -58,13 +57,30 @@ export async function loader() {
   };
 }
 
+const GlobalAuthToast = lazy(async () => {
+  const mod = await import("~/components/branded/GlobalAuthToast");
+  return { default: mod.GlobalAuthToast };
+});
+
+const GlobalCompetitionPourToast = lazy(async () => {
+  const mod = await import("~/components/branded/GlobalCompetitionPourToast");
+  return { default: mod.GlobalCompetitionPourToast };
+});
+
+const PostOAuthReturnRedirect = lazy(async () => {
+  const mod = await import("~/components/PostOAuthReturnRedirect");
+  return { default: mod.PostOAuthReturnRedirect };
+});
+
 export default function App() {
   const env = useLoaderData<typeof loader>();
   const { pathname } = useLocation();
+  const navigation = useNavigation();
   const padForShellNav = shouldShowAppNav(pathname);
   const mapsKey = env.GOOGLE_PLACES_API_KEY ?? "";
   const mapsScriptActive =
     Boolean(mapsKey) && pathnameNeedsGoogleMapsScript(pathname);
+  const isNavigating = navigation.state !== "idle";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -78,6 +94,7 @@ export default function App() {
         <Links />
       </head>
       <body suppressHydrationWarning>
+        <RoutePendingIndicator isActive={isNavigating} />
         <div
           id="root"
           className={
@@ -89,9 +106,11 @@ export default function App() {
           <Outlet />
         </div>
         <AppNavigation />
-        <GlobalAuthToast />
-        <GlobalCompetitionPourToast />
-        <PostOAuthReturnRedirect />
+        <Suspense fallback={null}>
+          <GlobalAuthToast />
+          <GlobalCompetitionPourToast />
+          <PostOAuthReturnRedirect />
+        </Suspense>
         <ScrollRestoration />
         <Scripts />
         <script
@@ -115,6 +134,20 @@ export default function App() {
         ) : null}
       </body>
     </html>
+  );
+}
+
+function RoutePendingIndicator({ isActive }: { isActive: boolean }) {
+  return (
+    <div
+      className={`pointer-events-none fixed inset-x-0 top-0 z-[60] transition-opacity duration-150 ${
+        isActive ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <div className="h-1 w-full overflow-hidden bg-guinness-gold/10">
+        <div className="h-full w-1/3 animate-pulse rounded-full bg-guinness-gold shadow-[0_0_18px_rgba(212,175,55,0.55)]" />
+      </div>
+    </div>
   );
 }
 

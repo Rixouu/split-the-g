@@ -24,6 +24,22 @@ import {
 const barStatProjection =
   "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
 
+function loadDeferredGoogleOpeningHours(
+  resolvedPlaceId: string | null,
+): Promise<string[] | null> {
+  if (!resolvedPlaceId) return Promise.resolve(null);
+
+  const mapsKey = resolveGoogleMapsKeyForServer();
+  if (!mapsKey) return Promise.resolve(null);
+
+  return Promise.race([
+    fetchPlaceOpeningHoursWeekdayLines(resolvedPlaceId, mapsKey),
+    new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), 1500);
+    }),
+  ]).catch(() => null);
+}
+
 export async function loader({ params }: LoaderFunctionArgs) {
   const raw = params.barKey?.trim();
   if (!raw) throw new Response("Not found", { status: 404 });
@@ -103,7 +119,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
       extraError: extraError.message,
       placeDetails: null as PubPlaceRow | null,
       linkedCompetitions: [] as LinkedCompetition[],
-      googleOpeningHoursLines: null as string[] | null,
+      googleOpeningHoursLines: Promise.resolve(null) as Promise<string[] | null>,
       wallPours,
       wallError,
     };
@@ -128,19 +144,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const resolvedPlaceId =
     placeDetailsTyped?.google_place_id?.trim() || bar.google_place_id?.trim() || null;
 
-  let googleOpeningHoursLines: string[] | null = null;
-  if (resolvedPlaceId) {
-    const mapsKey = resolveGoogleMapsKeyForServer();
-    if (mapsKey) {
-      googleOpeningHoursLines = await Promise.race([
-        fetchPlaceOpeningHoursWeekdayLines(resolvedPlaceId, mapsKey),
-        new Promise<null>((resolve) => {
-          setTimeout(() => resolve(null), 1500);
-        }),
-      ]);
-    }
-  }
-
   return {
     barKey,
     bar,
@@ -148,7 +151,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     extraError: null as string | null,
     placeDetails: placeDetailsTyped,
     linkedCompetitions: !compErr ? ((comps ?? []) as LinkedCompetition[]) : [],
-    googleOpeningHoursLines,
+    googleOpeningHoursLines: loadDeferredGoogleOpeningHours(resolvedPlaceId),
     wallPours,
     wallError,
   };

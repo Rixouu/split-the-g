@@ -27,7 +27,7 @@ import {
   COMPETITION_SCORES_SELECT,
   type CompetitionScoreJoin,
 } from "~/utils/competitionLeaderboard";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import type { loader as competitionsLoader } from "./competitions.loader";
 import {
   COMPETITION_ROW_SELECT,
@@ -123,14 +123,15 @@ export default function Competitions() {
   }, [loaderCounts]);
 
   useEffect(() => {
-    void supabase
-      .from("bar_pub_stats")
-      .select("bar_key, display_name")
-      .order("submission_count", { ascending: false })
-      .limit(200)
-      .then(({ data }) => {
-        setBarLinkOptions((data ?? []) as BarLinkOption[]);
-      });
+    void (async () => {
+      const supabase = await getSupabaseBrowserClient();
+      const { data } = await supabase
+        .from("bar_pub_stats")
+        .select("bar_key, display_name")
+        .order("submission_count", { ascending: false })
+        .limit(200);
+      setBarLinkOptions((data ?? []) as BarLinkOption[]);
+    })();
   }, []);
 
   const mergedCompetitions = useMemo(() => {
@@ -164,6 +165,7 @@ export default function Competitions() {
       return;
     }
     void (async () => {
+      const supabase = await getSupabaseBrowserClient();
       const entries = await Promise.all(
         pastCompetitions.map(async (c) => {
           const { data } = await supabase
@@ -191,8 +193,10 @@ export default function Competitions() {
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
 
     async function syncJoined() {
+      const supabase = await getSupabaseBrowserClient();
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id ?? null;
       const em = auth.user?.email?.trim().toLowerCase() ?? null;
@@ -225,12 +229,16 @@ export default function Competitions() {
     }
 
     void syncJoined();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      void syncJoined();
+    void getSupabaseBrowserClient().then((supabase) => {
+      if (cancelled) return;
+      const { data: sub } = supabase.auth.onAuthStateChange(() => {
+        void syncJoined();
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
     });
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
@@ -241,18 +249,19 @@ export default function Competitions() {
       .map((c) => c.id)
       .filter((id) => loaderCounts[id] == null);
     if (ids.length === 0) return;
-    void supabase
-      .from("competition_participants")
-      .select("competition_id")
-      .in("competition_id", ids)
-      .then(({ data }) => {
-        const m: Record<string, number> = {};
-        for (const r of data ?? []) {
-          const id = r.competition_id as string;
-          m[id] = (m[id] ?? 0) + 1;
-        }
-        setCounts((prev) => ({ ...prev, ...m }));
-      });
+    void (async () => {
+      const supabase = await getSupabaseBrowserClient();
+      const { data } = await supabase
+        .from("competition_participants")
+        .select("competition_id")
+        .in("competition_id", ids);
+      const m: Record<string, number> = {};
+      for (const r of data ?? []) {
+        const id = r.competition_id as string;
+        m[id] = (m[id] ?? 0) + 1;
+      }
+      setCounts((prev) => ({ ...prev, ...m }));
+    })();
   }, [mergedCompetitions, loaderCounts]);
 
   useEffect(() => {
@@ -260,13 +269,14 @@ export default function Competitions() {
       setMyFriends([]);
       return;
     }
-    void supabase
-      .from("user_friends")
-      .select("friend_user_id, peer_email")
-      .eq("user_id", userId)
-      .then(({ data }) => {
-        setMyFriends((data ?? []) as FriendPick[]);
-      });
+    void (async () => {
+      const supabase = await getSupabaseBrowserClient();
+      const { data } = await supabase
+        .from("user_friends")
+        .select("friend_user_id, peer_email")
+        .eq("user_id", userId);
+      setMyFriends((data ?? []) as FriendPick[]);
+    })();
   }, [userId, revalidator.state]);
 
   useEffect(() => {
@@ -281,22 +291,23 @@ export default function Competitions() {
       setInvitesByComp({});
       return;
     }
-    void supabase
-      .from("competition_invites")
-      .select("id, competition_id, invited_email")
-      .in("competition_id", owned)
-      .then(({ data }) => {
-        const m: Record<string, InviteRow[]> = {};
-        for (const row of data ?? []) {
-          const cid = row.competition_id as string;
-          if (!m[cid]) m[cid] = [];
-          m[cid].push({
-            id: row.id as string,
-            invited_email: String(row.invited_email),
-          });
-        }
-        setInvitesByComp(m);
-      });
+    void (async () => {
+      const supabase = await getSupabaseBrowserClient();
+      const { data } = await supabase
+        .from("competition_invites")
+        .select("id, competition_id, invited_email")
+        .in("competition_id", owned);
+      const m: Record<string, InviteRow[]> = {};
+      for (const row of data ?? []) {
+        const cid = row.competition_id as string;
+        if (!m[cid]) m[cid] = [];
+        m[cid].push({
+          id: row.id as string,
+          invited_email: String(row.invited_email),
+        });
+      }
+      setInvitesByComp(m);
+    })();
   }, [userId, mergedCompetitions]);
 
   useEffect(() => {
@@ -305,27 +316,28 @@ export default function Competitions() {
       return;
     }
     const norm = userEmail.trim().toLowerCase();
-    void supabase
-      .from("competition_invites")
-      .select("competition_id")
-      .eq("invited_email", norm)
-      .then(async ({ data: inv }) => {
-        if (!inv || inv.length === 0) {
-          setInvitedTitles([]);
-          return;
-        }
-        const ids = [...new Set(inv.map((r) => r.competition_id as string))];
-        const { data: comps } = await supabase
-          .from("competitions")
-          .select("id, title")
-          .in("id", ids);
-        setInvitedTitles(
-          (comps ?? []).map((c) => ({
-            competition_id: c.id as string,
-            title: String(c.title),
-          })),
-        );
-      });
+    void (async () => {
+      const supabase = await getSupabaseBrowserClient();
+      const { data: inv } = await supabase
+        .from("competition_invites")
+        .select("competition_id")
+        .eq("invited_email", norm);
+      if (!inv || inv.length === 0) {
+        setInvitedTitles([]);
+        return;
+      }
+      const ids = [...new Set(inv.map((r) => r.competition_id as string))];
+      const { data: comps } = await supabase
+        .from("competitions")
+        .select("id, title")
+        .in("id", ids);
+      setInvitedTitles(
+        (comps ?? []).map((c) => ({
+          competition_id: c.id as string,
+          title: String(c.title),
+        })),
+      );
+    })();
   }, [userId, userEmail]);
 
   function beginEdit(c: CompetitionRow) {
@@ -362,6 +374,7 @@ export default function Competitions() {
     setSaving(true);
 
     try {
+      const supabase = await getSupabaseBrowserClient();
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
         setFormError("Sign in with Google from your profile or a score page first.");
@@ -436,6 +449,7 @@ export default function Competitions() {
     setFormError(null);
     setEditBusy(true);
     try {
+      const supabase = await getSupabaseBrowserClient();
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user || userData.user.id !== editing.created_by) {
         setFormError("You can only edit your own competition.");
@@ -511,6 +525,7 @@ export default function Competitions() {
 
   async function requestDeleteCompetition(c: CompetitionRow) {
     setFormError(null);
+    const supabase = await getSupabaseBrowserClient();
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user || userData.user.id !== c.created_by) {
       setFormError("You can only delete your own competition.");
@@ -523,6 +538,7 @@ export default function Competitions() {
     if (!deleteTarget) return;
     const c = deleteTarget;
     setDeleteTarget(null);
+    const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase.from("competitions").delete().eq("id", c.id);
     if (error) {
       setFormError(error.message);
@@ -538,6 +554,7 @@ export default function Competitions() {
 
   async function handleJoin(compId: string) {
     setFormError(null);
+    const supabase = await getSupabaseBrowserClient();
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       setFormError("Sign in to join a competition.");
@@ -566,6 +583,7 @@ export default function Competitions() {
 
   async function handleLeave(compId: string) {
     setFormError(null);
+    const supabase = await getSupabaseBrowserClient();
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
 
@@ -596,6 +614,7 @@ export default function Competitions() {
     }
     setInviteBusy(compId);
     setFormError(null);
+    const supabase = await getSupabaseBrowserClient();
     const { data: u } = await supabase.auth.getUser();
     if (!u.user?.email) {
       setInviteBusy(null);
@@ -656,6 +675,7 @@ export default function Competitions() {
   }
 
   async function removeInvite(compId: string, inviteId: string) {
+    const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase
       .from("competition_invites")
       .delete()
@@ -669,6 +689,7 @@ export default function Competitions() {
 
   async function addFriendParticipant(compId: string, friendUserId: string) {
     setFormError(null);
+    const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase.from("competition_participants").insert({
       competition_id: compId,
       user_id: friendUserId,
@@ -895,7 +916,7 @@ export default function Competitions() {
               <h2 className="type-card-title">New competition</h2>
               <button
                 type="button"
-                aria-expanded={createFormOpen}
+                aria-expanded={createFormOpen ? "true" : "false"}
                 onClick={() => setCreateFormOpen((o) => !o)}
                 className="rounded-lg border border-guinness-gold/25 px-2.5 py-1 text-xs font-semibold text-guinness-gold md:hidden"
               >

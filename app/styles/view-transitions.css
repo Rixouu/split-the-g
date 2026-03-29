@@ -31,17 +31,8 @@
   @media (prefers-reduced-motion: no-preference) {
     ::view-transition-old(stg-main),
     ::view-transition-new(stg-main) {
-      animation-duration: 240ms;
+      animation-duration: 180ms;
       animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-    }
-
-    /* Slightly longer on coarse pointers (phones) for a clearer “screen” change */
-    @media (pointer: coarse) {
-      ::view-transition-old(stg-main),
-      ::view-transition-new(stg-main) {
-        animation-duration: 300ms;
-        animation-timing-function: cubic-bezier(0.25, 0.9, 0.32, 1);
-      }
     }
 
     ::view-transition-old(stg-main) {
@@ -53,10 +44,11 @@
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
+  @media (prefers-reduced-motion: reduce), (pointer: coarse), (display-mode: standalone) {
     ::view-transition-old(stg-main),
     ::view-transition-new(stg-main) {
       animation-duration: 1ms !important;
+      animation-name: none !important;
     }
   }
 }

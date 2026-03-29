@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { BrandedToast } from "./BrandedToast";
 import { toastAutoCloseForVariant } from "./feedback-variant";
 
@@ -30,7 +31,8 @@ export function GlobalCompetitionPourToast() {
   const [toastVariant, setToastVariant] =
     useState<BrandedNoticeVariant>("info");
 
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const supabaseRef = useRef<SupabaseClient | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   /** Competitions you care about for pour + phase toasts (participant or creator). */
   const relevantCompIdsRef = useRef<Set<string>>(new Set());
   const titleByCompRef = useRef<Map<string, string>>(new Map());
@@ -47,6 +49,13 @@ export function GlobalCompetitionPourToast() {
     },
     [],
   );
+
+  const getSupabase = useCallback(async () => {
+    if (!supabaseRef.current) {
+      supabaseRef.current = await getSupabaseBrowserClient();
+    }
+    return supabaseRef.current;
+  }, []);
 
   const syncPhases = useCallback(
     (emitToasts: boolean) => {
@@ -76,6 +85,7 @@ export function GlobalCompetitionPourToast() {
   );
 
   const loadRelevantMeta = useCallback(async (uid: string) => {
+    const supabase = await getSupabase();
     const [{ data: createdRows }, { data: parts }] = await Promise.all([
       supabase.from("competitions").select("id").eq("created_by", uid),
       supabase
@@ -107,13 +117,16 @@ export function GlobalCompetitionPourToast() {
       titleByCompRef.current.set(id, title);
       compTimelineRef.current.set(id, { title, starts_at, ends_at });
     }
-  }, []);
+  }, [getSupabase]);
 
   const teardownChannel = useCallback(async () => {
     const ch = channelRef.current;
     channelRef.current = null;
-    if (ch) await supabase.removeChannel(ch);
-  }, []);
+    if (!ch) return;
+
+    const supabase = await getSupabase();
+    await supabase.removeChannel(ch);
+  }, [getSupabase]);
 
   const onClose = useCallback(() => {
     setOpen(false);
@@ -131,10 +144,12 @@ export function GlobalCompetitionPourToast() {
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
 
     async function subscribe() {
       await teardownChannel();
 
+      const supabase = await getSupabase();
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id ?? null;
       userIdRef.current = uid;
@@ -191,8 +206,14 @@ export function GlobalCompetitionPourToast() {
 
     void subscribe();
 
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      void subscribe();
+    void getSupabase().then((supabase) => {
+      if (cancelled) return;
+
+      const { data: sub } = supabase.auth.onAuthStateChange(() => {
+        void subscribe();
+      });
+
+      unsubscribe = () => sub.subscription.unsubscribe();
     });
 
     const metaInterval = window.setInterval(() => {
@@ -206,11 +227,11 @@ export function GlobalCompetitionPourToast() {
 
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
       window.clearInterval(metaInterval);
       void teardownChannel();
     };
-  }, [loadRelevantMeta, showToast, syncPhases, teardownChannel]);
+  }, [getSupabase, loadRelevantMeta, showToast, syncPhases, teardownChannel]);
 
   const toastTitle =
     toastVariant === "success"

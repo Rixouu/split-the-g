@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 
 /**
  * True when the signed-in user is in at least one competition whose end time has not passed
@@ -10,8 +10,10 @@ export function useHasActiveCompetitionParticipation(): boolean {
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
 
     async function sync() {
+      const supabase = await getSupabaseBrowserClient();
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id ?? null;
       if (!uid) {
@@ -44,14 +46,21 @@ export function useHasActiveCompetitionParticipation(): boolean {
     }
 
     void sync();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      void sync();
+    void getSupabaseBrowserClient().then((supabase) => {
+      if (cancelled) return;
+      const { data: sub } = supabase.auth.onAuthStateChange(() => {
+        void sync();
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
     });
-    const intervalId = window.setInterval(() => void sync(), 60_000);
+
+    const intervalId = window.setInterval(() => {
+      void sync();
+    }, 60_000);
 
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
       window.clearInterval(intervalId);
     };
   }, []);

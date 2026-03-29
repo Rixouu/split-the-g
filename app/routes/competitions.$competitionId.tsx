@@ -16,7 +16,7 @@ import {
   competitionDetailMessageVariant,
   toastAutoCloseForVariant,
 } from "~/components/branded/feedback-variant";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
@@ -89,6 +89,7 @@ export default function CompetitionDetail() {
 
   const refreshAll = useCallback(async () => {
     const id = competitionId;
+    const supabase = await getSupabaseBrowserClient();
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id ?? null;
     const em = auth.user?.email?.trim() ?? null;
@@ -249,6 +250,7 @@ export default function CompetitionDetail() {
 
   const sendFriendInviteToPeer = useCallback(
     async (toEmail: string, peerUserId: string) => {
+      const supabase = await getSupabaseBrowserClient();
       const { data: auth } = await supabase.auth.getUser();
       const me = auth.user;
       if (!me?.id || !me.email) {
@@ -394,6 +396,7 @@ export default function CompetitionDetail() {
 
   async function handleJoin() {
     setMessage(null);
+    const supabase = await getSupabaseBrowserClient();
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) {
       setMessage("Sign in to join.");
@@ -413,6 +416,7 @@ export default function CompetitionDetail() {
 
   async function handleLeave() {
     setMessage(null);
+    const supabase = await getSupabaseBrowserClient();
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
     const { error } = await supabase
@@ -494,7 +498,7 @@ export default function CompetitionDetail() {
           >
             <button
               type="button"
-              aria-expanded={joinedBannerExpanded}
+              aria-expanded={joinedBannerExpanded ? "true" : "false"}
               onClick={() => {
                 setJoinedBannerExpanded((prev) => {
                   const next = !prev;
@@ -620,7 +624,7 @@ export default function CompetitionDetail() {
           </h2>
           <button
             type="button"
-            aria-expanded={mobileSummaryOpen}
+            aria-expanded={mobileSummaryOpen ? "true" : "false"}
             aria-controls="comp-summary-body"
             onClick={() => setMobileSummaryOpen((o) => !o)}
             className="mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[#312814] bg-guinness-brown/25 px-3 py-2.5 text-left transition-colors hover:bg-guinness-brown/35 lg:hidden"

@@ -16,7 +16,7 @@ import {
 } from "~/components/branded/feedback-variant";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import { type Score } from "~/types/score";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
 import { useEffect, useState } from "react";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
@@ -45,6 +45,7 @@ function emailsMatchClaim(
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
+  const { supabase } = await import("~/utils/supabase");
   const ref = params.pourRef?.trim();
   if (!ref) {
     throw new Response("Score not found", { status: 404 });
@@ -199,6 +200,7 @@ export default function Score() {
   const [isUnclaiming, setIsUnclaiming] = useState(false);
 
   async function attachScoreToCompetition(compId: string, scoreId: string) {
+    const supabase = await getSupabaseBrowserClient();
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
     const { error } = await supabase.from("competition_scores").insert({
@@ -242,8 +244,10 @@ export default function Score() {
 
   useEffect(() => {
     let mounted = true;
+    let unsubscribe: (() => void) | null = null;
 
     async function loadUser() {
+      const supabase = await getSupabaseBrowserClient();
       const { data } = await supabase.auth.getUser();
       if (mounted) {
         setAuthUser(data.user ?? null);
@@ -251,19 +255,23 @@ export default function Score() {
       }
     }
 
-    loadUser();
+    void loadUser();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    void getSupabaseBrowserClient().then((supabase) => {
       if (!mounted) return;
-      setAuthUser(session?.user ?? null);
-      setIsAuthLoading(false);
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!mounted) return;
+        setAuthUser(session?.user ?? null);
+        setIsAuthLoading(false);
+      });
+      unsubscribe = () => subscription.unsubscribe();
     });
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
@@ -271,6 +279,7 @@ export default function Score() {
     setClaimMessage(null);
     setSignInToastError(null);
     rememberPathBeforeGoogleOAuth();
+    const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -292,6 +301,7 @@ export default function Score() {
     setClaimMessage(null);
 
     try {
+      const supabase = await getSupabaseBrowserClient();
       const { data: profile } = await supabase
         .from("public_profiles")
         .select("nickname")
@@ -350,6 +360,7 @@ export default function Score() {
     setClaimMessage(null);
 
     try {
+      const supabase = await getSupabaseBrowserClient();
       const nextUsername = generateBeerUsername();
       const { error } = await supabase
         .from("scores")
@@ -419,6 +430,7 @@ export default function Score() {
     }
 
     try {
+      const supabase = await getSupabaseBrowserClient();
       const { error } = await supabase
         .from("scores")
         .update({

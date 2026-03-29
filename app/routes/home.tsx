@@ -13,23 +13,7 @@ import type {
   InferenceEngine as RoboflowInferenceEngine,
   InferencePrediction,
 } from "inferencejs";
-import { calculateScore } from "~/utils/scoring";
-import { uploadImage } from "~/utils/imageStorage";
-import { supabase } from "~/utils/supabase";
-import { generateBeerUsername } from "~/utils/usernameGenerator";
-import { getLocationData } from "~/utils/locationService";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
-import {
-  extractDetectionsFromWorkflow,
-  extractWorkflowOutputImageByNames,
-  extractPreferredWorkflowImageBase64,
-  predictionsIncludeClass,
-  runServerlessWorkflow,
-  stripBase64ImagePayload,
-  toLegacyScoringOutputs,
-} from "~/utils/roboflowWorkflow";
-import { generatePourSlug } from "~/utils/pourSlug";
-import { scorePourPath } from "~/utils/scorePath";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
@@ -120,8 +104,35 @@ export async function action({ request }: ActionFunctionArgs) {
     typeof competitionRaw === "string" && UUID_RE.test(competitionRaw.trim())
       ? competitionRaw.trim()
       : "";
-  const username = generateBeerUsername();
   const { randomUUID } = await import("node:crypto");
+  const [
+    { calculateScore },
+    { uploadImage },
+    { getLocationData },
+    {
+      extractDetectionsFromWorkflow,
+      extractWorkflowOutputImageByNames,
+      extractPreferredWorkflowImageBase64,
+      predictionsIncludeClass,
+      runServerlessWorkflow,
+      stripBase64ImagePayload,
+      toLegacyScoringOutputs,
+    },
+    { generatePourSlug },
+    { scorePourPath },
+    { supabase },
+    { generateBeerUsername },
+  ] = await Promise.all([
+    import("~/utils/scoring"),
+    import("~/utils/imageStorage"),
+    import("~/utils/locationService"),
+    import("~/utils/roboflowWorkflow"),
+    import("~/utils/pourSlug"),
+    import("~/utils/scorePath"),
+    import("~/utils/supabase"),
+    import("~/utils/usernameGenerator"),
+  ]);
+  const username = generateBeerUsername();
   const sessionId = randomUUID();
 
   // Prioritize Fly.io headers since we're using Fly hosting

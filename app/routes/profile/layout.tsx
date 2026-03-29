@@ -14,7 +14,7 @@ import {
   feedbackVariantFromMessage,
   toastAutoCloseForVariant,
 } from "~/components/branded/feedback-variant";
-import { supabase } from "~/utils/supabase";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import {
   clearPostOAuthReturnIfMatchesCurrentPath,
   googleOAuthRedirectToSiteRoot,
@@ -200,6 +200,7 @@ export default function ProfileLayout() {
   );
 
   const loadSocial = useCallback(async (u: User): Promise<UserFriendRow[]> => {
+    const supabase = await getSupabaseBrowserClient();
     const uid = u.id;
     const emailNorm = u.email ? normalizeEmail(u.email) : "";
 
@@ -231,6 +232,7 @@ export default function ProfileLayout() {
   }, []);
 
   const loadFriendComparison = useCallback(async (u: User, friendRows: UserFriendRow[]) => {
+    const supabase = await getSupabaseBrowserClient();
     if (!u.email) {
       setComparisonScores([]);
       setComparisonLabels({});
@@ -307,6 +309,7 @@ export default function ProfileLayout() {
         includeSocial: boolean;
       }>,
     ) => {
+      const supabase = await getSupabaseBrowserClient();
       const options = { ...activeLoadOptions, ...overrides };
       const email = u.email;
       if (email && options.includeScores) {
@@ -455,8 +458,10 @@ export default function ProfileLayout() {
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
 
     async function init() {
+      const supabase = await getSupabaseBrowserClient();
       const { data } = await supabase.auth.getUser();
       if (cancelled) return;
       setUser(data.user ?? null);
@@ -465,24 +470,28 @@ export default function ProfileLayout() {
 
     void init();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      const next = session?.user ?? null;
-      setUser(next);
-      if (!next) {
-        setScores([]);
-        setFavorites([]);
-        setFavoriteStats({});
-        setOutgoingRequests([]);
-        setIncomingRequests([]);
-        setFriends([]);
-        setComparisonScores([]);
-        setComparisonLabels({});
-      }
+    void getSupabaseBrowserClient().then((supabase) => {
+      if (cancelled) return;
+      const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+        const next = session?.user ?? null;
+        setUser(next);
+        if (!next) {
+          setScores([]);
+          setFavorites([]);
+          setFavoriteStats({});
+          setOutgoingRequests([]);
+          setIncomingRequests([]);
+          setFriends([]);
+          setComparisonScores([]);
+          setComparisonLabels({});
+        }
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
     });
 
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, [loadProfileData]);
 
@@ -501,6 +510,7 @@ export default function ProfileLayout() {
   const signInGoogle = async () => {
     setMessage(null);
     rememberPathBeforeGoogleOAuth();
+    const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: googleOAuthRedirectToSiteRoot() },
@@ -514,6 +524,7 @@ export default function ProfileLayout() {
   };
 
   const signOut = async () => {
+    const supabase = await getSupabaseBrowserClient();
     await supabase.auth.signOut();
     setScores([]);
     setFavorites([]);
@@ -552,6 +563,7 @@ export default function ProfileLayout() {
     }
     setProfileSaving(true);
     try {
+      const supabase = await getSupabaseBrowserClient();
       if (nickTrim) {
         const { data: taken } = await supabase
           .from("public_profiles")
@@ -627,6 +639,7 @@ export default function ProfileLayout() {
     }
     setBusy(true);
     try {
+      const supabase = await getSupabaseBrowserClient();
       const { error } = await supabase.from("user_favorite_bars").insert({
         user_id: user.id,
         bar_name: name,
@@ -649,6 +662,7 @@ export default function ProfileLayout() {
     if (!user) return;
     setBusy(true);
     try {
+      const supabase = await getSupabaseBrowserClient();
       const { error } = await supabase
         .from("user_favorite_bars")
         .delete()
@@ -686,6 +700,7 @@ export default function ProfileLayout() {
     }
     setBusy(true);
     try {
+      const supabase = await getSupabaseBrowserClient();
       const alreadyPending = outgoingRequests.some(
         (request) => normalizeEmail(String(request.to_email)) === to,
       );
@@ -758,6 +773,7 @@ export default function ProfileLayout() {
     setBusy(true);
     setMessage(null);
     try {
+      const supabase = await getSupabaseBrowserClient();
       const { error: uerr } = await supabase
         .from("friend_requests")
         .update({ status })
@@ -808,6 +824,7 @@ export default function ProfileLayout() {
     setBusy(true);
     setMessage(null);
     try {
+      const supabase = await getSupabaseBrowserClient();
       // Prefer UPDATE → withdrawn: original schema already grants UPDATE to senders via RLS.
       // DELETE often returns 0 rows without error if delete policy/migration never shipped.
       const { data: updated, error } = await supabase
@@ -844,6 +861,7 @@ export default function ProfileLayout() {
     setBusy(true);
     setMessage(null);
     try {
+      const supabase = await getSupabaseBrowserClient();
       await supabase
         .from("user_friends")
         .delete()
