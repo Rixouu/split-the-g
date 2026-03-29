@@ -5,7 +5,7 @@
   "compStarted": "\"{title}\" è iniziato. Buona fortuna.",
   "compEnded": "\"{title}\" è terminato. Controlla la classifica.",
   "compSkipped": "\"{title}\" non è più attivo.",
-  "compNewPour": "Qualcuno ha inviato un nuovo getto in \"{title}\". Apri Competi per vedere la classifica.",
+  "compNewPour": "Qualcuno ha inviato un nuovo split in \"{title}\". Apri Competi per vedere la classifica.",
   "compFallbackTitle": "la tua concorrenza",
   "toastDangerTitle": "Impossibile completarlo",
   "toastWarningTitle": "Dritta",

@@ -6,7 +6,7 @@ This document maps product areas to routes and data concepts. It is not an exhau
 
 | Area | Route(s) | Notes |
 | ---- | -------- | ----- |
-| Home / new pour | `/` | Primary capture and scoring entry |
+| Home / new split | `/` | Primary capture and scoring entry |
 | Pour result | `/pour/:pourRef` | Shareable card; claim, bar name (Places), competition hooks |
 | Legacy redirect | `/score/:splitId` | Redirects to pour URL |
 
@@ -40,7 +40,7 @@ This document maps product areas to routes and data concepts. It is not an exhau
 | Area | Route(s) | Notes |
 | ---- | -------- | ----- |
 | List & create | `/competitions` | Create, edit (owner), join/leave, email invites, add accepted friends as participants |
-| Detail | `/competitions/:competitionId` | Countdown, leaderboard, submit linked or new pour |
+| Detail | `/competitions/:competitionId` | Countdown, leaderboard, submit linked or new split |
 
 **Invites:** `competition_invites` stores invited emails. New users who sign up with that email see pending context in the UI; joining is still an explicit action (not auto-join).
 

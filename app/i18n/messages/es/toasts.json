@@ -5,7 +5,7 @@
   "compStarted": "“{title}” ha comenzado. Buena suerte.",
   "compEnded": "“{title}” ha finalizado. Consulta la clasificación.",
   "compSkipped": "“{title}” ya no está activo.",
-  "compNewPour": "Alguien envió un nuevo vertido en \"{title}\". Abre Competir para ver la clasificación.",
+  "compNewPour": "Alguien envió un nuevo split en \"{title}\". Abre Competir para ver la clasificación.",
   "compFallbackTitle": "tu competencia",
   "toastDangerTitle": "No pude completar eso",
   "toastWarningTitle": "Aviso",

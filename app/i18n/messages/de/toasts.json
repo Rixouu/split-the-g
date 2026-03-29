@@ -5,7 +5,7 @@
   "compStarted": "„{title}“ wurde gestartet. Viel Glück.",
   "compEnded": "„{title}“ ist beendet. Überprüfen Sie die Rangliste.",
   "compSkipped": "„{title}“ ist nicht mehr aktiv.",
-  "compNewPour": "Jemand hat einen neuen Guss mit „{title}“ eingereicht. Öffnen Sie Compete, um die Bestenliste anzuzeigen.",
+  "compNewPour": "Jemand hat einen neuen Split mit „{title}“ eingereicht. Öffnen Sie Compete, um die Bestenliste anzuzeigen.",
   "compFallbackTitle": "Ihre Konkurrenz",
   "toastDangerTitle": "Das konnte nicht abgeschlossen werden",
   "toastWarningTitle": "Kopf hoch",

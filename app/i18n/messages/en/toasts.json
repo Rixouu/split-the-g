@@ -5,7 +5,7 @@
   "compStarted": "“{title}” has started. Good luck.",
   "compEnded": "“{title}” has finished. Check the standings.",
   "compSkipped": "“{title}” is no longer active.",
-  "compNewPour": "Someone submitted a new pour in “{title}”. Open Compete to see the leaderboard.",
+  "compNewPour": "Someone submitted a new split in “{title}”. Open Compete to see the leaderboard.",
   "compFallbackTitle": "your competition",
   "toastDangerTitle": "Couldn't complete that",
   "toastWarningTitle": "Heads up",

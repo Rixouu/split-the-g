@@ -5,7 +5,7 @@
   "compStarted": "« {title} » a commencé. Bonne chance.",
   "compEnded": "« {title} » est terminé. Vérifiez le classement.",
   "compSkipped": "« {title} » n'est plus actif.",
-  "compNewPour": "Quelqu'un a soumis un nouveau versement dans \"{title}\". Ouvrez Compete pour voir le classement.",
+  "compNewPour": "Quelqu'un a soumis un nouveau split dans « {title} ». Ouvrez Compete pour voir le classement.",
   "compFallbackTitle": "votre concurrence",
   "toastDangerTitle": "Je n'ai pas pu terminer ça",
   "toastWarningTitle": "Attention",

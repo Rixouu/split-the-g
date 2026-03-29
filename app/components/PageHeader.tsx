@@ -81,13 +81,13 @@ export const pageHeaderActionButtonClass =
   "inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-guinness-gold px-4 py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan sm:px-6 sm:text-base";
 
 /**
- * Footer / end-of-page CTA to home for a new score — ghost outline. Uses {@link EndPageNewPourFooter} label.
+ * Footer / end-of-page CTA to home for a new split — ghost outline. Uses {@link EndPageNewPourFooter} label.
  * Profile hub and similar use this full-width beside “Split the G” / new score flows.
  */
 export const homePourButtonClass =
   "inline-flex min-h-11 w-full max-w-none items-center justify-center rounded-lg border-2 border-guinness-gold/45 bg-transparent px-6 py-3 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold hover:bg-guinness-gold/[0.08]";
 
-/** End-of-page CTA — same block as `/wall` (ghost “New Pour” → home). */
+/** End-of-page CTA — same block as `/wall` (ghost “New Split” → home). */
 export function EndPageNewPourFooter() {
   const lang = useOptionalLang();
   const t = useMemo(() => createTranslator(lang), [lang]);
