@@ -9,7 +9,8 @@
     "typecheck": "react-router typegen && tsc",
     "eslint": "eslint \"app/**/*.{ts,tsx}\"",
     "lint": "npm run typecheck && npm run eslint",
-    "check": "npm run lint"
+    "check": "npm run lint",
+    "generate:og": "node scripts/generate-og-default.mjs"
   },
   "dependencies": {
     "@react-router/node": "^7.13.2",

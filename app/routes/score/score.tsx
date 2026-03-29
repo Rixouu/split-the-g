@@ -79,6 +79,7 @@ export function meta({
     description: `${username} scored ${scoreValue}/5 on Split the G. All-time #${allTimeRank} of ${totalSplits}, weekly #${weeklyRank} of ${weeklyTotalSplits}.`,
     path: scorePourPath(score),
     image,
+    imageAlt: `Guinness pint from ${username}'s pour on Split the G`,
     type: "article",
     keywords: ["split the g score", "pour challenge", "guinness rating"],
   });
