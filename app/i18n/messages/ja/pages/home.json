@@ -26,5 +26,18 @@
   "noGModalBody": "画像に G パターンがはっきりと表示されていることを確認して、もう一度試してください。",
   "inferenceUnavailable": "ライブカメラによる案内は一時的に停止しております。写真は引き続きアップロードできます。",
   "cameraDenied": "カメラが利用できないか、許可が拒否されました。カメラへのアクセスを許可するか、代わりに画像のアップロードを使用してください。",
-  "browseNavAria": "スプリットとウォールを閲覧する"
+  "browseNavAria": "スプリットとウォールを閲覧する",
+  "pwaBannerAria": "アプリをインストール",
+  "pwaBannerTitleInstall": "Split the G をインストール",
+  "pwaBannerTitleIos": "ホーム画面に追加",
+  "pwaBannerSubtitleIos": "アプリのようにすぐ開ける",
+  "pwaBannerInstall": "インストール",
+  "pwaBannerInstalling": "…",
+  "pwaBannerDismissAria": "閉じる",
+  "pwaBannerIosStepsLabel": "インストール手順",
+  "pwaBannerIosBodySafari": "共有をタップ→「ホーム画面に追加」。",
+  "pwaBannerIosBodyChrome": "「⋯」をタップ→「ホーム画面に追加」。",
+  "pwaBannerIosBodyFirefox": "メニュー（☰）→共有→「ホーム画面に追加」。",
+  "pwaBannerIosBodyGeneric": "共有または「⋯」メニューから「ホーム画面に追加」。",
+  "pwaBannerChromeHint": "「インストール」をタップし、表示された確認に従ってください。"
 }

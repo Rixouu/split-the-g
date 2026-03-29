@@ -26,5 +26,18 @@
   "noGModalBody": "Assicurati che il motivo G sia chiaramente visibile nell'immagine e riprova.",
   "inferenceUnavailable": "La guida della telecamera in tempo reale è temporaneamente non disponibile. Puoi comunque caricare una foto.",
   "cameraDenied": "Fotocamera non disponibile o autorizzazione negata. Consenti l'accesso alla fotocamera o utilizza invece Carica un'immagine.",
-  "browseNavAria": "Sfoglia le divisioni e il muro"
+  "browseNavAria": "Sfoglia le divisioni e il muro",
+  "pwaBannerAria": "Installa l’app",
+  "pwaBannerTitleInstall": "Installa Split the G",
+  "pwaBannerTitleIos": "Aggiungi alla Home",
+  "pwaBannerSubtitleIos": "Accesso rapido come un’app",
+  "pwaBannerInstall": "Installa",
+  "pwaBannerInstalling": "…",
+  "pwaBannerDismissAria": "Chiudi",
+  "pwaBannerIosStepsLabel": "Come installare",
+  "pwaBannerIosBodySafari": "Tocca Condividi, poi Aggiungi a Home.",
+  "pwaBannerIosBodyChrome": "Tocca ⋯ (Altro), poi Aggiungi a Home.",
+  "pwaBannerIosBodyFirefox": "Apri il menu (☰), Condividi, poi Aggiungi a Home.",
+  "pwaBannerIosBodyGeneric": "Usa Condividi o il menu ⋯, poi Aggiungi a Home.",
+  "pwaBannerChromeHint": "Tocca Installa, poi conferma nel messaggio del browser."
 }

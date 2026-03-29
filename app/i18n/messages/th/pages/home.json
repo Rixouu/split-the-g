@@ -26,5 +26,18 @@
   "noGModalBody": "โปรดตรวจสอบให้แน่ใจว่ารูปแบบ G มองเห็นได้ชัดเจนในภาพของคุณแล้วลองอีกครั้ง",
   "inferenceUnavailable": "คำแนะนำกล้องถ่ายทอดสดไม่พร้อมใช้งานชั่วคราว คุณยังสามารถอัปโหลดรูปภาพได้",
   "cameraDenied": "กล้องใช้งานไม่ได้หรือการอนุญาตถูกปฏิเสธ อนุญาตให้เข้าถึงกล้องหรือใช้อัปโหลดรูปภาพแทน",
-  "browseNavAria": "เรียกดูรอยแยกและผนัง"
+  "browseNavAria": "เรียกดูรอยแยกและผนัง",
+  "pwaBannerAria": "ติดตั้งแอป",
+  "pwaBannerTitleInstall": "ติดตั้ง Split the G",
+  "pwaBannerTitleIos": "เพิ่มที่หน้าโฮม",
+  "pwaBannerSubtitleIos": "เปิดเร็วแบบแอปจริง",
+  "pwaBannerInstall": "ติดตั้ง",
+  "pwaBannerInstalling": "…",
+  "pwaBannerDismissAria": "ปิด",
+  "pwaBannerIosStepsLabel": "วิธีติดตั้ง",
+  "pwaBannerIosBodySafari": "แตะแชร์ แล้วเพิ่มไปหน้าโฮม",
+  "pwaBannerIosBodyChrome": "แตะ ⋯ (เพิ่มเติม) แล้วเพิ่มไปหน้าโฮม",
+  "pwaBannerIosBodyFirefox": "เปิดเมนู (☰) แตะแชร์ แล้วเพิ่มไปหน้าโฮม",
+  "pwaBannerIosBodyGeneric": "ใช้แชร์หรือเมนู ⋯ ของเบราว์เซอร์ แล้วเพิ่มไปหน้าโฮม",
+  "pwaBannerChromeHint": "แตะติดตั้ง แล้วยืนยันในหน้าต่างของเบราว์เซอร์"
 }

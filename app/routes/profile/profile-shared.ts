@@ -130,6 +130,35 @@ export function progressRangeStart(range: ProgressRange): number | null {
   }
 }
 
+/**
+ * Consecutive calendar days (local) with at least one pour, anchored from the most
+ * recent pour day backward (streak breaks on first gap).
+ */
+export function pourStreakCalendarDays(scores: ScoreSummary[]): number {
+  if (scores.length === 0) return 0;
+  const dayKeys = new Set(
+    scores.map((s) => {
+      const d = new Date(s.created_at);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }),
+  );
+  let probe = new Date();
+  probe.setHours(12, 0, 0, 0);
+  const key = (d: Date) =>
+    `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  if (!dayKeys.has(key(probe))) {
+    probe.setDate(probe.getDate() - 1);
+  }
+  let streak = 0;
+  for (let i = 0; i < 400; i++) {
+    if (dayKeys.has(key(probe))) {
+      streak++;
+      probe.setDate(probe.getDate() - 1);
+    } else break;
+  }
+  return streak;
+}
+
 export function buildFriendLeaderboard(
   rows: ComparisonScoreRow[],
   labels: Record<string, string>,

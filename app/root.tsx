@@ -143,7 +143,7 @@ export default function App() {
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); }); }",
+              "if ('serviceWorker' in navigator) { function stgRegisterSw(){navigator.serviceWorker.register('/sw.js').catch(function(){});} if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', stgRegisterSw); else stgRegisterSw(); }",
           }}
         />
         {/*

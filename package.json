@@ -10,7 +10,8 @@
     "eslint": "eslint \"app/**/*.{ts,tsx}\"",
     "lint": "npm run typecheck && npm run eslint",
     "check": "npm run lint",
-    "generate:og": "node scripts/generate-og-default.mjs"
+    "generate:og": "node scripts/generate-og-default.mjs",
+    "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs"
   },
   "dependencies": {
     "@react-router/node": "^7.13.2",

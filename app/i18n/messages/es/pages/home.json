@@ -26,5 +26,18 @@
   "noGModalBody": "Asegúrese de que el patrón G sea claramente visible en su imagen e inténtelo de nuevo.",
   "inferenceUnavailable": "La guía de cámara en vivo no está disponible temporalmente. Aún puedes subir una foto.",
   "cameraDenied": "Cámara no disponible o permiso denegado. Permita el acceso a la cámara o use Cargar una imagen en su lugar.",
-  "browseNavAria": "Explorar divisiones y muros"
+  "browseNavAria": "Explorar divisiones y muros",
+  "pwaBannerAria": "Instalar la app",
+  "pwaBannerTitleInstall": "Instalar Split the G",
+  "pwaBannerTitleIos": "Añadir a inicio",
+  "pwaBannerSubtitleIos": "Acceso rápido como una app",
+  "pwaBannerInstall": "Instalar",
+  "pwaBannerInstalling": "…",
+  "pwaBannerDismissAria": "Cerrar",
+  "pwaBannerIosStepsLabel": "Cómo instalar",
+  "pwaBannerIosBodySafari": "Toca Compartir, luego Añadir a inicio.",
+  "pwaBannerIosBodyChrome": "Toca ⋯ (Más), luego Añadir a inicio.",
+  "pwaBannerIosBodyFirefox": "Abre el menú (☰), Compartir, luego Añadir a inicio.",
+  "pwaBannerIosBodyGeneric": "Usa Compartir o el menú ⋯, luego Añadir a inicio.",
+  "pwaBannerChromeHint": "Toca Instalar y confirma en el aviso del navegador."
 }

@@ -26,5 +26,18 @@
   "noGModalBody": "Please make sure the G pattern is clearly visible in your image and try again.",
   "inferenceUnavailable": "Live camera guidance is temporarily unavailable. You can still upload a photo.",
   "cameraDenied": "Camera unavailable or permission denied. Allow camera access or use Upload an image instead.",
-  "browseNavAria": "Browse splits and wall"
+  "browseNavAria": "Browse splits and wall",
+  "pwaBannerAria": "Install app",
+  "pwaBannerTitleInstall": "Install Split the G",
+  "pwaBannerTitleIos": "Add to Home Screen",
+  "pwaBannerSubtitleIos": "Quick access like a native app",
+  "pwaBannerInstall": "Install",
+  "pwaBannerInstalling": "…",
+  "pwaBannerDismissAria": "Dismiss",
+  "pwaBannerIosStepsLabel": "How to install",
+  "pwaBannerIosBodySafari": "Tap Share, then Add to Home Screen.",
+  "pwaBannerIosBodyChrome": "Tap ⋯ (More), then Add to Home Screen.",
+  "pwaBannerIosBodyFirefox": "Open the menu (☰), tap Share, then Add to Home Screen.",
+  "pwaBannerIosBodyGeneric": "Use Share or your browser’s ⋯ menu, then Add to Home Screen.",
+  "pwaBannerChromeHint": "Tap Install, then confirm in the prompt."
 }

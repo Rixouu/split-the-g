@@ -26,5 +26,18 @@
   "noGModalBody": "Bitte stellen Sie sicher, dass das G-Muster in Ihrem Bild deutlich sichtbar ist, und versuchen Sie es erneut.",
   "inferenceUnavailable": "Die Live-Kameraführung ist vorübergehend nicht verfügbar. Sie können weiterhin ein Foto hochladen.",
   "cameraDenied": "Kamera nicht verfügbar oder Berechtigung verweigert. Erlauben Sie den Kamerazugriff oder verwenden Sie stattdessen „Bild hochladen“.",
-  "browseNavAria": "Durchsuchen Sie Splits und Wände"
+  "browseNavAria": "Durchsuchen Sie Splits und Wände",
+  "pwaBannerAria": "App installieren",
+  "pwaBannerTitleInstall": "Split the G installieren",
+  "pwaBannerTitleIos": "Zum Home-Bildschirm",
+  "pwaBannerSubtitleIos": "Schnellzugriff wie eine App",
+  "pwaBannerInstall": "Installieren",
+  "pwaBannerInstalling": "…",
+  "pwaBannerDismissAria": "Schließen",
+  "pwaBannerIosStepsLabel": "So installierst du",
+  "pwaBannerIosBodySafari": "Teilen antippen, dann Zum Home-Bildschirm.",
+  "pwaBannerIosBodyChrome": "⋯ (Mehr) antippen, dann Zum Home-Bildschirm.",
+  "pwaBannerIosBodyFirefox": "Menü (☰) öffnen, Teilen, dann Zum Home-Bildschirm.",
+  "pwaBannerIosBodyGeneric": "Teilen oder ⋯-Menü nutzen, dann Zum Home-Bildschirm.",
+  "pwaBannerChromeHint": "Installieren antippen und im Browser bestätigen."
 }

@@ -26,5 +26,18 @@
   "noGModalBody": "Veuillez vous assurer que le motif G est clairement visible sur votre image et réessayer.",
   "inferenceUnavailable": "Le guidage par caméra en direct est temporairement indisponible. Vous pouvez toujours télécharger une photo.",
   "cameraDenied": "Caméra indisponible ou autorisation refusée. Autorisez l’accès à la caméra ou utilisez plutôt Télécharger une image.",
-  "browseNavAria": "Parcourir les divisions et les murs"
+  "browseNavAria": "Parcourir les divisions et les murs",
+  "pwaBannerAria": "Installer l’app",
+  "pwaBannerTitleInstall": "Installer Split the G",
+  "pwaBannerTitleIos": "Ajouter à l’accueil",
+  "pwaBannerSubtitleIos": "Accès rapide comme une app",
+  "pwaBannerInstall": "Installer",
+  "pwaBannerInstalling": "…",
+  "pwaBannerDismissAria": "Fermer",
+  "pwaBannerIosStepsLabel": "Comment installer",
+  "pwaBannerIosBodySafari": "Touchez Partager, puis Sur l’écran d’accueil.",
+  "pwaBannerIosBodyChrome": "Touchez ⋯ (Plus), puis Sur l’écran d’accueil.",
+  "pwaBannerIosBodyFirefox": "Ouvrez le menu (☰), Partager, puis Sur l’écran d’accueil.",
+  "pwaBannerIosBodyGeneric": "Utilisez Partager ou le menu ⋯, puis Sur l’écran d’accueil.",
+  "pwaBannerChromeHint": "Touchez Installer, puis confirmez dans la fenêtre du navigateur."
 }

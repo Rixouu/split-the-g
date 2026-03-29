@@ -17,6 +17,7 @@ import type {
   InferencePrediction,
 } from "inferencejs";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
+import { PwaInstallBanner } from "~/components/pwa-install-banner";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
@@ -764,6 +765,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden bg-guinness-black text-guinness-cream max-lg:overflow-y-auto lg:max-h-dvh lg:min-h-0 lg:overflow-y-auto">
+      <PwaInstallBanner />
       {isUploadProcessing && (
         <div className="fixed inset-0 bg-guinness-black/95 flex flex-col items-center justify-center gap-6 z-50">
           <div className="w-24 h-24 border-4 border-guinness-gold/20 border-t-guinness-gold rounded-full animate-spin"></div>
