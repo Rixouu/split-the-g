@@ -182,8 +182,9 @@ export function PwaInstallBanner() {
   const origin =
     typeof window !== "undefined" ? window.location.host : "";
 
+  /* Below desktop header (vt-chrome-desk: h-[3.75rem] + border-b) so it does not sit under z-50 nav */
   const shellClass =
-    "fixed left-3 right-3 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-40 rounded-2xl border border-[#2A2211] bg-[#14120e] shadow-[0_10px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(212,175,55,0.06)]";
+    "fixed left-3 right-3 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-40 md:top-[calc(3.75rem+1px+0.5rem+env(safe-area-inset-top,0px))] rounded-2xl border border-[#2A2211] bg-[#14120e] shadow-[0_10px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(212,175,55,0.06)]";
 
   if (showIos) {
     return (
