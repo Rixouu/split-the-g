@@ -29,8 +29,12 @@ import { seoMetaForRoute } from "~/i18n/seo-meta";
 import type { loader as competitionsLoader } from "./competitions.loader";
 import {
   COMPETITION_ROW_SELECT,
+  competitionCardDividerClass,
+  competitionCardFrameClass,
+  competitionCardTopLightClass,
   competitionFieldClass,
   competitionOutlineButtonClass,
+  competitionStatCellClass,
   isPrivateCompetition,
   isStoredGlassesUnlimited,
   winRuleUsesUnlimitedGlasses,
@@ -501,14 +505,10 @@ export default function Competitions() {
   const fieldClass = competitionFieldClass;
   const outlineBtn = competitionOutlineButtonClass;
   const isPrivate = isPrivateCompetition;
-  /** Gold band along the top inside each competition row (profile hub pattern). */
-  const compCardTopLight =
-    "pointer-events-none absolute inset-x-0 top-0 z-[1] h-1 bg-gradient-to-r from-transparent via-guinness-gold/55 to-transparent opacity-90";
-  const compCardFrame =
-    "rounded-2xl border border-solid border-guinness-frame bg-gradient-to-br from-guinness-brown/45 via-guinness-black/20 to-guinness-black/40 shadow-[0_10px_36px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(212,175,55,0.08)]";
-  const compCardDivider = "border-solid border-guinness-frame";
-  const compStatCell =
-    "flex flex-col rounded-xl border border-solid border-guinness-frame bg-black/30 px-3 py-2.5";
+  const compCardTopLight = competitionCardTopLightClass;
+  const compCardFrame = competitionCardFrameClass;
+  const compCardDivider = competitionCardDividerClass;
+  const compStatCell = competitionStatCellClass;
 
   const toastOpen = Boolean(formError || uiToast);
   const toastMessage = uiToast?.text ?? formError ?? "";

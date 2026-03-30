@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import {
   PageHeader,
   pageHeaderActionButtonClass,
+  pageHeaderSecondaryActionButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
 import { BrandedToast } from "~/components/branded/BrandedToast";
@@ -29,6 +30,10 @@ import {
   type CompetitionScoreJoin,
 } from "~/utils/competitionLeaderboard";
 import {
+  competitionCardDividerClass,
+  competitionCardFrameClass,
+  competitionCardTopLightClass,
+  competitionStatCellClass,
   isStoredGlassesUnlimited,
   winRuleUsesUnlimitedGlasses,
   type CompetitionRow,
@@ -109,7 +114,7 @@ export default function CompetitionDetail() {
   const [rightColTab, setRightColTab] = useState<"leaderboard" | "participants">(
     "leaderboard",
   );
-  /** Mobile: summary card starts collapsed so the leaderboard is reachable without scrolling. */
+  /** Small viewports: summary starts collapsed so leaderboard tabs stay reachable with less scroll. */
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
   useEffect(() => {
@@ -543,6 +548,15 @@ export default function CompetitionDetail() {
     joined &&
     timePhase?.phase === "live" &&
     userId;
+  const rosterFull =
+    participantUserIds.length >= competition.max_participants;
+  const canJoinCompetition =
+    Boolean(userId) &&
+    !joined &&
+    timePhase?.phase !== "after" &&
+    !rosterFull;
+  /** Join lives in PageHeader on md+; hide empty action strip above tabs. */
+  const hideSummaryJoinStripOnMd = canJoinCompetition;
 
   return (
     <main className="min-h-screen bg-guinness-black text-guinness-cream">
@@ -558,6 +572,15 @@ export default function CompetitionDetail() {
           >
             {t("pages.competitionDetail.backToList")}
           </AppLink>
+          {canJoinCompetition ? (
+            <button
+              type="button"
+              onClick={() => void handleJoin()}
+              className={`${pageHeaderSecondaryActionButtonClass} hidden md:inline-flex`}
+            >
+              {t("pages.competitionDetail.joinCompetition")}
+            </button>
+          ) : null}
         </PageHeader>
 
         {joined ? (
@@ -653,55 +676,15 @@ export default function CompetitionDetail() {
           </div>
         ) : null}
 
-        <SegmentedTabs
-          className="sticky top-2 z-20 mb-2 w-full shadow-lg shadow-black/40 backdrop-blur-md lg:hidden"
-          layoutClassName="flex w-full"
-          variant="rowEqual"
-          aria-label={t("pages.competitionDetail.ariaJumpSection")}
-          value={
-            mobileSummaryOpen
-              ? "summary"
-              : rightColTab === "leaderboard"
-                ? "leaderboard"
-                : "participants"
-          }
-          onValueChange={(v) => {
-            if (v === "summary") {
-              setMobileSummaryOpen(true);
-              window.requestAnimationFrame(() => {
-                document
-                  .getElementById("comp-summary-section")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
-              return;
-            }
-            setMobileSummaryOpen(false);
-            setRightColTab(v === "leaderboard" ? "leaderboard" : "participants");
-            window.requestAnimationFrame(() => {
-              document
-                .getElementById("comp-leaderboard-panel")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            });
-          }}
-          items={[
-            { value: "summary", label: t("pages.competitionDetail.tabSummary") },
-            {
-              value: "leaderboard",
-              label: t("pages.competitionDetail.tabLeaderboard"),
-            },
-            { value: "participants", label: t("pages.competitionDetail.tabWhosIn") },
-          ]}
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start lg:gap-10 xl:gap-10">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <section
           id="comp-summary-section"
-          className="order-1 scroll-mt-28 lg:col-start-1 lg:row-start-1"
+          className="order-1 scroll-mt-28"
           aria-labelledby="comp-overview-heading"
         >
           <h2
             id="comp-overview-heading"
-            className="type-card-title mb-3 hidden lg:block"
+            className="type-card-title mb-3 hidden md:block"
           >
             {t("pages.competitionDetail.tabSummary")}
           </h2>
@@ -710,13 +693,10 @@ export default function CompetitionDetail() {
             aria-expanded={mobileSummaryOpen ? "true" : "false"}
             aria-controls="comp-summary-body"
             onClick={() => setMobileSummaryOpen((o) => !o)}
-            className="group mb-3 flex w-full overflow-hidden rounded-2xl border border-solid border-guinness-frame bg-gradient-to-br from-guinness-brown/55 via-guinness-black/40 to-guinness-black/70 text-left shadow-[0_12px_40px_rgba(0,0,0,0.45)] transition-all active:scale-[0.995] lg:hidden"
+            className={`group mb-3 relative flex w-full overflow-hidden text-left transition-all active:scale-[0.995] md:hidden ${competitionCardFrameClass}`}
           >
-            <div
-              className="w-1 shrink-0 bg-gradient-to-b from-guinness-gold via-guinness-gold/60 to-guinness-gold/25"
-              aria-hidden
-            />
-            <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3.5 py-3 sm:px-4 sm:py-3.5">
+            <div className={competitionCardTopLightClass} aria-hidden />
+            <div className="relative z-0 flex min-w-0 flex-1 items-center justify-between gap-3 px-3.5 py-3 sm:px-4 sm:py-3.5">
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-guinness-gold/75">
                   {t("pages.competitionDetail.summaryOverview")}
@@ -753,109 +733,113 @@ export default function CompetitionDetail() {
           </button>
           <div
             id="comp-summary-body"
-            className={`rounded-2xl border border-solid border-guinness-frame bg-guinness-brown/20 p-3 shadow-inner shadow-black/20 sm:p-4 ${
-              mobileSummaryOpen ? "max-lg:block" : "max-lg:hidden"
-            } lg:block`}
+            className={`relative overflow-hidden ${competitionCardFrameClass} ${
+              mobileSummaryOpen ? "max-md:block" : "max-md:hidden"
+            } md:block`}
           >
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-solid border-guinness-frame pb-3">
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                  timePhase?.phase === "live"
-                    ? "bg-emerald-500/20 text-emerald-200"
-                    : timePhase?.phase === "before"
-                      ? "bg-guinness-gold/15 text-guinness-gold"
-                      : "bg-guinness-black/50 text-guinness-tan/75"
-                }`}
-              >
-                {timePhase?.phase === "before"
-                  ? t("pages.competitionDetail.upcoming")
-                  : timePhase?.phase === "live"
-                    ? t("pages.competitionDetail.live")
-                    : t("pages.competitionDetail.ended")}
-              </span>
-              <span className="text-guinness-tan/35" aria-hidden>
-                ·
-              </span>
-              <span className="text-xs text-guinness-tan/80">
-                {isPrivate
-                  ? t("pages.competitionDetail.private")
-                  : t("pages.competitionDetail.public")}
-              </span>
-              <span className="text-guinness-tan/35" aria-hidden>
-                ·
-              </span>
-              <span className="text-xs font-medium text-guinness-gold">
-                {winRuleLabelI18n(competition.win_rule)}
-                {competition.win_rule === "closest_to_target" &&
-                competition.target_score != null
-                  ? t("pages.competitionDetail.targetSuffix", {
-                      value: Number(competition.target_score).toFixed(2),
-                    })
-                  : ""}
-              </span>
-            </div>
-
-            <div className="mt-3 grid gap-3 sm:grid-cols-12 sm:gap-3">
-              <div className="rounded-xl border border-solid border-guinness-frame bg-black/25 px-3 py-2.5 sm:col-span-5 sm:py-3">
-                <p className="type-meta text-[11px] text-guinness-tan/50">
+            <div className={competitionCardTopLightClass} aria-hidden />
+            <div className="relative z-0 flex flex-col gap-4 px-3.5 pb-4 pt-6 sm:gap-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    timePhase?.phase === "live"
+                      ? "bg-emerald-500/20 text-emerald-200"
+                      : timePhase?.phase === "before"
+                        ? "bg-guinness-gold/15 text-guinness-gold"
+                        : "bg-guinness-black/50 text-guinness-tan/75"
+                  }`}
+                >
                   {timePhase?.phase === "before"
-                    ? t("pages.competitionDetail.startsIn")
+                    ? t("pages.competitionDetail.upcoming")
                     : timePhase?.phase === "live"
-                      ? t("pages.competitionDetail.endsIn")
-                      : t("pages.competitionDetail.window")}
+                      ? t("pages.competitionDetail.live")
+                      : t("pages.competitionDetail.ended")}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    isPrivate
+                      ? "border border-solid border-guinness-frame bg-guinness-black/55 text-guinness-tan/90"
+                      : "bg-guinness-gold text-guinness-black shadow-sm shadow-black/20"
+                  }`}
+                >
+                  {isPrivate
+                    ? t("pages.competitions.badgePrivate")
+                    : t("pages.competitions.badgePublic")}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-[11px] leading-relaxed text-guinness-tan/50 sm:text-xs sm:text-guinness-tan/55">
+                  {new Date(competition.starts_at).toLocaleString()} →{" "}
+                  {new Date(competition.ends_at).toLocaleString()}
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums leading-tight text-guinness-cream sm:text-xl">
+                <p className="mt-1 text-xs leading-snug text-guinness-cream/90 sm:text-sm">
+                  {format(new Date(competition.starts_at), "EEE MMM d, h:mm a")}
+                  <span className="text-guinness-tan/40"> → </span>
+                  {format(new Date(competition.ends_at), "EEE MMM d, h:mm a")}
+                </p>
+                <p className="mt-2 text-sm font-semibold tabular-nums text-guinness-gold sm:text-base">
                   {timePhase?.phase === "after"
                     ? t("pages.competitionDetail.ended")
                     : timePhase
                       ? formatDuration(timePhase.ms)
                       : "…"}
                 </p>
-              </div>
-              <div className="flex flex-col justify-center rounded-xl border border-solid border-guinness-frame bg-black/15 px-3 py-2.5 sm:col-span-7 sm:py-3">
-                <p className="type-meta text-[11px] text-guinness-tan/50">
-                  {t("pages.competitionDetail.schedule")}
-                </p>
-                <p className="mt-1 text-xs leading-snug text-guinness-cream/95 sm:text-sm">
-                  {format(new Date(competition.starts_at), "EEE MMM d, h:mm a")}
-                  <span className="text-guinness-tan/40"> → </span>
-                  {format(new Date(competition.ends_at), "EEE MMM d, h:mm a")}
+                <p className="type-meta mt-1 text-[11px] text-guinness-tan/45 sm:text-xs">
+                  {timePhase?.phase === "before"
+                    ? t("pages.competitionDetail.startsIn")
+                    : timePhase?.phase === "live"
+                      ? t("pages.competitionDetail.endsIn")
+                      : t("pages.competitionDetail.window")}
                 </p>
               </div>
-              <div className="flex flex-wrap items-stretch gap-2 rounded-xl border border-solid border-guinness-frame bg-black/20 px-3 py-2.5 sm:col-span-12 sm:flex-nowrap sm:gap-0 sm:divide-x sm:divide-guinness-frame">
-                <div className="min-w-0 flex-1 sm:pr-4">
-                  <p className="type-meta text-[11px] text-guinness-tan/50">
-                    {t("pages.competitionDetail.roster")}
-                  </p>
-                  <p className="mt-0.5 text-base font-semibold tabular-nums text-guinness-cream sm:text-lg">
-                    {participantUserIds.length}/{competition.max_participants}
-                  </p>
+
+              <div
+                className={`grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-5 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-3 sm:pt-4 ${competitionCardDividerClass}`}
+              >
+                <div className={`${competitionStatCellClass} col-span-1`}>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-guinness-gold/65">
+                    {t("pages.competitions.statJoined")}
+                  </span>
+                  <span className="mt-0.5 text-sm font-semibold tabular-nums text-guinness-gold sm:text-base">
+                    {participantUserIds.length}
+                    <span className="text-guinness-tan/45"> / </span>
+                    {competition.max_participants}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1 sm:pl-4">
-                  <p className="type-meta text-[11px] text-guinness-tan/50">
-                    {t("pages.competitionDetail.pourLimit")}
-                  </p>
-                  <p className="mt-0.5 text-sm font-medium leading-snug text-guinness-tan/90">
+                <div className={`${competitionStatCellClass} col-span-1`}>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-guinness-gold/65">
+                    {t("pages.competitions.statGlassesEach")}
+                  </span>
+                  <span className="mt-0.5 text-sm font-semibold text-guinness-cream sm:text-base">
                     {winRuleUsesUnlimitedGlasses(competition.win_rule) ||
                     isStoredGlassesUnlimited(competition.glasses_per_person)
-                      ? t("pages.competitionDetail.pourLimitUnlimited")
-                      : (
-                          <>
-                            {competition.glasses_per_person}{" "}
-                            {competition.glasses_per_person === 1
-                              ? t("pages.competitionDetail.pourEachOne")
-                              : t("pages.competitionDetail.pourEachMany")}
-                          </>
-                        )}
-                  </p>
+                      ? t("pages.competitions.glassesPerPersonUnlimited")
+                      : competition.glasses_per_person}
+                  </span>
+                </div>
+                <div
+                  className={`${competitionStatCellClass} col-span-2 sm:col-span-1`}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-guinness-gold/65">
+                    {t("pages.competitions.statRule")}
+                  </span>
+                  <span className="mt-0.5 block text-sm font-semibold leading-snug text-guinness-cream">
+                    {winRuleLabelI18n(competition.win_rule)}
+                    {competition.win_rule === "closest_to_target" &&
+                    competition.target_score != null
+                      ? ` · ${Number(competition.target_score).toFixed(2)}`
+                      : ""}
+                  </span>
                 </div>
               </div>
-            </div>
 
             {competition.linked_bar_key?.trim() ||
             competition.location_name?.trim() ||
             competition.location_address?.trim() ? (
-              <div className="mt-3 space-y-1.5 border-t border-solid border-guinness-frame pt-3 text-sm leading-relaxed">
+              <div
+                className={`space-y-1.5 border-t pt-4 text-sm leading-relaxed ${competitionCardDividerClass}`}
+              >
                 {competition.linked_bar_key?.trim() ? (
                   <p className="text-guinness-tan/85">
                     <span className="text-guinness-tan/50">
@@ -897,7 +881,9 @@ export default function CompetitionDetail() {
             ) : null}
 
             <div
-              className="mt-4 flex flex-col gap-4 border-t border-solid border-guinness-frame pt-4"
+              className={`flex flex-col gap-4 border-t pt-4 ${competitionCardDividerClass} ${
+                hideSummaryJoinStripOnMd ? "md:hidden" : ""
+              }`}
               aria-label={t("pages.competitionDetail.ariaCompetitionActions")}
             >
               {!userId ? (
@@ -935,26 +921,50 @@ export default function CompetitionDetail() {
                     </details>
                   ) : null}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void handleJoin()}
-                  className={`${pageHeaderActionButtonClass} w-full`}
-                >
-                  {t("pages.competitionDetail.joinCompetition")}
-                </button>
-              )}
+              ) : userId && !joined ? (
+                timePhase?.phase === "after" ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleJoin()}
+                    className={`${pageHeaderActionButtonClass} w-full`}
+                  >
+                    {t("pages.competitionDetail.joinCompetition")}
+                  </button>
+                ) : rosterFull ? (
+                  <>
+                    <p className="type-meta hidden text-guinness-tan/65 md:block">
+                      {t("pages.competitions.full")}
+                    </p>
+                    <button
+                      type="button"
+                      disabled
+                      className={`${pageHeaderActionButtonClass} w-full cursor-not-allowed opacity-50 md:hidden`}
+                    >
+                      {t("pages.competitions.full")}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleJoin()}
+                    className={`${pageHeaderActionButtonClass} w-full md:hidden`}
+                  >
+                    {t("pages.competitionDetail.joinCompetition")}
+                  </button>
+                )
+              ) : null}
+            </div>
             </div>
           </div>
         </section>
 
         <section
           id="comp-leaderboard-panel"
-          className="order-2 scroll-mt-28 lg:col-start-2 lg:row-start-1 lg:max-h-[min(72vh,calc(100vh-5.5rem))] lg:min-w-0 lg:overflow-y-auto lg:self-start lg:pt-0 xl:max-h-[calc(100vh-6rem)]"
+          className="order-2 scroll-mt-28"
           aria-label={t("pages.competitionDetail.ariaLeaderboardRoster")}
         >
           <SegmentedTabs
-            className="mb-4 hidden w-full lg:mb-6 lg:flex"
+            className="mb-4 flex w-full md:mb-6"
             layoutClassName="flex w-full"
             variant="rowEqual"
             role="tablist"

@@ -105,3 +105,17 @@ export function toDatetimeLocalValue(iso: string): string {
 export function isPrivateCompetition(c: CompetitionRow): boolean {
   return (c.visibility ?? "public") === "private";
 }
+
+/** Gold band along the top inside list / detail competition cards. */
+export const competitionCardTopLightClass =
+  "pointer-events-none absolute inset-x-0 top-0 z-[1] h-1 bg-gradient-to-r from-transparent via-guinness-gold/55 to-transparent opacity-90";
+
+/** Outer shell for competition row cards (list) and detail summary. */
+export const competitionCardFrameClass =
+  "rounded-2xl border border-solid border-guinness-frame bg-gradient-to-br from-guinness-brown/45 via-guinness-black/20 to-guinness-black/40 shadow-[0_10px_36px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(212,175,55,0.08)]";
+
+export const competitionCardDividerClass = "border-solid border-guinness-frame";
+
+/** Inner stat tile — matches competitions list grid cells. */
+export const competitionStatCellClass =
+  "flex flex-col rounded-xl border border-solid border-guinness-frame bg-black/30 px-3 py-2.5";

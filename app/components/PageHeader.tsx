@@ -80,6 +80,10 @@ export const pageShellClass =
 export const pageHeaderActionButtonClass =
   "inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-guinness-gold px-4 py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan sm:px-6 sm:text-base";
 
+/** Outlined header action (Feed “Pubs”, secondary next to solid primary). */
+export const pageHeaderSecondaryActionButtonClass =
+  "inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-[#322914] bg-guinness-black/60 px-4 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:border-guinness-gold/40 hover:bg-guinness-brown/50 sm:px-5 sm:text-base";
+
 /**
  * Footer / end-of-page CTA to home for a new split — ghost outline. Uses {@link EndPageNewPourFooter} label.
  * Profile hub and similar use this full-width beside “Split the G” / new score flows.
