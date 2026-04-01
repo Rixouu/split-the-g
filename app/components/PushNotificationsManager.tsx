@@ -11,6 +11,26 @@ function base64UrlToUint8Array(base64Url: string): Uint8Array {
   return output;
 }
 
+function requestNotificationPermissionSafe(): Promise<NotificationPermission> {
+  if (typeof Notification === "undefined") return Promise.resolve("denied");
+
+  // Support both modern promise API and legacy callback-only implementations.
+  const requestPermission = Notification.requestPermission.bind(Notification) as {
+    (): Promise<NotificationPermission> | NotificationPermission;
+    (callback: (permission: NotificationPermission) => void): void;
+  };
+
+  try {
+    const maybePromise = requestPermission();
+    if (typeof maybePromise === "string") return Promise.resolve(maybePromise);
+    return maybePromise;
+  } catch {
+    return new Promise((resolve) => {
+      requestPermission((permission) => resolve(permission));
+    });
+  }
+}
+
 export function PushNotificationsManager() {
   const { lang } = useI18n();
   const [supported, setSupported] = useState(false);
@@ -59,7 +79,7 @@ export function PushNotificationsManager() {
     if (!pushPublicKey || busy) return;
     setBusy(true);
     try {
-      const result = await Notification.requestPermission();
+      const result = await requestNotificationPermissionSafe();
       setPermission(result);
       if (result !== "granted") return;
       const registration = await navigator.serviceWorker.ready;
@@ -92,23 +112,36 @@ export function PushNotificationsManager() {
     }
   }, [busy, sendSubscription]);
 
-  if (!supported || !pushPublicKey) return null;
-
   return (
     <div className="mt-4 rounded-lg border border-guinness-gold/20 bg-guinness-black/30 p-4">
       <p className="text-sm font-semibold text-guinness-gold">Push notifications</p>
       <p className="mt-1 text-xs text-guinness-tan/70">
         Get alerts for friend requests, competition invites, friend pours, and top 10 changes.
       </p>
-      <button
-        type="button"
-        onClick={() => void (enabled ? disablePush() : enablePush())}
-        disabled={busy || permission === "denied"}
-        className="mt-3 w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-2 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/45 disabled:opacity-50"
-      >
-        {busy ? "Updating..." : enabled ? "Disable notifications" : "Enable notifications"}
-      </button>
-      {permission === "denied" ? (
+      {!pushPublicKey ? (
+        <p className="mt-3 text-xs text-amber-300/90">
+          Missing VAPID public key in app config.
+        </p>
+      ) : !supported ? (
+        <p className="mt-3 text-xs text-amber-300/90">
+          This browser session does not expose Web Push APIs. Try Chrome/Edge desktop
+          or install this PWA before enabling notifications.
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void (enabled ? disablePush() : enablePush())}
+          disabled={busy || permission === "denied"}
+          className="mt-3 w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-2 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/45 disabled:opacity-50"
+        >
+          {busy
+            ? "Updating..."
+            : enabled
+              ? "Disable notifications"
+              : "Enable notifications"}
+        </button>
+      )}
+      {supported && permission === "denied" ? (
         <p className="mt-2 text-xs text-amber-300/90">
           Notifications are blocked in your browser settings.
         </p>
