@@ -806,6 +806,14 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
+  const handleUploadInstead = useCallback(() => {
+    if (isCameraActive) {
+      stopCameraTracks();
+      setIsCameraActive(false);
+    }
+    document.getElementById("file-upload")?.click();
+  }, [isCameraActive, stopCameraTracks]);
+
   return (
     <main className="flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden bg-guinness-black text-guinness-cream max-lg:overflow-y-auto lg:max-h-dvh lg:min-h-0 lg:overflow-y-auto">
       <PwaInstallBanner />
@@ -1110,19 +1118,15 @@ export default function Home() {
                       </span>
                     </button>
                   )}
-                  {!isCameraActive ? (
-                    <div className="relative z-10 shrink-0 border-t border-[#312814] bg-guinness-black/30 px-3 py-2.5">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          document.getElementById("file-upload")?.click()
-                        }
-                        className="flex min-h-10 w-full items-center justify-center rounded-lg border border-[#312814] bg-guinness-black/25 px-3 py-2 text-xs font-semibold text-guinness-tan/90 transition-colors duration-300 hover:border-guinness-gold/35 hover:bg-[#312814]/40 hover:text-guinness-cream sm:text-sm"
-                      >
-                        {t("pages.home.uploadPhoto")}
-                      </button>
-                    </div>
-                  ) : null}
+                  <div className="relative z-10 shrink-0 border-t border-[#312814] bg-guinness-black/30 px-3 py-2.5">
+                    <button
+                      type="button"
+                      onClick={handleUploadInstead}
+                      className="flex min-h-10 w-full items-center justify-center rounded-lg border border-[#312814] bg-guinness-black/25 px-3 py-2 text-xs font-semibold text-guinness-tan/90 transition-colors duration-300 hover:border-guinness-gold/35 hover:bg-[#312814]/40 hover:text-guinness-cream sm:text-sm"
+                    >
+                      {t("pages.home.uploadPhoto")}
+                    </button>
+                  </div>
                 </div>
               </div>
 
