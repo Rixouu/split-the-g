@@ -53,7 +53,7 @@ const ROBOFLOW_USE_SERVERLESS = Boolean(ROBOFLOW_WORKSPACE && ROBOFLOW_WORKFLOW_
 
 /** Legacy: `workspace-id/workflow-id` on detect.roboflow.com — only if serverless env is not set. */
 const ROBOFLOW_LEGACY_WORKFLOW_PATH =
-  import.meta.env.VITE_ROBOFLOW_WORKFLOW ?? "hunter-diminick/split-g-scoring";
+  import.meta.env.VITE_ROBOFLOW_WORKFLOW ?? "rx-m9wzu/split-the-g-workflow";
 
 /** inferencejs (browser) — Roboflow Publishable key (`rf_...`); optional override, else falls back to VITE_ROBOFLOW_API_KEY. */
 const ROBOFLOW_PUBLISHABLE_KEY =
