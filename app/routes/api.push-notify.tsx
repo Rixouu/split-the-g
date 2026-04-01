@@ -35,12 +35,12 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ error: "Missing target or type." }, { status: 400 });
   }
 
-  const report = await sendPushByUserEmail(toEmail, {
+  await sendPushByUserEmail(toEmail, {
     type: body.type,
     actorName: body.actorName ?? null,
     competitionTitle: body.competitionTitle ?? null,
     path: body.path ?? "/",
   });
 
-  return Response.json({ success: report.sent > 0, report });
+  return Response.json({ success: true });
 }

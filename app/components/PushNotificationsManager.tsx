@@ -17,7 +17,7 @@ export function PushNotificationsManager() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [debugMessage, setDebugMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const pushPublicKey = import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY ?? "";
 
   const syncStatus = useCallback(async () => {
@@ -47,7 +47,7 @@ export function PushNotificationsManager() {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) {
-        setDebugMessage("Please sign in again before enabling notifications.");
+        setStatusMessage("Please sign in again before enabling notifications.");
         return;
       }
       const response = await fetch("/api/push-subscriptions", {
@@ -71,7 +71,7 @@ export function PushNotificationsManager() {
   const enablePush = useCallback(async () => {
     if (!pushPublicKey || busy) return;
     setBusy(true);
-    setDebugMessage(null);
+    setStatusMessage(null);
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
@@ -83,9 +83,9 @@ export function PushNotificationsManager() {
       });
       await sendSubscription("POST", { ...subscription.toJSON(), locale: lang });
       setEnabled(true);
-      setDebugMessage("Notifications enabled on this device.");
+      setStatusMessage("Notifications enabled on this device.");
     } catch (error) {
-      setDebugMessage(error instanceof Error ? error.message : "Could not enable push notifications.");
+      setStatusMessage(error instanceof Error ? error.message : "Could not enable push notifications.");
     } finally {
       setBusy(false);
     }
@@ -94,7 +94,7 @@ export function PushNotificationsManager() {
   const disablePush = useCallback(async () => {
     if (busy) return;
     setBusy(true);
-    setDebugMessage(null);
+    setStatusMessage(null);
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
@@ -105,73 +105,15 @@ export function PushNotificationsManager() {
       await sendSubscription("DELETE", { endpoint: subscription.endpoint });
       await subscription.unsubscribe();
       setEnabled(false);
-      setDebugMessage("Notifications disabled for this device.");
+      setStatusMessage("Notifications disabled for this device.");
     } catch (error) {
-      setDebugMessage(error instanceof Error ? error.message : "Could not disable notifications.");
+      setStatusMessage(error instanceof Error ? error.message : "Could not disable notifications.");
     } finally {
       setBusy(false);
     }
   }, [busy, sendSubscription]);
 
   const canRenderToggle = supported && Boolean(pushPublicKey);
-
-  const sendTestNotification = useCallback(async () => {
-    setDebugMessage(null);
-    try {
-      const supabase = await getSupabaseBrowserClient();
-      const [{ data: sessionData }, { data: userData }] = await Promise.all([
-        supabase.auth.getSession(),
-        supabase.auth.getUser(),
-      ]);
-      const token = sessionData.session?.access_token;
-      const email = userData.user?.email?.trim().toLowerCase();
-      if (!token || !email) {
-        setDebugMessage("Missing session/email. Sign out and back in, then try again.");
-        return;
-      }
-
-      const response = await fetch("/api/push-notify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          type: "friend_request_received",
-          toEmail: email,
-          actorName: "Split the G",
-          path: "/profile/account",
-        }),
-      });
-      const result = (await response.json().catch(() => null)) as
-        | {
-            error?: string;
-            success?: boolean;
-            report?: {
-              totalSubscriptions?: number;
-              sent?: number;
-              failed?: number;
-              errors?: string[];
-              configured?: boolean;
-            };
-          }
-        | null;
-      if (!response.ok) {
-        setDebugMessage(result?.error ?? "Push test failed.");
-        return;
-      }
-      const report = result?.report;
-      if (!report) {
-        setDebugMessage("Push test request completed but no delivery report was returned.");
-        return;
-      }
-      setDebugMessage(
-        `Push report: configured=${String(Boolean(report.configured))}, subscriptions=${report.totalSubscriptions ?? 0}, sent=${report.sent ?? 0}, failed=${report.failed ?? 0}${report.errors?.[0] ? `, firstError=${report.errors[0]}` : ""}`,
-      );
-    } catch (error) {
-      setDebugMessage(error instanceof Error ? error.message : "Push test failed.");
-    }
-  }, []);
 
   return (
     <div className="mt-4 rounded-lg border border-guinness-gold/20 bg-guinness-black/30 p-4">
@@ -197,21 +139,13 @@ export function PushNotificationsManager() {
       >
         {busy ? "Updating..." : enabled ? "Disable notifications" : "Enable notifications"}
       </button>
-      <button
-        type="button"
-        onClick={() => void sendTestNotification()}
-        disabled={!canRenderToggle || !enabled || busy}
-        className="mt-2 w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/40 py-2 text-xs font-semibold text-guinness-tan transition-colors hover:bg-guinness-brown/40 disabled:opacity-40"
-      >
-        Send test notification
-      </button>
       {permission === "denied" ? (
         <p className="mt-2 text-xs text-amber-300/90">
           Notifications are blocked in your browser settings.
         </p>
       ) : null}
-      {debugMessage ? (
-        <p className="mt-2 text-xs text-guinness-tan/85">{debugMessage}</p>
+      {statusMessage ? (
+        <p className="mt-2 text-xs text-guinness-tan/85">{statusMessage}</p>
       ) : null}
     </div>
   );
