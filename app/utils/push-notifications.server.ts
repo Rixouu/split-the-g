@@ -21,6 +21,14 @@ interface PushSubscriptionRow {
   auth: string;
 }
 
+export interface PushSendReport {
+  configured: boolean;
+  totalSubscriptions: number;
+  sent: number;
+  failed: number;
+  errors: string[];
+}
+
 const DEFAULT_ICON = "/web-app-manifest-192x192.png";
 const DEFAULT_BADGE = "/favicon-96x96.png";
 
@@ -174,8 +182,17 @@ function localeOrDefault(locale: string | null | undefined): SupportedLocale {
 async function sendToSubscriptions(
   rows: PushSubscriptionRow[],
   options: PushPayloadOptions,
-) {
-  if (rows.length === 0 || !ensureWebPushConfigured()) return;
+): Promise<PushSendReport> {
+  const configured = ensureWebPushConfigured();
+  if (rows.length === 0 || !configured) {
+    return {
+      configured,
+      totalSubscriptions: rows.length,
+      sent: 0,
+      failed: 0,
+      errors: configured ? [] : ["Web Push is not configured on the server."],
+    };
+  }
   const locale = localeOrDefault(options.locale);
   const template = MESSAGES[options.type][locale](options);
   const payload = JSON.stringify({
@@ -185,7 +202,9 @@ async function sendToSubscriptions(
     badge: DEFAULT_BADGE,
     path: options.path ?? "/",
   });
-
+  let sent = 0;
+  let failed = 0;
+  const errors: string[] = [];
   await Promise.all(
     rows.map(async (row) => {
       try {
@@ -196,21 +215,56 @@ async function sendToSubscriptions(
           },
           payload,
         );
-      } catch {
-        // Ignore per-subscription failures to keep mutation flows resilient.
+        sent += 1;
+      } catch (error) {
+        failed += 1;
+        const statusCode =
+          typeof error === "object" && error && "statusCode" in error
+            ? String((error as { statusCode?: number }).statusCode ?? "")
+            : "";
+        const body =
+          typeof error === "object" && error && "body" in error
+            ? String((error as { body?: string }).body ?? "")
+            : "";
+        errors.push(
+          `endpoint=${row.endpoint.slice(0, 48)}... status=${statusCode || "unknown"} body=${body || "n/a"}`,
+        );
       }
     }),
   );
+  return {
+    configured,
+    totalSubscriptions: rows.length,
+    sent,
+    failed,
+    errors,
+  };
 }
 
 export async function sendPushByUserEmail(
   userEmail: string,
   options: PushPayloadOptions,
-) {
+): Promise<PushSendReport> {
   const supabase = getServiceRoleClient();
-  if (!supabase) return;
+  if (!supabase) {
+    return {
+      configured: false,
+      totalSubscriptions: 0,
+      sent: 0,
+      failed: 0,
+      errors: ["Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY on server."],
+    };
+  }
   const emailNorm = userEmail.trim().toLowerCase();
-  if (!emailNorm) return;
+  if (!emailNorm) {
+    return {
+      configured: true,
+      totalSubscriptions: 0,
+      sent: 0,
+      failed: 0,
+      errors: ["Missing recipient email."],
+    };
+  }
 
   const { data } = await supabase
     .from("push_subscriptions")
@@ -218,7 +272,7 @@ export async function sendPushByUserEmail(
     .eq("user_email", emailNorm)
     .eq("is_active", true);
 
-  await sendToSubscriptions((data ?? []) as PushSubscriptionRow[], options);
+  return await sendToSubscriptions((data ?? []) as PushSubscriptionRow[], options);
 }
 
 export async function sendFriendSplitNotifications(input: {
