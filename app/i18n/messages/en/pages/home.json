@@ -39,5 +39,8 @@
   "pwaBannerIosBodyChrome": "Tap ⋯ (More), then Add to Home Screen.",
   "pwaBannerIosBodyFirefox": "Open the menu (☰), tap Share, then Add to Home Screen.",
   "pwaBannerIosBodyGeneric": "Use Share or your browser’s ⋯ menu, then Add to Home Screen.",
-  "pwaBannerChromeHint": "Tap Install, then confirm in the prompt."
+  "pwaBannerChromeHint": "Tap Install, then confirm in the prompt.",
+  "flashOn": "Flash on",
+  "flashOff": "Flash off",
+  "flashUnavailable": "Flash isn't available on this camera."
 }

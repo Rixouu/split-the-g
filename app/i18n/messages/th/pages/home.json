@@ -39,5 +39,8 @@
   "pwaBannerIosBodyChrome": "แตะ ⋯ (เพิ่มเติม) แล้วเพิ่มไปหน้าโฮม",
   "pwaBannerIosBodyFirefox": "เปิดเมนู (☰) แตะแชร์ แล้วเพิ่มไปหน้าโฮม",
   "pwaBannerIosBodyGeneric": "ใช้แชร์หรือเมนู ⋯ ของเบราว์เซอร์ แล้วเพิ่มไปหน้าโฮม",
-  "pwaBannerChromeHint": "แตะติดตั้ง แล้วยืนยันในหน้าต่างของเบราว์เซอร์"
+  "pwaBannerChromeHint": "แตะติดตั้ง แล้วยืนยันในหน้าต่างของเบราว์เซอร์",
+  "flashOn": "เปิดแฟลช",
+  "flashOff": "ปิดแฟลช",
+  "flashUnavailable": "ไม่รองรับแฟลชบนกล้องนี้"
 }

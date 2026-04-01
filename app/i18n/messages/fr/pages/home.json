@@ -39,5 +39,8 @@
   "pwaBannerIosBodyChrome": "Touchez ⋯ (Plus), puis Sur l’écran d’accueil.",
   "pwaBannerIosBodyFirefox": "Ouvrez le menu (☰), Partager, puis Sur l’écran d’accueil.",
   "pwaBannerIosBodyGeneric": "Utilisez Partager ou le menu ⋯, puis Sur l’écran d’accueil.",
-  "pwaBannerChromeHint": "Touchez Installer, puis confirmez dans la fenêtre du navigateur."
+  "pwaBannerChromeHint": "Touchez Installer, puis confirmez dans la fenêtre du navigateur.",
+  "flashOn": "Flash activé",
+  "flashOff": "Flash désactivé",
+  "flashUnavailable": "Le flash n'est pas disponible sur cette caméra."
 }

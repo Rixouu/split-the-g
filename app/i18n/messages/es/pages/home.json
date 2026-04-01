@@ -39,5 +39,8 @@
   "pwaBannerIosBodyChrome": "Toca ⋯ (Más), luego Añadir a inicio.",
   "pwaBannerIosBodyFirefox": "Abre el menú (☰), Compartir, luego Añadir a inicio.",
   "pwaBannerIosBodyGeneric": "Usa Compartir o el menú ⋯, luego Añadir a inicio.",
-  "pwaBannerChromeHint": "Toca Instalar y confirma en el aviso del navegador."
+  "pwaBannerChromeHint": "Toca Instalar y confirma en el aviso del navegador.",
+  "flashOn": "Flash encendido",
+  "flashOff": "Flash apagado",
+  "flashUnavailable": "El flash no está disponible en esta cámara."
 }

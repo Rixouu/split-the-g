@@ -39,5 +39,8 @@
   "pwaBannerIosBodyChrome": "Tocca ⋯ (Altro), poi Aggiungi a Home.",
   "pwaBannerIosBodyFirefox": "Apri il menu (☰), Condividi, poi Aggiungi a Home.",
   "pwaBannerIosBodyGeneric": "Usa Condividi o il menu ⋯, poi Aggiungi a Home.",
-  "pwaBannerChromeHint": "Tocca Installa, poi conferma nel messaggio del browser."
+  "pwaBannerChromeHint": "Tocca Installa, poi conferma nel messaggio del browser.",
+  "flashOn": "Flash acceso",
+  "flashOff": "Flash spento",
+  "flashUnavailable": "Il flash non è disponibile su questa fotocamera."
 }

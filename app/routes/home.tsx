@@ -5,6 +5,7 @@ import {
   redirect,
   useSearchParams,
 } from "react-router";
+import { Zap, ZapOff } from "lucide-react";
 import { AppLink } from "~/i18n/app-link";
 import { PintGlassOverlay } from "~/components/PintGlassOverlay";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
@@ -74,6 +75,11 @@ type InferenceImageInput = Parameters<RoboflowInferenceEngine["infer"]>[1];
 type InferenceJsModule = {
   InferenceEngine: new () => RoboflowInferenceEngine;
   CVImage: new (source: HTMLVideoElement) => InferenceImageInput;
+};
+
+type TorchTrackCapabilities = MediaTrackCapabilities & {
+  torch?: boolean;
+  fillLightMode?: string[];
 };
 
 let inferenceModulePromise: Promise<InferenceJsModule> | null = null;
@@ -410,6 +416,9 @@ export default function Home() {
   const [searchParams] = useSearchParams();
   const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isFlashSupported, setIsFlashSupported] = useState(false);
+  const [isFlashEnabled, setIsFlashEnabled] = useState(false);
+  const [isFlashUpdating, setIsFlashUpdating] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** Holds the active stream so we can stop tracks on unmount / tab hide even if the video node is gone. */
@@ -426,6 +435,9 @@ export default function Home() {
       vid.srcObject = null;
     }
     setIsVideoReady(false);
+    setIsFlashSupported(false);
+    setIsFlashEnabled(false);
+    setIsFlashUpdating(false);
   }, []);
   const submit = useSubmit();
   const actionData = useActionData<typeof action>();
@@ -477,6 +489,33 @@ export default function Home() {
 
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [homeToast, setHomeToast] = useState<{
+    message: string;
+    variant: BrandedNoticeVariant;
+  } | null>(null);
+
+  const toggleFlash = useCallback(async () => {
+    const stream = mediaStreamRef.current;
+    const track = stream?.getVideoTracks()[0];
+    if (!track || !isFlashSupported || isFlashUpdating) return;
+
+    const next = !isFlashEnabled;
+    setIsFlashUpdating(true);
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: next } as MediaTrackConstraintSet],
+      });
+      setIsFlashEnabled(next);
+    } catch (error) {
+      console.error("Flash toggle failed:", error);
+      setHomeToast({
+        message: t("pages.home.flashUnavailable"),
+        variant: "warning",
+      });
+    } finally {
+      setIsFlashUpdating(false);
+    }
+  }, [isFlashEnabled, isFlashSupported, isFlashUpdating, t]);
 
   // Camera: start when active; always stop tracks on deactivate, unmount, or aborted getUserMedia.
   useEffect(() => {
@@ -502,6 +541,14 @@ export default function Home() {
           return;
         }
         mediaStreamRef.current = stream;
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track?.getCapabilities?.() as TorchTrackCapabilities;
+        const supportsTorch =
+          Boolean(capabilities?.torch) ||
+          Boolean(capabilities?.fillLightMode?.includes("flash")) ||
+          Boolean(capabilities?.fillLightMode?.includes("torch"));
+        setIsFlashSupported(supportsTorch);
+        setIsFlashEnabled(false);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           void videoRef.current.play();
@@ -556,10 +603,6 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadProcessing, setIsUploadProcessing] = useState(false);
   const [showNoGModal, setShowNoGModal] = useState(false);
-  const [homeToast, setHomeToast] = useState<{
-    message: string;
-    variant: BrandedNoticeVariant;
-  } | null>(null);
 
   // Detection loop: import inferencejs once per interval (not every 500ms tick).
   useEffect(() => {
@@ -990,6 +1033,24 @@ export default function Home() {
                 <div className="relative flex min-h-0 flex-1 flex-col">
                   {isCameraActive ? (
                     <div className="relative min-h-0 flex-1">
+                      {isFlashSupported ? (
+                        <button
+                          type="button"
+                          onClick={() => void toggleFlash()}
+                          disabled={isFlashUpdating}
+                          aria-pressed={isFlashEnabled}
+                          className="absolute right-3 top-3 z-20 inline-flex items-center gap-2 rounded-full border border-guinness-gold/35 bg-guinness-black/65 px-3 py-1.5 text-xs font-semibold text-guinness-gold backdrop-blur-sm transition-colors hover:bg-guinness-black/80 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isFlashEnabled ? (
+                            <Zap className="h-3.5 w-3.5" aria-hidden />
+                          ) : (
+                            <ZapOff className="h-3.5 w-3.5" aria-hidden />
+                          )}
+                          {isFlashEnabled
+                            ? t("pages.home.flashOn")
+                            : t("pages.home.flashOff")}
+                        </button>
+                      ) : null}
                       <video
                         ref={videoRef}
                         className="absolute inset-0 h-full w-full object-cover"

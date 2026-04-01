@@ -39,5 +39,8 @@
   "pwaBannerIosBodyChrome": "「⋯」をタップ→「ホーム画面に追加」。",
   "pwaBannerIosBodyFirefox": "メニュー（☰）→共有→「ホーム画面に追加」。",
   "pwaBannerIosBodyGeneric": "共有または「⋯」メニューから「ホーム画面に追加」。",
-  "pwaBannerChromeHint": "「インストール」をタップし、表示された確認に従ってください。"
+  "pwaBannerChromeHint": "「インストール」をタップし、表示された確認に従ってください。",
+  "flashOn": "フラッシュオン",
+  "flashOff": "フラッシュオフ",
+  "flashUnavailable": "このカメラではフラッシュを利用できません。"
 }

@@ -39,5 +39,8 @@
   "pwaBannerIosBodyChrome": "⋯ (Mehr) antippen, dann Zum Home-Bildschirm.",
   "pwaBannerIosBodyFirefox": "Menü (☰) öffnen, Teilen, dann Zum Home-Bildschirm.",
   "pwaBannerIosBodyGeneric": "Teilen oder ⋯-Menü nutzen, dann Zum Home-Bildschirm.",
-  "pwaBannerChromeHint": "Installieren antippen und im Browser bestätigen."
+  "pwaBannerChromeHint": "Installieren antippen und im Browser bestätigen.",
+  "flashOn": "Blitz an",
+  "flashOff": "Blitz aus",
+  "flashUnavailable": "Blitz ist auf dieser Kamera nicht verfügbar."
 }
