@@ -7,7 +7,7 @@ The current product was substantially revamped by [Jonathan Rycx](https://github
 [![React 19](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
 [![React Router 7](https://img.shields.io/badge/React_Router-7-ef4444)](https://reactrouter.com/)
 [![Vite](https://img.shields.io/badge/Vite-7-yellow)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8)](https://tailwindcss.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres-22c55e)](https://supabase.com/)
 [![Roboflow](https://img.shields.io/badge/Roboflow-ML-ff6b00)](https://roboflow.com/)
 ![PWA Ready](https://img.shields.io/badge/PWA-Install%20Banner-9ca3af)
@@ -41,7 +41,7 @@ The current product was substantially revamped by [Jonathan Rycx](https://github
 - **React 19**
 - **React Router 7** (SSR + data APIs like loaders/actions)
 - **Vite 7** build + bundling
-- **Tailwind CSS 3** (dark Guinness-inspired theme)
+- **Tailwind CSS 4** (dark Guinness-inspired theme via `@tailwindcss/postcss`)
 
 ### Data, Auth, and Storage
 - **Supabase** (PostgreSQL + **RLS**, Auth, Storage)

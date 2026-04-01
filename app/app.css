@@ -1,10 +1,8 @@
 @import "./styles/view-transitions.css";
 @import "./styles/segmented-tabs-indicator.css";
 @import "./styles/nav-mask-icons.css";
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.ts";
 
 /**
  * Native <select> indicators ignore horizontal padding in WebKit/Blink.
@@ -26,7 +24,15 @@
 
 html,
 body {
-  @apply bg-guinness-black text-guinness-cream font-sans antialiased;
+  background-color: #0b0b0b;
+  color: #fdfbf3;
+  font-family:
+    "Google Sans",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   color-scheme: dark;
 }
 
@@ -180,30 +186,61 @@ body {
 
 @layer components {
   .type-display {
-    @apply text-3xl md:text-5xl font-bold tracking-tight text-guinness-gold;
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #b38b2d;
   }
 
   .type-section {
-    @apply text-xl md:text-2xl font-semibold text-guinness-gold;
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    color: #b38b2d;
   }
 
   .type-card-title {
-    @apply text-lg font-semibold text-guinness-gold;
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    color: #b38b2d;
   }
 
   .type-body {
-    @apply text-base text-guinness-cream;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    color: #fdfbf3;
   }
 
   .type-body-muted {
-    @apply text-base text-guinness-tan/80;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    color: rgba(212, 183, 143, 0.8);
   }
 
   .type-label {
-    @apply text-sm font-medium text-guinness-tan;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: #d4b78f;
   }
 
   .type-meta {
-    @apply text-sm text-guinness-tan/70;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: rgba(212, 183, 143, 0.7);
+  }
+}
+
+@media (min-width: 768px) {
+  .type-display {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .type-section {
+    font-size: 1.5rem;
+    line-height: 2rem;
   }
 }
