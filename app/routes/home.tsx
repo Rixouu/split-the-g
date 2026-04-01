@@ -67,7 +67,7 @@ const ROBOFLOW_INFERENCE_MODEL =
 const ROBOFLOW_INFERENCE_VERSION =
   import.meta.env.VITE_ROBOFLOW_INFERENCE_VERSION ?? "8";
 const INFERENCEJS_CDN_URL =
-  "https://esm.sh/inferencejs@2.10.2?target=es2022";
+  "https://esm.sh/inferencejs@1.2.3?target=es2022";
 
 /** Second argument to `InferenceEngine.infer` (CDN build matches npm typings). */
 type InferenceImageInput = Parameters<RoboflowInferenceEngine["infer"]>[1];
