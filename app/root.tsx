@@ -65,6 +65,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
     GOOGLE_PLACES_API_KEY: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    WEB_PUSH_PUBLIC_KEY: import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY,
     SITE_ORIGIN: (import.meta.env.VITE_SITE_URL ?? requestOrigin ?? SITE_URL).replace(
       /\/$/,
       "",

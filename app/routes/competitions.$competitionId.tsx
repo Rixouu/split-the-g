@@ -334,6 +334,23 @@ export default function CompetitionDetail() {
           (me.user_metadata?.full_name as string | undefined)?.trim() ||
           (me.user_metadata?.name as string | undefined)?.trim() ||
           null;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (accessToken) {
+          await fetch("/api/push-notify", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              type: "friend_request_received",
+              toEmail: to,
+              actorName: inviterName,
+              path: "/profile/friends",
+            }),
+          }).catch(() => null);
+        }
 
         const emailResponse = await fetch("/api/friend-invite", {
           method: "POST",

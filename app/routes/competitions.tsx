@@ -437,6 +437,24 @@ export default function Competitions() {
       (u.user.user_metadata?.full_name as string | undefined)?.trim() ||
       (u.user.user_metadata?.name as string | undefined)?.trim() ||
       null;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (accessToken) {
+      await fetch("/api/push-notify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          type: "competition_invite_received",
+          toEmail: raw,
+          actorName: inviterName,
+          competitionTitle: comp?.title ?? null,
+          path: competitionDetailPath(comp ?? { id: compId, path_segment: null }),
+        }),
+      }).catch(() => null);
+    }
 
     let emailOk = false;
     try {

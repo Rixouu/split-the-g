@@ -84,6 +84,9 @@ VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL="Split The G <noreply@your-domain>"
 APP_URL=https://your-site.example
+VITE_WEB_PUSH_PUBLIC_KEY=your-vapid-public-key
+WEB_PUSH_PRIVATE_KEY=your-vapid-private-key
+WEB_PUSH_SUBJECT=mailto:you@example.com
 ```
 
 #### Roboflow (pour scoring)

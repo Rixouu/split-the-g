@@ -26,6 +26,11 @@ import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { scorePourPath } from "~/utils/scorePath";
 import { supabase } from "~/utils/supabase";
 import { generateBeerUsername } from "~/utils/usernameGenerator";
+import {
+  sendFriendSplitNotifications,
+  sendKnockedOutTop10NotificationForNewScore,
+} from "~/utils/push-notifications.server";
+import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 
 const isClient = typeof window !== "undefined";
 
@@ -113,6 +118,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
     typeof competitionRaw === "string" && UUID_RE.test(competitionRaw.trim())
       ? competitionRaw.trim()
       : "";
+  const actorUserIdRaw = formData.get("actorUserId");
+  const actorUserId =
+    typeof actorUserIdRaw === "string" && UUID_RE.test(actorUserIdRaw.trim())
+      ? actorUserIdRaw.trim()
+      : "";
+  const actorNameRaw = formData.get("actorName");
+  const actorName =
+    typeof actorNameRaw === "string" && actorNameRaw.trim() ? actorNameRaw.trim() : null;
   const { randomUUID } = await import("node:crypto");
   const [
     { calculateScore },
@@ -393,6 +406,22 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const dest = competitionId
       ? `${localized}${localized.includes("?") ? "&" : "?"}competition=${encodeURIComponent(competitionId)}`
       : localized;
+
+    if (actorUserId) {
+      await sendFriendSplitNotifications({
+        actorUserId,
+        actorName,
+        score: splitScore,
+        path: localized,
+      });
+    }
+    if (score.id) {
+      await sendKnockedOutTop10NotificationForNewScore({
+        newScoreId: score.id,
+        scorePath: localized,
+      });
+    }
+
     return redirect(dest, {
       headers,
     });
@@ -416,6 +445,10 @@ export default function Home() {
   const [searchParams] = useSearchParams();
   const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [actorMeta, setActorMeta] = useState<{ userId: string; actorName: string }>({
+    userId: "",
+    actorName: "",
+  });
   const [isFlashSupported, setIsFlashSupported] = useState(false);
   const [isFlashEnabled, setIsFlashEnabled] = useState(false);
   const [isFlashUpdating, setIsFlashUpdating] = useState(false);
@@ -604,6 +637,25 @@ export default function Home() {
   const [isUploadProcessing, setIsUploadProcessing] = useState(false);
   const [showNoGModal, setShowNoGModal] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    void getSupabaseBrowserClient()
+      .then(async (supabaseClient) => {
+        const { data } = await supabaseClient.auth.getUser();
+        if (cancelled) return;
+        const user = data.user;
+        const actor =
+          (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+          (user?.user_metadata?.name as string | undefined)?.trim() ||
+          "";
+        setActorMeta({ userId: user?.id ?? "", actorName: actor });
+      })
+      .catch(() => null);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Detection loop: import inferencejs once per interval (not every 500ms tick).
   useEffect(() => {
     if (
@@ -670,6 +722,8 @@ export default function Home() {
                     if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
                       formData.append("competition", competitionIdParam);
                     }
+                    if (actorMeta.userId) formData.append("actorUserId", actorMeta.userId);
+                    if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
 
                     submit(formData, {
                       method: "post",
@@ -797,6 +851,8 @@ export default function Home() {
       if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
         formData.append("competition", competitionIdParam);
       }
+      if (actorMeta.userId) formData.append("actorUserId", actorMeta.userId);
+      if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
       submit(formData, {
         method: "post",
         action: ".",
@@ -812,7 +868,7 @@ export default function Home() {
       setIsCameraActive(false);
     }
     document.getElementById("file-upload")?.click();
-  }, [isCameraActive, stopCameraTracks]);
+  }, [actorMeta.actorName, actorMeta.userId, isCameraActive, stopCameraTracks]);
 
   return (
     <main className="flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden bg-guinness-black text-guinness-cream max-lg:overflow-y-auto lg:max-h-dvh lg:min-h-0 lg:overflow-y-auto">

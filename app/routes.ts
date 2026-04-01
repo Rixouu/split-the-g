@@ -13,6 +13,8 @@ export default [
   ),
   route("api/email", "./routes/email.tsx"),
   route("api/friend-invite", "./routes/friend-invite-email.tsx"),
+  route("api/push-subscriptions", "./routes/api.push-subscriptions.tsx"),
+  route("api/push-notify", "./routes/api.push-notify.tsx"),
   index("routes/root-redirect.tsx"),
   route(":lang", "routes/lang-layout.tsx", [
     index("routes/home.tsx"),

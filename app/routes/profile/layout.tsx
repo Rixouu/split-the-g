@@ -59,6 +59,7 @@ import { useI18n } from "~/i18n/context";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { stripLocalePrefix } from "~/i18n/paths";
 import { useIsDesktopMd } from "~/utils/useDesktopMd";
+import { PushNotificationsManager } from "~/components/PushNotificationsManager";
 
 export function meta({ params }: { params: { lang?: string } }) {
   return seoMetaForRoute(params, "/profile/progress", "profile");
@@ -793,6 +794,24 @@ export default function ProfileLayout() {
         (user.user_metadata?.name as string | undefined)?.trim() ||
         null;
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (accessToken) {
+        await fetch("/api/push-notify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            type: "friend_request_received",
+            toEmail: to,
+            actorName: inviterName,
+            path: "/profile/friends",
+          }),
+        }).catch(() => null);
+      }
+
       const emailResponse = await fetch("/api/friend-invite", {
         method: "POST",
         headers: {
@@ -1276,6 +1295,7 @@ export default function ProfileLayout() {
                   </form>
 
                   <div className="mt-5 border-t border-guinness-gold/10 pt-4">
+                    <PushNotificationsManager />
                     <button
                       type="button"
                       onClick={() => setSignOutConfirmOpen(true)}
