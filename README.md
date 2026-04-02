@@ -43,7 +43,7 @@ The current product was substantially revamped by [Jonathan Rycx](https://github
 - Server-side awards and streak updates driven by score events (see `supabase/migrations/*profile_gamification*`)
 
 ### 📬 Sponsorship & contact slots
-- **`AdSlotBanner`** (`app/components/ad-slot-banner.tsx`): horizontal “ad slot” strip (dashed frame, subtle texture, megaphone, **Contact** mailto CTA) with per-surface i18n
+- **`AdSlotBanner`** (`app/components/ad-slot-banner.tsx`): horizontal “ad slot” strip (dashed frame, subtle diagonal texture, **top** gold accent bar, megaphone, **Contact** mailto CTA) with per-surface i18n
 - **Placements:** **Feed** (above *Latest pours*), **Wall**, **Competitions** (above listings), **Pubs** list (below filters), **Pub detail** (above Promos / Competitions / Wall). Pubs list copy pitches directory listings; pub detail copy pitches **banner advertising** (distinct email subjects per surface)
 
 ### 🖥️ Desktop footer

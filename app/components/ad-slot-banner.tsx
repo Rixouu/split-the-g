@@ -40,11 +40,7 @@ export function AdSlotBanner({
         }}
       />
       <div
-        className="pointer-events-none absolute inset-x-3 top-0 z-[1] h-px bg-gradient-to-r from-transparent via-guinness-gold/70 to-transparent sm:inset-x-5"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute bottom-2 left-0 top-3 z-[1] w-[3px] rounded-r-sm bg-gradient-to-b from-guinness-gold/70 via-guinness-gold/25 to-transparent sm:top-4"
+        className="pointer-events-none absolute inset-x-3 top-0 z-[1] h-[3px] rounded-b-sm bg-gradient-to-r from-guinness-gold/25 via-guinness-gold/75 to-guinness-gold/25 sm:inset-x-5"
         aria-hidden
       />
 
