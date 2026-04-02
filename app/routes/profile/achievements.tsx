@@ -7,7 +7,7 @@ export function meta({ params }: { params: { lang?: string } }) {
 
 export default function ProfileAchievementsPage() {
   return (
-    <div className="pb-2 md:pb-0">
+    <div className="pb-6 md:pb-8">
       <ProfileAchievementsPanel />
     </div>
   );

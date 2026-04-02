@@ -156,7 +156,7 @@ export function ProfileAchievementsPanel() {
   );
 
   return (
-    <div className="space-y-5 md:space-y-6">
+    <div className="space-y-7 md:space-y-9">
       <AchievementShareSheet
         open={shareSheetTarget != null}
         onOpenChange={(next) => {
@@ -205,7 +205,7 @@ export function ProfileAchievementsPanel() {
 
       <section
         id="profile-achievements"
-        className="scroll-mt-6 rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6 md:border-guinness-gold/15"
+        className="scroll-mt-6 mb-5 rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6 md:mb-7 md:border-guinness-gold/15"
       >
         <div className="hidden md:block">
           <h1 className="type-card-title">{t("pages.profile.gamificationTitle")}</h1>
