@@ -188,5 +188,9 @@
   "analyticsStreaks": "Streaks",
   "analyticsStreakValues": "{day}d daily · {week}w weekly · {weekend} weekends",
   "scoreHistoryTitle": "Score history",
-  "scoreHistoryBlurb": "Recent trend of your pour scores (latest on the right)."
+  "scoreHistoryBlurb": "Recent trend of your pour scores (latest on the right).",
+  "badgePints25": "25 Pints Poured",
+  "badgeDailyStreak7": "7-Day Streak",
+  "badgeEliteAverage": "Elite Average (10 pours, 4.3+ avg)",
+  "scoreDistributionTitle": "Score distribution"
 }

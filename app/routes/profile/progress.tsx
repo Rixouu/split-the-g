@@ -20,6 +20,8 @@ export default function ProfileProgressPage() {
     progressRange,
     setProgressRange,
     friendProgressLeaderboard,
+    persistedAchievementCodes,
+    streakSnapshot,
   } = useProfileOutlet();
 
   const progressTabLabel: Record<ProgressRange, string> = {
@@ -121,30 +123,61 @@ export default function ProfileProgressPage() {
     {
       key: "perfect",
       label: t("pages.profile.badgePerfect"),
-      unlocked: scores.some((s) => s.split_score >= 4.95),
+      unlocked:
+        persistedAchievementCodes.includes("perfect-score") ||
+        scores.some((s) => s.split_score >= 4.95),
     },
     {
       key: "pints10",
       label: t("pages.profile.badgePints10"),
-      unlocked: totalPints >= 10,
+      unlocked:
+        persistedAchievementCodes.includes("pints-10") || totalPints >= 10,
+    },
+    {
+      key: "pints25",
+      label: t("pages.profile.badgePints25"),
+      unlocked:
+        persistedAchievementCodes.includes("pints-25") || totalPints >= 25,
     },
     {
       key: "crawler",
       label: t("pages.profile.badgePubCrawler"),
-      unlocked:
-        new Set(scores.map((s) => s.bar_name?.trim()).filter(Boolean)).size >= 5,
+      unlocked: persistedAchievementCodes.includes("pub-crawler-5")
+        || new Set(scores.map((s) => s.bar_name?.trim()).filter(Boolean)).size >= 5,
     },
     {
       key: "early",
       label: t("pages.profile.badgeEarlyBird"),
-      unlocked: scores.some((s) => new Date(s.created_at).getHours() < 17),
+      unlocked:
+        persistedAchievementCodes.includes("early-bird")
+        || scores.some((s) => new Date(s.created_at).getHours() < 17),
     },
     {
       key: "weekend",
       label: t("pages.profile.badgeWeekendStreak"),
-      unlocked: weekendStreak >= 3,
+      unlocked:
+        persistedAchievementCodes.includes("weekend-warrior-3") ||
+        weekendStreak >= 3,
+    },
+    {
+      key: "streak7",
+      label: t("pages.profile.badgeDailyStreak7"),
+      unlocked:
+        persistedAchievementCodes.includes("daily-streak-7")
+        || pourStreakCalendarDays(scores) >= 7,
+    },
+    {
+      key: "elite",
+      label: t("pages.profile.badgeEliteAverage"),
+      unlocked:
+        persistedAchievementCodes.includes("elite-average")
+        || (scores.length >= 10 && averageScore >= 4.3),
     },
   ];
+
+  const streakDaily = streakSnapshot?.daily ?? pourStreakCalendarDays(scores);
+  const streakWeekly = streakSnapshot?.weekly ?? weeklyStreak;
+  const streakWeekend = streakSnapshot?.weekend ?? weekendStreak;
 
   const trendPoints =
     scoreTrend.length <= 1
@@ -156,6 +189,19 @@ export default function ProfileProgressPage() {
             return `${x},${y}`;
           })
           .join(" ");
+
+  const scoreBuckets = [
+    { key: "0-2", min: 0, max: 2 },
+    { key: "2-3", min: 2, max: 3 },
+    { key: "3-4", min: 3, max: 4 },
+    { key: "4-5", min: 4, max: 5.01 },
+  ].map((bucket) => {
+    const count = scores.filter(
+      (s) => s.split_score >= bucket.min && s.split_score < bucket.max,
+    ).length;
+    return { ...bucket, count };
+  });
+  const maxBucket = Math.max(1, ...scoreBuckets.map((b) => b.count));
 
   return (
     <div className="space-y-8">
@@ -268,16 +314,16 @@ export default function ProfileProgressPage() {
             </div>
           </div>
 
-          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
+          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6">
             <h2 className="type-card-title">{t("pages.profile.gamificationTitle")}</h2>
             <p className="type-meta mt-1 text-guinness-tan/70">
               {t("pages.profile.gamificationBlurb")}
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
               {achievements.map((badge) => (
                 <div
                   key={badge.key}
-                  className={`rounded-xl border px-4 py-3 ${
+                  className={`min-w-[76%] snap-start rounded-xl border px-4 py-3 sm:min-w-0 ${
                     badge.unlocked
                       ? "border-guinness-gold/35 bg-guinness-gold/10"
                       : "border-[#322914] bg-guinness-black/35"
@@ -294,9 +340,9 @@ export default function ProfileProgressPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
+          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6">
             <h2 className="type-card-title">{t("pages.profile.analyticsTitle")}</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid gap-2 grid-cols-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border border-[#322914] bg-guinness-black/35 p-4">
                 <p className="type-meta text-guinness-tan/70">
                   {t("pages.profile.analyticsAverageScore")}
@@ -329,21 +375,21 @@ export default function ProfileProgressPage() {
                 </p>
                 <p className="mt-1 text-sm font-semibold text-guinness-cream">
                   {t("pages.profile.analyticsStreakValues", {
-                    day: String(pourStreakCalendarDays(scores)),
-                    week: String(weeklyStreak),
-                    weekend: String(weekendStreak),
+                    day: String(streakDaily),
+                    week: String(streakWeekly),
+                    weekend: String(streakWeekend),
                   })}
                 </p>
               </div>
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
+          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6">
             <h2 className="type-card-title">{t("pages.profile.scoreHistoryTitle")}</h2>
             <p className="type-meta mt-1 text-guinness-tan/70">
               {t("pages.profile.scoreHistoryBlurb")}
             </p>
-            <div className="mt-4 rounded-xl border border-[#322914] bg-guinness-black/40 p-4">
+            <div className="mt-4 rounded-xl border border-[#322914] bg-guinness-black/40 p-3 sm:p-4">
               <svg viewBox="0 0 100 100" className="h-44 w-full" role="img" aria-label="score trend chart">
                 <line x1="0" y1="100" x2="100" y2="100" stroke="rgba(213,178,99,0.25)" strokeWidth="1" />
                 <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(213,178,99,0.18)" strokeWidth="1" />
@@ -359,6 +405,25 @@ export default function ProfileProgressPage() {
                   />
                 ) : null}
               </svg>
+            </div>
+            <div className="mt-4 rounded-xl border border-[#322914] bg-guinness-black/30 p-3">
+              <p className="type-meta text-guinness-tan/65">
+                {t("pages.profile.scoreDistributionTitle")}
+              </p>
+              <div className="mt-2 space-y-2">
+                {scoreBuckets.map((bucket) => (
+                  <div key={bucket.key} className="grid grid-cols-[2.5rem_minmax(0,1fr)_2rem] items-center gap-2">
+                    <span className="text-xs tabular-nums text-guinness-tan/80">{bucket.key}</span>
+                    <div className="h-2.5 overflow-hidden rounded-full border border-[#322914] bg-guinness-black/50">
+                      <div
+                        className="h-full rounded-full bg-guinness-gold"
+                        style={{ width: `${Math.max(6, (bucket.count / maxBucket) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs tabular-nums text-guinness-tan/80">{bucket.count}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
 

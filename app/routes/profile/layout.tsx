@@ -24,6 +24,7 @@ import {
   rememberPathBeforeGoogleOAuth,
 } from "~/utils/post-oauth-return";
 import { ProfilePageProvider } from "./profile-context";
+import type { StreakSnapshot } from "./profile-context";
 import type { ProfileLayoutOutletContext } from "./route-outlet-context";
 import {
   SegmentedTabsNav,
@@ -194,6 +195,10 @@ export default function ProfileLayout() {
   const [progressRange, setProgressRange] = useState<ProgressRange>("30d");
   const [comparisonScores, setComparisonScores] = useState<ComparisonScoreRow[]>([]);
   const [comparisonLabels, setComparisonLabels] = useState<Record<string, string>>({});
+  const [persistedAchievementCodes, setPersistedAchievementCodes] = useState<string[]>(
+    [],
+  );
+  const [streakSnapshot, setStreakSnapshot] = useState<StreakSnapshot | null>(null);
 
   const progressStats = useMemo(() => {
     if (scores.length === 0) {
@@ -411,6 +416,42 @@ export default function ProfileLayout() {
         setScores([]);
       }
 
+      const { data: achRows, error: achErr } = await supabase
+        .from("user_achievements")
+        .select("code")
+        .eq("user_id", u.id);
+      if (!achErr) {
+        setPersistedAchievementCodes(
+          (achRows ?? [])
+            .map((r) => String((r as { code?: string }).code ?? "").trim())
+            .filter(Boolean),
+        );
+      } else {
+        setPersistedAchievementCodes([]);
+      }
+
+      const { data: streakRow, error: streakErr } = await supabase
+        .from("user_streak_snapshots")
+        .select("daily_streak, weekly_streak, weekend_streak, last_computed_at")
+        .eq("user_id", u.id)
+        .maybeSingle();
+      if (!streakErr && streakRow) {
+        const r = streakRow as {
+          daily_streak?: number | null;
+          weekly_streak?: number | null;
+          weekend_streak?: number | null;
+          last_computed_at?: string | null;
+        };
+        setStreakSnapshot({
+          daily: Number(r.daily_streak ?? 0),
+          weekly: Number(r.weekly_streak ?? 0),
+          weekend: Number(r.weekend_streak ?? 0),
+          updatedAt: r.last_computed_at ?? null,
+        });
+      } else {
+        setStreakSnapshot(null);
+      }
+
       if (options.includeFavorites) {
         const { data: favRows, error: favErr } = await supabase
           .from("user_favorite_bars")
@@ -559,6 +600,8 @@ export default function ProfileLayout() {
           setFriends([]);
           setComparisonScores([]);
           setComparisonLabels({});
+          setPersistedAchievementCodes([]);
+          setStreakSnapshot(null);
         }
       });
       unsubscribe = () => sub.subscription.unsubscribe();
@@ -607,6 +650,8 @@ export default function ProfileLayout() {
     setFriends([]);
     setComparisonScores([]);
     setComparisonLabels({});
+    setPersistedAchievementCodes([]);
+    setStreakSnapshot(null);
     setFullName("");
     setNickname("");
     setCountryCode("");
@@ -1132,6 +1177,8 @@ export default function ProfileLayout() {
                 cancelOutgoingFriendRequest,
                 removeFriendship,
                 allTimeFriendStatsByEmail,
+                persistedAchievementCodes,
+                streakSnapshot,
                 inputClass,
               }}
             >

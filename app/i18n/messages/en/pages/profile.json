@@ -175,9 +175,12 @@
   "gamificationBlurb": "Unlock badges by pouring consistently and exploring more pubs.",
   "badgePerfect": "Perfect Score",
   "badgePints10": "10 Pints Poured",
+  "badgePints25": "25 Pints Poured",
   "badgePubCrawler": "Pub Crawler (5 pubs)",
   "badgeEarlyBird": "Early Bird (before 5 PM)",
   "badgeWeekendStreak": "Weekend Warrior (3 weekends)",
+  "badgeDailyStreak7": "7-Day Streak",
+  "badgeEliteAverage": "Elite Average (10 pours, 4.3+ avg)",
   "badgeUnlocked": "Unlocked",
   "badgeLocked": "Locked",
   "analyticsTitle": "Detailed stats",
@@ -188,5 +191,6 @@
   "analyticsStreaks": "Streaks",
   "analyticsStreakValues": "{day}d daily · {week}w weekly · {weekend} weekends",
   "scoreHistoryTitle": "Score history",
-  "scoreHistoryBlurb": "Recent trend of your pour scores (latest on the right)."
+  "scoreHistoryBlurb": "Recent trend of your pour scores (latest on the right).",
+  "scoreDistributionTitle": "Score distribution"
 }

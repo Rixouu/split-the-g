@@ -20,6 +20,13 @@ export type ProgressStats = {
   totalSpend: number;
 };
 
+export type StreakSnapshot = {
+  daily: number;
+  weekly: number;
+  weekend: number;
+  updatedAt: string | null;
+};
+
 export type ProfileOutletContextValue = {
   user: User;
   scores: ScoreSummary[];
@@ -49,6 +56,8 @@ export type ProfileOutletContextValue = {
   cancelOutgoingFriendRequest: (row: FriendRequestRow) => Promise<void>;
   removeFriendship: (f: UserFriendRow) => Promise<void>;
   allTimeFriendStatsByEmail: Record<string, FriendLeaderboardEntry>;
+  persistedAchievementCodes: string[];
+  streakSnapshot: StreakSnapshot | null;
   inputClass: string;
 };
 
