@@ -22,5 +22,10 @@
   "drawerClose": "Fermer",
   "drawerReadOn": "Lire l'article sur {source}",
   "drawerExternal": "S'ouvre dans un nouvel onglet chez l'éditeur",
-  "drawerNoSummary": "Aucun aperçu disponible. Appuyez ci-dessous pour lire l'article complet."
+  "drawerNoSummary": "Aucun aperçu disponible. Appuyez ci-dessous pour lire l'article complet.",
+  "advertiseBannerAria": "Bannière publicitaire sur le fil Split the G",
+  "advertiseBannerSlotLabel": "Espace pub",
+  "advertiseBannerTitle": "Bannières publicitaires",
+  "advertiseBannerBody": "Touchez les buveurs qui font défiler le fil. Demandez emplacements, formats et tarifs.",
+  "advertiseBannerCta": "Contact"
 }

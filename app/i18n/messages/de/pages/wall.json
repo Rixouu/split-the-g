@@ -31,5 +31,10 @@
   "datePickerAria": "Wählen Sie den Datumsbereich",
   "clearRange": "Klares Sortiment",
   "done": "Erledigt",
-  "pourImageAlt": "Gießen von {username}"
+  "pourImageAlt": "Gießen von {username}",
+  "advertiseBannerAria": "Banner-Werbung auf der Wall",
+  "advertiseBannerSlotLabel": "Werbefläche",
+  "advertiseBannerTitle": "Banner-Werbung",
+  "advertiseBannerBody": "Erreichen Sie Gießer auf der Wall. Fragen Sie nach Formaten, Plätzen und Konditionen.",
+  "advertiseBannerCta": "Kontakt"
 }

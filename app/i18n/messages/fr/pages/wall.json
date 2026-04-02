@@ -31,5 +31,10 @@
   "datePickerAria": "Choisir une plage de dates",
   "clearRange": "Plage claire",
   "done": "Fait",
-  "pourImageAlt": "Verser avant {username}"
+  "pourImageAlt": "Verser avant {username}",
+  "advertiseBannerAria": "Bannière publicitaire sur le mur",
+  "advertiseBannerSlotLabel": "Espace pub",
+  "advertiseBannerTitle": "Bannières publicitaires",
+  "advertiseBannerBody": "Touchez les buveurs qui parcourent le mur. Demandez emplacements, formats et tarifs.",
+  "advertiseBannerCta": "Contact"
 }

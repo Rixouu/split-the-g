@@ -136,5 +136,10 @@
   "locationLabel": "Emplacement",
   "locationOptional": "(facultatif)",
   "locationHint": "Recherchez avec Google Maps. La sélection d'un résultat remplit le nom et l'adresse du lieu. Vous pouvez également saisir un nom et confirmer avec \"Utiliser ce nom\".",
-  "mapPreviewTitle": "Aperçu du lieu de la compétition"
+  "mapPreviewTitle": "Aperçu du lieu de la compétition",
+  "advertiseBannerAria": "Bannière publicitaire sur la page compétitions",
+  "advertiseBannerSlotLabel": "Espace pub",
+  "advertiseBannerTitle": "Bannières publicitaires",
+  "advertiseBannerBody": "Associez votre marque aux compétitions de la communauté. Demandez emplacements, formats et tarifs.",
+  "advertiseBannerCta": "Contact"
 }

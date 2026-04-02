@@ -31,5 +31,10 @@
   "datePickerAria": "เลือกช่วงวันที่",
   "clearRange": "เคลียร์ช่วง",
   "done": "เสร็จแล้ว",
-  "pourImageAlt": "เทโดย {username}"
+  "pourImageAlt": "เทโดย {username}",
+  "advertiseBannerAria": "โฆษณาแบนเนอร์บนกำแพง",
+  "advertiseBannerSlotLabel": "พื้นที่โฆษณา",
+  "advertiseBannerTitle": "โฆษณาแบนเนอร์",
+  "advertiseBannerBody": "เข้าถึงคนที่เทขณะดูกำแพง สอบถามตำแหน่ง รูปแบบ และราคา",
+  "advertiseBannerCta": "ติดต่อ"
 }

@@ -22,5 +22,10 @@
   "drawerClose": "Close",
   "drawerReadOn": "Read full article on {source}",
   "drawerExternal": "Opens in a new tab at the publisher's site",
-  "drawerNoSummary": "No preview available. Tap below to read the full article."
+  "drawerNoSummary": "No preview available. Tap below to read the full article.",
+  "advertiseBannerAria": "Banner advertising on the Split the G feed",
+  "advertiseBannerSlotLabel": "Ad space",
+  "advertiseBannerTitle": "Banner ads",
+  "advertiseBannerBody": "Reach pourers scrolling the feed. Ask about placements, formats, and rates.",
+  "advertiseBannerCta": "Contact"
 }

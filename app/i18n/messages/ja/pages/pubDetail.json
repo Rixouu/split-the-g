@@ -136,5 +136,10 @@
   "wallIntro": "このパブでタグ付けされた注ぐ — メインの壁と同じフィルター。最新の {limit} 件まで表示されます。",
   "loadingWall": "壁を読み込み中…",
   "hoursEmptyPublic": "リンクされたリストの営業時間はまだありません。 Google プレイス ID を追加するか、管理者インポートを使用します。訪問者は、利用可能な場合はビジネス リスティングから営業時間を確認できます。",
-  "hoursLoadingDeferred": "ライブ リスティング時間を読み込み中…"
+  "hoursLoadingDeferred": "ライブ リスティング時間を読み込み中…",
+  "advertiseBannerAria": "Split the G のバナー広告",
+  "advertiseBannerSlotLabel": "広告枠",
+  "advertiseBannerTitle": "バナー広告",
+  "advertiseBannerBody": "ブランドや店舗を注ぐユーザーに届けます。掲載位置・フォーマット・料金はお問い合わせください。",
+  "advertiseBannerCta": "連絡"
 }

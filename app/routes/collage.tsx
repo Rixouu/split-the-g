@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { AppLink } from "~/i18n/app-link";
 import { useLayoutEffect, useMemo, useState } from "react";
 import { supabase } from "~/utils/supabase";
+import { AdSlotBanner } from "~/components/ad-slot-banner";
 import {
   PageHeader,
   EndPageNewPourFooter,
@@ -289,6 +290,15 @@ export default function Collage() {
               </label>
             </div>
           </div>
+
+          <AdSlotBanner
+            ariaLabel={t("pages.wall.advertiseBannerAria")}
+            slotLabel={t("pages.wall.advertiseBannerSlotLabel")}
+            title={t("pages.wall.advertiseBannerTitle")}
+            body={t("pages.wall.advertiseBannerBody")}
+            ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20wall%20advertising"
+            ctaLabel={t("pages.wall.advertiseBannerCta")}
+          />
         </div>
 
         {filtered.length === 0 ? (

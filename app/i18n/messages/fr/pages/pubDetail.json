@@ -136,5 +136,10 @@
   "wallIntro": "Verses étiquetées avec ce pub — mêmes filtres que le mur principal. Affichage jusqu'à {limit} le plus récent.",
   "loadingWall": "Mur de chargement…",
   "hoursEmptyPublic": "Pas encore d'heures d'inscription liées. Ajoutez un identifiant de lieu Google ou utilisez l'importation administrateur : les visiteurs voient les heures d'ouverture de la fiche d'entreprise lorsqu'elles sont disponibles.",
-  "hoursLoadingDeferred": "Chargement des heures d'ouverture des annonces en direct…"
+  "hoursLoadingDeferred": "Chargement des heures d'ouverture des annonces en direct…",
+  "advertiseBannerAria": "Publicité bannière sur Split the G",
+  "advertiseBannerSlotLabel": "Espace pub",
+  "advertiseBannerTitle": "Bannières publicitaires",
+  "advertiseBannerBody": "Exposez marque ou établissement aux buveurs. Demandez les emplacements, formats et tarifs.",
+  "advertiseBannerCta": "Contact"
 }

@@ -32,5 +32,10 @@
   "cardOutOfFive": "/ 5",
   "cardRatingDotOne": "· 1 calificación",
   "cardRatingDotMany": "· {count} calificaciones",
-  "cardNoRatingsYet": "Aún no hay valoraciones"
+  "cardNoRatingsYet": "Aún no hay valoraciones",
+  "advertiseBannerAria": "Promociona tu bar en el directorio",
+  "advertiseBannerSlotLabel": "Espacio publicitario",
+  "advertiseBannerTitle": "¿Quieres que tu bar aparezca aquí?",
+  "advertiseBannerBody": "Anuncia tu local o pregunta por un destacado. Ayudamos a quienes vierten a encontrarte.",
+  "advertiseBannerCta": "Contacto"
 }

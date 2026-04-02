@@ -32,5 +32,10 @@
   "cardOutOfFive": "/ 5",
   "cardRatingDotOne": "· 1 คะแนน",
   "cardRatingDotMany": "· {count} การให้คะแนน",
-  "cardNoRatingsYet": "ยังไม่มีการให้คะแนน"
+  "cardNoRatingsYet": "ยังไม่มีการให้คะแนน",
+  "advertiseBannerAria": "โปรโมตบาร์ในรายชื่อ",
+  "advertiseBannerSlotLabel": "พื้นที่โฆษณา",
+  "advertiseBannerTitle": "อยากให้บาร์ของคุณอยู่ที่นี่ไหม?",
+  "advertiseBannerBody": "ลงโฆษณาสถานที่ของคุณ หรือสอบถามการขึ้นหน้า เราช่วยให้คนที่เทเจอคุณได้ง่ายขึ้น",
+  "advertiseBannerCta": "ติดต่อ"
 }

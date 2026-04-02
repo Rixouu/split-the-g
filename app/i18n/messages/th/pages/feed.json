@@ -22,5 +22,10 @@
   "drawerClose": "ปิด",
   "drawerReadOn": "อ่านบทความเต็มที่ {source}",
   "drawerExternal": "เปิดในแท็บใหม่ที่เว็บไซต์สำนักข่าว",
-  "drawerNoSummary": "ไม่มีตัวอย่าง แตะด้านล่างเพื่ออ่านบทความฉบับเต็ม"
+  "drawerNoSummary": "ไม่มีตัวอย่าง แตะด้านล่างเพื่ออ่านบทความฉบับเต็ม",
+  "advertiseBannerAria": "โฆษณาแบนเนอร์บนฟีด Split the G",
+  "advertiseBannerSlotLabel": "พื้นที่โฆษณา",
+  "advertiseBannerTitle": "โฆษณาแบนเนอร์",
+  "advertiseBannerBody": "เข้าถึงคนที่เทขณะเลื่อนฟีด สอบถามตำแหน่ง รูปแบบ และราคา",
+  "advertiseBannerCta": "ติดต่อ"
 }

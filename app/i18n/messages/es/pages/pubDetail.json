@@ -136,5 +136,10 @@
   "wallIntro": "Vertidos etiquetados con este pub: los mismos filtros que el muro principal. Mostrando hasta {limit} más reciente.",
   "loadingWall": "Cargando muro…",
   "hoursEmptyPublic": "Aún no hay horarios de listado vinculados. Agregue un ID de lugar Google o utilice la importación de administrador: los visitantes ven las horas de la lista de empresas cuando estén disponibles.",
-  "hoursLoadingDeferred": "Cargando horas de listado en vivo..."
+  "hoursLoadingDeferred": "Cargando horas de listado en vivo...",
+  "advertiseBannerAria": "Publicidad display en Split the G",
+  "advertiseBannerSlotLabel": "Espacio publicitario",
+  "advertiseBannerTitle": "Anuncios banner",
+  "advertiseBannerBody": "Muestra tu marca o bar a quienes vierten. Consulta ubicaciones, formatos y tarifas.",
+  "advertiseBannerCta": "Contacto"
 }

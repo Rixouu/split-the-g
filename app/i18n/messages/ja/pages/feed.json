@@ -22,5 +22,10 @@
   "drawerClose": "閉じる",
   "drawerReadOn": "{source} で記事を読む",
   "drawerExternal": "発行元サイトの新しいタブで開きます",
-  "drawerNoSummary": "プレビューはありません。下をタップして記事全文をお読みください。"
+  "drawerNoSummary": "プレビューはありません。下をタップして記事全文をお読みください。",
+  "advertiseBannerAria": "Split the G フィードのバナー広告",
+  "advertiseBannerSlotLabel": "広告枠",
+  "advertiseBannerTitle": "バナー広告",
+  "advertiseBannerBody": "フィードを見るユーザーに届けます。掲載位置・フォーマット・料金はお問い合わせください。",
+  "advertiseBannerCta": "連絡"
 }

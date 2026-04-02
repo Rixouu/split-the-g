@@ -22,5 +22,10 @@
   "drawerClose": "Schließen",
   "drawerReadOn": "Vollständigen Artikel auf {source} lesen",
   "drawerExternal": "Öffnet in einem neuen Tab beim Verlag",
-  "drawerNoSummary": "Keine Vorschau verfügbar. Tippen, um den vollständigen Artikel zu lesen."
+  "drawerNoSummary": "Keine Vorschau verfügbar. Tippen, um den vollständigen Artikel zu lesen.",
+  "advertiseBannerAria": "Banner-Werbung im Split-the-G-Feed",
+  "advertiseBannerSlotLabel": "Werbefläche",
+  "advertiseBannerTitle": "Banner-Werbung",
+  "advertiseBannerBody": "Erreichen Sie Gießer im Feed. Fragen Sie nach Formaten, Plätzen und Konditionen.",
+  "advertiseBannerCta": "Kontakt"
 }

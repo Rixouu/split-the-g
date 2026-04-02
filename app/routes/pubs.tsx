@@ -27,6 +27,7 @@ import {
   pubVenueCardActionOutlineClass,
   pubVenueCardActionSavedClass,
 } from "~/components/pub-venue-card";
+import { AdSlotBanner } from "~/components/ad-slot-banner";
 import { supabase } from "~/utils/supabase";
 
 export type BarStat = {
@@ -397,6 +398,16 @@ export default function Pubs() {
             </label>
           </div>
         </div>
+
+        <AdSlotBanner
+          className="mb-6"
+          ariaLabel={t("pages.pubs.advertiseBannerAria")}
+          slotLabel={t("pages.pubs.advertiseBannerSlotLabel")}
+          title={t("pages.pubs.advertiseBannerTitle")}
+          body={t("pages.pubs.advertiseBannerBody")}
+          ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20pub%20directory"
+          ctaLabel={t("pages.pubs.advertiseBannerCta")}
+        />
 
         {favMessage ? (
           <p className="type-meta mb-4 text-center text-red-400/90">

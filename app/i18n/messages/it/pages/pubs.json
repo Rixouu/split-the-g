@@ -32,5 +32,10 @@
   "cardOutOfFive": "/5",
   "cardRatingDotOne": "· 1 valutazione",
   "cardRatingDotMany": "· {count} valutazioni",
-  "cardNoRatingsYet": "Nessuna valutazione ancora"
+  "cardNoRatingsYet": "Nessuna valutazione ancora",
+  "advertiseBannerAria": "Promuovi il tuo pub nell’elenco",
+  "advertiseBannerSlotLabel": "Spazio pubblicità",
+  "advertiseBannerTitle": "Vuoi il tuo pub qui?",
+  "advertiseBannerBody": "Pubblicizza la tua location o chiedi una scheda in evidenza. Aiutiamo chi versa a trovarti.",
+  "advertiseBannerCta": "Contatto"
 }

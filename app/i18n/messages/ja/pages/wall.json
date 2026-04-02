@@ -31,5 +31,10 @@
   "datePickerAria": "日付範囲を選択してください",
   "clearRange": "クリアレンジ",
   "done": "終わり",
-  "pourImageAlt": "{username} によって注ぐ"
+  "pourImageAlt": "{username} によって注ぐ",
+  "advertiseBannerAria": "ウォールのバナー広告",
+  "advertiseBannerSlotLabel": "広告枠",
+  "advertiseBannerTitle": "バナー広告",
+  "advertiseBannerBody": "ウォールを見るユーザーに届けます。掲載位置・フォーマット・料金はお問い合わせください。",
+  "advertiseBannerCta": "連絡"
 }

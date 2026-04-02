@@ -136,5 +136,10 @@
   "locationLabel": "位置",
   "locationOptional": "(オプション)",
   "locationHint": "Google マップで検索します。結果を選択すると、会場名と住所が入力されます。名前を入力し、「この名前を使用する」で確定することもできます。",
-  "mapPreviewTitle": "競技会場のプレビュー"
+  "mapPreviewTitle": "競技会場のプレビュー",
+  "advertiseBannerAria": "コンペページのバナー広告",
+  "advertiseBannerSlotLabel": "広告枠",
+  "advertiseBannerTitle": "バナー広告",
+  "advertiseBannerBody": "コミュニティのコンペと一緒にブランドを見せましょう。掲載位置・フォーマット・料金はお問い合わせください。",
+  "advertiseBannerCta": "連絡"
 }

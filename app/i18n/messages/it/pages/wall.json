@@ -31,5 +31,10 @@
   "datePickerAria": "Scegli l'intervallo di date",
   "clearRange": "Gamma chiara",
   "done": "Fatto",
-  "pourImageAlt": "Versare entro {username}"
+  "pourImageAlt": "Versare entro {username}",
+  "advertiseBannerAria": "Banner pubblicitario sul muro",
+  "advertiseBannerSlotLabel": "Spazio pubblicità",
+  "advertiseBannerTitle": "Banner pubblicitari",
+  "advertiseBannerBody": "Raggiungi chi versa sul muro. Chiedi posizionamenti, formati e tariffe.",
+  "advertiseBannerCta": "Contatto"
 }

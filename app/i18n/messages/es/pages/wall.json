@@ -31,5 +31,10 @@
   "datePickerAria": "Elige rango de fechas",
   "clearRange": "Borrar rango",
   "done": "Hecho",
-  "pourImageAlt": "Vierta por {username}"
+  "pourImageAlt": "Vierta por {username}",
+  "advertiseBannerAria": "Publicidad banner en el muro",
+  "advertiseBannerSlotLabel": "Espacio publicitario",
+  "advertiseBannerTitle": "Anuncios banner",
+  "advertiseBannerBody": "Llega a quienes vierten en el muro. Consulta ubicaciones, formatos y tarifas.",
+  "advertiseBannerCta": "Contacto"
 }

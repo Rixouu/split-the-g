@@ -136,5 +136,10 @@
   "locationLabel": "Standort",
   "locationOptional": "(freiwillig)",
   "locationHint": "Suchen Sie mit Google Maps. Wenn Sie ein Ergebnis auswählen, werden Name und Adresse des Veranstaltungsorts eingetragen. Sie können auch einen Namen eingeben und mit „Diesen Namen verwenden“ bestätigen.",
-  "mapPreviewTitle": "Vorschau auf den Wettbewerbsort"
+  "mapPreviewTitle": "Vorschau auf den Wettbewerbsort",
+  "advertiseBannerAria": "Banner-Werbung auf der Wettkampfseite",
+  "advertiseBannerSlotLabel": "Werbefläche",
+  "advertiseBannerTitle": "Banner-Werbung",
+  "advertiseBannerBody": "Positionieren Sie Ihre Marke neben Community-Wettbewerben. Fragen Sie nach Formaten, Plätzen und Konditionen.",
+  "advertiseBannerCta": "Kontakt"
 }

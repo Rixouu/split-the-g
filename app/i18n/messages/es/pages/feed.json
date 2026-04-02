@@ -22,5 +22,10 @@
   "drawerClose": "Cerrar",
   "drawerReadOn": "Leer artículo en {source}",
   "drawerExternal": "Se abre en una pestaña nueva en el sitio del editor",
-  "drawerNoSummary": "No hay vista previa. Toca abajo para leer el artículo completo."
+  "drawerNoSummary": "No hay vista previa. Toca abajo para leer el artículo completo.",
+  "advertiseBannerAria": "Publicidad banner en el feed de Split the G",
+  "advertiseBannerSlotLabel": "Espacio publicitario",
+  "advertiseBannerTitle": "Anuncios banner",
+  "advertiseBannerBody": "Llega a quienes vierten en el feed. Consulta ubicaciones, formatos y tarifas.",
+  "advertiseBannerCta": "Contacto"
 }

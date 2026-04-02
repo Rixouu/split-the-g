@@ -136,5 +136,10 @@
   "wallIntro": "Versa contrassegnati con questo pub: stessi filtri del muro principale. Visualizzazione fino a {limit} più recente.",
   "loadingWall": "Caricamento muro...",
   "hoursEmptyPublic": "Nessun orario di inserzione collegato ancora. Aggiungi un ID luogo Google o utilizza l'importazione amministrativa: i visitatori visualizzano gli orari dalla scheda dell'attività commerciale, quando disponibili.",
-  "hoursLoadingDeferred": "Caricamento degli orari dell'elenco in tempo reale..."
+  "hoursLoadingDeferred": "Caricamento degli orari dell'elenco in tempo reale...",
+  "advertiseBannerAria": "Banner pubblicitari su Split the G",
+  "advertiseBannerSlotLabel": "Spazio pubblicità",
+  "advertiseBannerTitle": "Banner pubblicitari",
+  "advertiseBannerBody": "Mostra brand o locale a chi versa. Chiedi posizionamenti, formati e tariffe.",
+  "advertiseBannerCta": "Contatto"
 }

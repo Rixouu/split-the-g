@@ -32,5 +32,10 @@
   "cardOutOfFive": "/ 5",
   "cardRatingDotOne": "· 1 Bewertung",
   "cardRatingDotMany": "· {count} Bewertungen",
-  "cardNoRatingsYet": "Noch keine Bewertungen"
+  "cardNoRatingsYet": "Noch keine Bewertungen",
+  "advertiseBannerAria": "Bar im Verzeichnis bewerben",
+  "advertiseBannerSlotLabel": "Werbefläche",
+  "advertiseBannerTitle": "Ihre Bar soll hier stehen?",
+  "advertiseBannerBody": "Werben Sie mit Ihrer Bar oder fragen Sie nach einem Featured-Eintrag. Wir helfen Gießern, Sie zu finden.",
+  "advertiseBannerCta": "Kontakt"
 }

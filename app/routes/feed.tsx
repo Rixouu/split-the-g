@@ -5,6 +5,7 @@ import { AppLink } from "~/i18n/app-link";
 import type { LoaderFunctionArgs } from "react-router";
 import { FeedNewsDrawer } from "~/components/feed/FeedNewsDrawer";
 import { FeedSocialRail } from "~/components/feed/FeedSocialRail";
+import { AdSlotBanner } from "~/components/ad-slot-banner";
 import {
   PageHeader,
   pageHeaderActionButtonClass,
@@ -298,6 +299,16 @@ export default function Feed() {
         <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-8 xl:grid-cols-[1fr_360px]">
           {/* ─── main feed column ─── */}
           <div>
+            <AdSlotBanner
+              className="mb-4"
+              ariaLabel={t("pages.feed.advertiseBannerAria")}
+              slotLabel={t("pages.feed.advertiseBannerSlotLabel")}
+              title={t("pages.feed.advertiseBannerTitle")}
+              body={t("pages.feed.advertiseBannerBody")}
+              ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20feed%20advertising"
+              ctaLabel={t("pages.feed.advertiseBannerCta")}
+            />
+
             <h2 className="type-card-title mb-4">
               {t("pages.feed.poursSectionTitle")}
             </h2>
@@ -418,7 +429,7 @@ export default function Feed() {
 
 function PourCardWithInlineNews({
   row,
-  idx,
+  idx: _idx,
   noImageLabel,
   inlineItem,
   onNewsClick,

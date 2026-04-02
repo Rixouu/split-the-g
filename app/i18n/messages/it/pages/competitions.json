@@ -136,5 +136,10 @@
   "locationLabel": "Posizione",
   "locationOptional": "(opzionale)",
   "locationHint": "Cerca con Google Maps. La selezione di un risultato inserisce il nome e l'indirizzo della sede. Puoi anche digitare un nome e confermare con \"Utilizza questo nome\".",
-  "mapPreviewTitle": "Anteprima della sede del concorso"
+  "mapPreviewTitle": "Anteprima della sede del concorso",
+  "advertiseBannerAria": "Banner pubblicitari nella pagina competizioni",
+  "advertiseBannerSlotLabel": "Spazio pubblicità",
+  "advertiseBannerTitle": "Banner pubblicitari",
+  "advertiseBannerBody": "Allinea il brand alle competizioni della community. Chiedi posizionamenti, formati e tariffe.",
+  "advertiseBannerCta": "Contatto"
 }

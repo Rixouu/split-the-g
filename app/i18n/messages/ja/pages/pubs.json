@@ -32,5 +32,10 @@
   "cardOutOfFive": "/5",
   "cardRatingDotOne": "· 1 件の評価",
   "cardRatingDotMany": "· {count} 評価",
-  "cardNoRatingsYet": "まだ評価がありません"
+  "cardNoRatingsYet": "まだ評価がありません",
+  "advertiseBannerAria": "バーを掲載する案内",
+  "advertiseBannerSlotLabel": "広告枠",
+  "advertiseBannerTitle": "お店をここに掲載しませんか？",
+  "advertiseBannerBody": "バー PR やピックアップ掲載についてお問い合わせください。注ぐ人がお店を見つけやすくなります。",
+  "advertiseBannerCta": "連絡"
 }

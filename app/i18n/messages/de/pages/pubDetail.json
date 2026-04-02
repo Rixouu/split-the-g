@@ -136,5 +136,10 @@
   "wallIntro": "Mit diesem Pub getaggte Güsse – dieselben Filter wie die Hauptwand. Wird bis zum {limit} zuletzt angezeigt.",
   "loadingWall": "Ladewand...",
   "hoursEmptyPublic": "Noch keine verknüpften Öffnungszeiten. Fügen Sie eine Google-Orts-ID hinzu oder verwenden Sie den Admin-Import – Besucher sehen Öffnungszeiten aus dem Brancheneintrag, sofern verfügbar.",
-  "hoursLoadingDeferred": "Öffnungszeiten des Live-Eintrags werden geladen…"
+  "hoursLoadingDeferred": "Öffnungszeiten des Live-Eintrags werden geladen…",
+  "advertiseBannerAria": "Banner-Werbung bei Split the G",
+  "advertiseBannerSlotLabel": "Werbefläche",
+  "advertiseBannerTitle": "Banner-Werbung",
+  "advertiseBannerBody": "Platzieren Sie Marke oder Lokal vor Gießern. Fragen Sie nach Formaten, Plätzen und Konditionen.",
+  "advertiseBannerCta": "Kontakt"
 }

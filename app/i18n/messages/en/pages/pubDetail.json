@@ -136,5 +136,10 @@
   "wallIntro": "Pours tagged with this pub — same filters as the main Wall. Showing up to {limit} most recent.",
   "loadingWall": "Loading wall…",
   "hoursEmptyPublic": "No linked listing hours yet. Add a Google Place ID or use admin import — visitors see hours from the business listing when available.",
-  "hoursLoadingDeferred": "Loading live listing hours…"
+  "hoursLoadingDeferred": "Loading live listing hours…",
+  "advertiseBannerAria": "Banner advertising on Split the G",
+  "advertiseBannerSlotLabel": "Ad space",
+  "advertiseBannerTitle": "Banner ads",
+  "advertiseBannerBody": "Put your brand or venue in front of pourers. Ask about placements, formats, and rates.",
+  "advertiseBannerCta": "Contact"
 }

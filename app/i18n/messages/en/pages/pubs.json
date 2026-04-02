@@ -32,5 +32,10 @@
   "cardOutOfFive": "/ 5",
   "cardRatingDotOne": "· 1 rating",
   "cardRatingDotMany": "· {count} ratings",
-  "cardNoRatingsYet": "No ratings yet"
+  "cardNoRatingsYet": "No ratings yet",
+  "advertiseBannerAria": "Promote your bar in the directory",
+  "advertiseBannerSlotLabel": "Ad space",
+  "advertiseBannerTitle": "Want your bar listed here?",
+  "advertiseBannerBody": "Advertise your venue or ask about a featured listing. We’ll help pourers find you.",
+  "advertiseBannerCta": "Contact"
 }

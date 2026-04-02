@@ -41,6 +41,7 @@ import { createTranslator } from "~/i18n/load-messages";
 import { langFromParams } from "~/i18n/lang-param";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
 import type { loader as pubDetailLoader } from "./pubs.$barKey.loader";
+import { AdSlotBanner } from "~/components/ad-slot-banner";
 import {
   PUB_WALL_PAGE_LIMIT,
   isPubDirectoryAdmin,
@@ -964,6 +965,15 @@ export default function PubDetail() {
                 </div>
               </div>
             </section>
+
+            <AdSlotBanner
+              ariaLabel={t("pages.pubDetail.advertiseBannerAria")}
+              slotLabel={t("pages.pubDetail.advertiseBannerSlotLabel")}
+              title={t("pages.pubDetail.advertiseBannerTitle")}
+              body={t("pages.pubDetail.advertiseBannerBody")}
+              ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20banner%20ads"
+              ctaLabel={t("pages.pubDetail.advertiseBannerCta")}
+            />
 
             <div className={`${pubPanelShell} min-w-0`}>
               <div

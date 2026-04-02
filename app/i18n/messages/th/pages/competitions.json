@@ -136,5 +136,10 @@
   "locationLabel": "ที่ตั้ง",
   "locationOptional": "(ไม่จำเป็น)",
   "locationHint": "ค้นหาด้วยแผนที่ Google การเลือกผลลัพธ์จะกรอกชื่อสถานที่และที่อยู่ คุณยังสามารถพิมพ์ชื่อและยืนยันด้วย \"ใช้ชื่อนี้\"",
-  "mapPreviewTitle": "พรีวิวสถานที่แข่งขัน"
+  "mapPreviewTitle": "พรีวิวสถานที่แข่งขัน",
+  "advertiseBannerAria": "โฆษณาแบนเนอร์ในหน้าการแข่งขัน",
+  "advertiseBannerSlotLabel": "พื้นที่โฆษณา",
+  "advertiseBannerTitle": "โฆษณาแบนเนอร์",
+  "advertiseBannerBody": "ผูกแบรนด์ของคุณกับการแข่งขันของชุมชน สอบถามตำแหน่ง รูปแบบ และราคา",
+  "advertiseBannerCta": "ติดต่อ"
 }

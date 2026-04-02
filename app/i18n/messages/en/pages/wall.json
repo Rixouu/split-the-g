@@ -31,5 +31,10 @@
   "datePickerAria": "Choose date range",
   "clearRange": "Clear range",
   "done": "Done",
-  "pourImageAlt": "Pour by {username}"
+  "pourImageAlt": "Pour by {username}",
+  "advertiseBannerAria": "Banner advertising on the wall",
+  "advertiseBannerSlotLabel": "Ad space",
+  "advertiseBannerTitle": "Banner ads",
+  "advertiseBannerBody": "Reach pourers browsing the wall. Ask about placements, formats, and rates.",
+  "advertiseBannerCta": "Contact"
 }

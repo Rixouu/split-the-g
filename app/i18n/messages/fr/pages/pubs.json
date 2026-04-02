@@ -32,5 +32,10 @@
   "cardOutOfFive": "/ 5",
   "cardRatingDotOne": "· 1 note",
   "cardRatingDotMany": "· Notes {count}",
-  "cardNoRatingsYet": "Aucune note pour l'instant"
+  "cardNoRatingsYet": "Aucune note pour l'instant",
+  "advertiseBannerAria": "Promouvoir votre bar dans l’annuaire",
+  "advertiseBannerSlotLabel": "Espace pub",
+  "advertiseBannerTitle": "Vous voulez votre bar ici ?",
+  "advertiseBannerBody": "Faites la promo de votre établissement ou demandez une mise en avant. Nous aidons les buveurs à vous trouver.",
+  "advertiseBannerCta": "Contact"
 }

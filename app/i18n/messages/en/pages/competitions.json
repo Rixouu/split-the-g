@@ -136,5 +136,10 @@
   "locationLabel": "Location",
   "locationOptional": "(optional)",
   "locationHint": "Search with Google Maps. Picking a result fills venue name and address. You can also type a name and confirm with \"Use this name\".",
-  "mapPreviewTitle": "Competition location preview"
+  "mapPreviewTitle": "Competition location preview",
+  "advertiseBannerAria": "Banner advertising on the competitions page",
+  "advertiseBannerSlotLabel": "Ad space",
+  "advertiseBannerTitle": "Banner ads",
+  "advertiseBannerBody": "Align your brand with community competitions. Ask about placements, formats, and rates.",
+  "advertiseBannerCta": "Contact"
 }

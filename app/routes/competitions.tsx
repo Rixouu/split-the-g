@@ -1,6 +1,7 @@
 import { useLoaderData, useRevalidator } from "react-router";
 import { AppLink } from "~/i18n/app-link";
 import { useEffect, useMemo, useState } from "react";
+import { AdSlotBanner } from "~/components/ad-slot-banner";
 import {
   PageHeader,
   pageHeaderActionButtonClass,
@@ -569,6 +570,16 @@ export default function Competitions() {
             </p>
           </div>
         ) : null}
+
+        <AdSlotBanner
+          className="mb-6"
+          ariaLabel={t("pages.competitions.advertiseBannerAria")}
+          slotLabel={t("pages.competitions.advertiseBannerSlotLabel")}
+          title={t("pages.competitions.advertiseBannerTitle")}
+          body={t("pages.competitions.advertiseBannerBody")}
+          ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20competitions%20advertising"
+          ctaLabel={t("pages.competitions.advertiseBannerCta")}
+        />
 
         <section className="rounded-2xl border border-solid border-guinness-frame bg-gradient-to-b from-guinness-brown/25 to-guinness-black/30 p-4 shadow-inner shadow-black/20 sm:p-6">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

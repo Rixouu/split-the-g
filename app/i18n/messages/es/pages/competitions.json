@@ -136,5 +136,10 @@
   "locationLabel": "Ubicación",
   "locationOptional": "(opcional)",
   "locationHint": "Buscar con Google Mapas. Al elegir un resultado, se completa el nombre y la dirección del lugar. También puedes escribir un nombre y confirmar con \"Usar este nombre\".",
-  "mapPreviewTitle": "Vista previa de la ubicación de la competencia"
+  "mapPreviewTitle": "Vista previa de la ubicación de la competencia",
+  "advertiseBannerAria": "Publicidad banner en la página de competiciones",
+  "advertiseBannerSlotLabel": "Espacio publicitario",
+  "advertiseBannerTitle": "Anuncios banner",
+  "advertiseBannerBody": "Alinea tu marca con las competiciones de la comunidad. Consulta ubicaciones, formatos y tarifas.",
+  "advertiseBannerCta": "Contacto"
 }
