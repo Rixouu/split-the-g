@@ -1,7 +1,14 @@
 import { Outlet, useLocation } from "react-router";
 import { AppLink } from "~/i18n/app-link";
 import type { User } from "@supabase/supabase-js";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   EndPageNewPourFooter,
   PageHeader,
@@ -47,6 +54,7 @@ import {
   type ScoreSummary,
   type UserFriendRow,
 } from "./profile-shared";
+import { AchievementUnlockCelebration } from "./achievement-unlock-celebration";
 import {
   ProfileMobileGuestHub,
   ProfileMobileSignedInHub,
@@ -74,6 +82,7 @@ export default function ProfileLayout() {
       [
         { to: "/profile/account", label: t("pages.profile.navAccount") },
         { to: "/profile/progress", label: t("pages.profile.navProgress") },
+        { to: "/profile/achievements", label: t("pages.profile.navAchievements") },
         { to: "/profile/expenses", label: t("pages.profile.navExpenses") },
         { to: "/profile/scores", label: t("pages.profile.navScores") },
         { to: "/profile/favorites", label: t("pages.profile.navFavorites") },
@@ -182,6 +191,7 @@ export default function ProfileLayout() {
     () => ({
       includeScores:
         profileActiveSection === "/profile/progress" ||
+        profileActiveSection === "/profile/achievements" ||
         profileActiveSection === "/profile/expenses" ||
         profileActiveSection === "/profile/scores",
       includeFavorites:
@@ -198,6 +208,9 @@ export default function ProfileLayout() {
   const [persistedAchievementCodes, setPersistedAchievementCodes] = useState<string[]>(
     [],
   );
+  /** Bumped on each profile load start; `finally` only flips ready if still current. */
+  const profileLoadGeneration = useRef(0);
+  const [profileAchievementsReady, setProfileAchievementsReady] = useState(false);
   const [streakSnapshot, setStreakSnapshot] = useState<StreakSnapshot | null>(null);
 
   const progressStats = useMemo(() => {
@@ -389,6 +402,9 @@ export default function ProfileLayout() {
         includeSocial: boolean;
       }>,
     ) => {
+      const gen = ++profileLoadGeneration.current;
+      setProfileAchievementsReady(false);
+      try {
       const supabase = await getSupabaseBrowserClient();
       const options = { ...activeLoadOptions, ...overrides };
       const email = u.email;
@@ -568,6 +584,11 @@ export default function ProfileLayout() {
         const socialRows = await loadSocial(u);
         await loadFriendComparison(u, socialRows);
       }
+      } finally {
+        if (profileLoadGeneration.current === gen) {
+          setProfileAchievementsReady(true);
+        }
+      }
     },
     [activeLoadOptions, loadFriendComparison, loadSocial, t],
   );
@@ -592,6 +613,8 @@ export default function ProfileLayout() {
         const next = session?.user ?? null;
         setUser(next);
         if (!next) {
+          profileLoadGeneration.current += 1;
+          setProfileAchievementsReady(false);
           setScores([]);
           setFavorites([]);
           setFavoriteStats({});
@@ -1196,6 +1219,8 @@ export default function ProfileLayout() {
                     comparisonLabels={comparisonLabels}
                     incomingFriendRequestCount={incomingRequests.length}
                     outgoingFriendPendingCount={outgoingRequests.length}
+                    persistedAchievementCodes={persistedAchievementCodes}
+                    streakSnapshot={streakSnapshot}
                   />
                 ) : (
                   <nav
@@ -1237,7 +1262,7 @@ export default function ProfileLayout() {
               <SegmentedTabsNav
                 items={profileNavLinkItems}
                 activeValue={profileActiveSection}
-                layoutClassName="hidden md:grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7"
+                layoutClassName="hidden md:grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8"
                 aria-label={t("pages.profile.ariaProfileSections")}
               />
 
@@ -1364,6 +1389,13 @@ export default function ProfileLayout() {
             </ProfilePageProvider>
           </div>
         )}
+
+        <AchievementUnlockCelebration
+          userId={user?.id ?? null}
+          persistedAchievementCodes={persistedAchievementCodes}
+          profileDataReady={profileAchievementsReady && Boolean(user)}
+          showToast={showToast}
+        />
 
         <BrandedToast
           open={Boolean(message)}

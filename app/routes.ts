@@ -33,6 +33,7 @@ export default [
       index("routes/profile/_index.tsx"),
       route("account", "routes/profile/account.tsx"),
       route("progress", "routes/profile/progress.tsx"),
+      route("achievements", "routes/profile/achievements.tsx"),
       route("expenses", "routes/profile/expenses.tsx"),
       route("scores", "routes/profile/scores.tsx"),
       route("favorites", "routes/profile/favorites.tsx"),

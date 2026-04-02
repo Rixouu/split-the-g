@@ -53,6 +53,11 @@
       "description": "Suivez les tendances des scores moyens, les meilleurs versements et la progression de vos amis dans Split the G.",
       "keywords": "diviser la progression | pour les statistiques"
     },
+    "achievements": {
+      "title": "Profile Achievements",
+      "description": "View unlocked badges, tiers, and progress toward every Split the G achievement.",
+      "keywords": "split the g achievements|badges|stickers"
+    },
     "expenses": {
       "title": "Dépenses de profil",
       "description": "Consultez le total des dépenses en pintes et les tendances de prix de vos versements Split the G liés.",

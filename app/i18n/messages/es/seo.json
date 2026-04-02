@@ -53,6 +53,11 @@
       "description": "Realice un seguimiento de las tendencias de puntuación promedio, los mejores vertidos y el progreso de los amigos en Split the G.",
       "keywords": "dividir el progreso g|verter estadísticas"
     },
+    "achievements": {
+      "title": "Profile Achievements",
+      "description": "View unlocked badges, tiers, and progress toward every Split the G achievement.",
+      "keywords": "split the g achievements|badges|stickers"
+    },
     "expenses": {
       "title": "Gastos de perfil",
       "description": "Vea los totales de gasto de pinta y las tendencias de precios de sus Split the G vertidos vinculados.",

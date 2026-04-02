@@ -7,6 +7,8 @@ import { useProfileOutlet } from "./profile-context";
 import {
   pourStreakCalendarDays,
   progressRangeOptions,
+  weekendStreakFromScores,
+  weeklyStreakFromScores,
   type ProgressRange,
 } from "./profile-shared";
 
@@ -23,7 +25,6 @@ export default function ProfileProgressPage() {
     progressRange,
     setProgressRange,
     friendProgressLeaderboard,
-    persistedAchievementCodes,
     streakSnapshot,
   } = useProfileOutlet();
 
@@ -54,131 +55,11 @@ export default function ProfileProgressPage() {
     return bestName ? { name: bestName, count: bestCount } : null;
   })();
 
-  const weeklyStreak = (() => {
-    if (scores.length === 0) return 0;
-    const weekKeys = new Set(
-      scores.map((s) => {
-        const d = new Date(s.created_at);
-        const day = d.getDay();
-        const mondayShift = (day + 6) % 7;
-        const monday = new Date(d);
-        monday.setHours(12, 0, 0, 0);
-        monday.setDate(monday.getDate() - mondayShift);
-        return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
-      }),
-    );
-    const probe = new Date();
-    const day = probe.getDay();
-    const mondayShift = (day + 6) % 7;
-    probe.setHours(12, 0, 0, 0);
-    probe.setDate(probe.getDate() - mondayShift);
-    let streak = 0;
-    for (let i = 0; i < 104; i++) {
-      const key = `${probe.getFullYear()}-${probe.getMonth()}-${probe.getDate()}`;
-      if (weekKeys.has(key)) {
-        streak++;
-        probe.setDate(probe.getDate() - 7);
-      } else {
-        break;
-      }
-    }
-    return streak;
-  })();
-
-  const weekendStreak = (() => {
-    if (scores.length === 0) return 0;
-    const weekendKeys = new Set(
-      scores
-        .filter((s) => {
-          const d = new Date(s.created_at).getDay();
-          return d === 0 || d === 6;
-        })
-        .map((s) => {
-          const d = new Date(s.created_at);
-          const day = d.getDay();
-          const saturdayShift = day === 0 ? 1 : day - 6;
-          const saturday = new Date(d);
-          saturday.setHours(12, 0, 0, 0);
-          saturday.setDate(saturday.getDate() - saturdayShift);
-          return `${saturday.getFullYear()}-${saturday.getMonth()}-${saturday.getDate()}`;
-        }),
-    );
-    const probe = new Date();
-    const pDay = probe.getDay();
-    const saturdayShift = pDay === 0 ? 1 : pDay - 6;
-    probe.setHours(12, 0, 0, 0);
-    probe.setDate(probe.getDate() - saturdayShift);
-    let streak = 0;
-    for (let i = 0; i < 104; i++) {
-      const key = `${probe.getFullYear()}-${probe.getMonth()}-${probe.getDate()}`;
-      if (weekendKeys.has(key)) {
-        streak++;
-        probe.setDate(probe.getDate() - 7);
-      } else {
-        break;
-      }
-    }
-    return streak;
-  })();
-
-  const achievements = [
-    {
-      key: "perfect",
-      label: t("pages.profile.badgePerfect"),
-      unlocked:
-        persistedAchievementCodes.includes("perfect-score") ||
-        scores.some((s) => s.split_score >= 4.95),
-    },
-    {
-      key: "pints10",
-      label: t("pages.profile.badgePints10"),
-      unlocked:
-        persistedAchievementCodes.includes("pints-10") || totalPints >= 10,
-    },
-    {
-      key: "pints25",
-      label: t("pages.profile.badgePints25"),
-      unlocked:
-        persistedAchievementCodes.includes("pints-25") || totalPints >= 25,
-    },
-    {
-      key: "crawler",
-      label: t("pages.profile.badgePubCrawler"),
-      unlocked: persistedAchievementCodes.includes("pub-crawler-5")
-        || new Set(scores.map((s) => s.bar_name?.trim()).filter(Boolean)).size >= 5,
-    },
-    {
-      key: "early",
-      label: t("pages.profile.badgeEarlyBird"),
-      unlocked:
-        persistedAchievementCodes.includes("early-bird")
-        || scores.some((s) => new Date(s.created_at).getHours() < 17),
-    },
-    {
-      key: "weekend",
-      label: t("pages.profile.badgeWeekendStreak"),
-      unlocked:
-        persistedAchievementCodes.includes("weekend-warrior-3") ||
-        weekendStreak >= 3,
-    },
-    {
-      key: "streak7",
-      label: t("pages.profile.badgeDailyStreak7"),
-      unlocked:
-        persistedAchievementCodes.includes("daily-streak-7")
-        || pourStreakCalendarDays(scores) >= 7,
-    },
-    {
-      key: "elite",
-      label: t("pages.profile.badgeEliteAverage"),
-      unlocked:
-        persistedAchievementCodes.includes("elite-average")
-        || (scores.length >= 10 && averageScore >= 4.3),
-    },
-  ];
+  const weekendStreak = weekendStreakFromScores(scores);
 
   const streakDaily = streakSnapshot?.daily ?? pourStreakCalendarDays(scores);
-  const streakWeekly = streakSnapshot?.weekly ?? weeklyStreak;
+  const streakWeekly =
+    streakSnapshot?.weekly ?? weeklyStreakFromScores(scores);
   const streakWeekend = streakSnapshot?.weekend ?? weekendStreak;
 
   const scoreBuckets = [
@@ -327,32 +208,6 @@ export default function ProfileProgressPage() {
               </div>
             </div>
           </div>
-
-          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6">
-            <h2 className="type-card-title">{t("pages.profile.gamificationTitle")}</h2>
-            <p className="type-meta mt-1 text-guinness-tan/70">
-              {t("pages.profile.gamificationBlurb")}
-            </p>
-            <div className="mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
-              {achievements.map((badge) => (
-                <div
-                  key={badge.key}
-                  className={`min-w-[76%] snap-start rounded-xl border px-4 py-3 sm:min-w-0 ${
-                    badge.unlocked
-                      ? "border-guinness-gold/35 bg-guinness-gold/10"
-                      : "border-[#322914] bg-guinness-black/35"
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-guinness-cream">{badge.label}</p>
-                  <p className="type-meta mt-1 text-guinness-tan/70">
-                    {badge.unlocked
-                      ? t("pages.profile.badgeUnlocked")
-                      : t("pages.profile.badgeLocked")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
 
           <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6">
             <h2 className="type-card-title">{t("pages.profile.analyticsTitle")}</h2>

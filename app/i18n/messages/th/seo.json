@@ -53,6 +53,11 @@
       "description": "ติดตามแนวโน้มคะแนนเฉลี่ย การเทที่ดีที่สุด และความคืบหน้าของเพื่อนใน Split the G",
       "keywords": "แยกความคืบหน้า g | เทสถิติ"
     },
+    "achievements": {
+      "title": "Profile Achievements",
+      "description": "View unlocked badges, tiers, and progress toward every Split the G achievement.",
+      "keywords": "split the g achievements|badges|stickers"
+    },
     "expenses": {
       "title": "ค่าใช้จ่ายโปรไฟล์",
       "description": "ดูผลรวมการใช้จ่ายไพนต์และแนวโน้มราคาจากการเท Split the G ที่ลิงก์ไว้",

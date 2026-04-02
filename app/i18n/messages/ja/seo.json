@@ -53,6 +53,11 @@
       "description": "平均スコアの傾向、最高の注ぎ方、友人の進捗状況を Split the G で追跡します。",
       "keywords": "G の進行状況を分割する | 統計を注ぐ"
     },
+    "achievements": {
+      "title": "Profile Achievements",
+      "description": "View unlocked badges, tiers, and progress toward every Split the G achievement.",
+      "keywords": "split the g achievements|badges|stickers"
+    },
     "expenses": {
       "title": "プロフィールの経費",
       "description": "リンクされた Split the G 注ぎから、パイントの支出合計と価格傾向を確認します。",

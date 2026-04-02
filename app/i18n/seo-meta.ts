@@ -22,6 +22,7 @@ const ROUTE_KEYS = [
   "profile",
   "account",
   "progress",
+  "achievements",
   "expenses",
   "scores",
   "favorites",

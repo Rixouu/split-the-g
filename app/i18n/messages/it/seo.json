@@ -53,6 +53,11 @@
       "description": "Tieni traccia delle tendenze del punteggio medio, dei migliori versamenti e dei progressi degli amici in Split the G.",
       "keywords": "dividere i progressi g|versare le statistiche"
     },
+    "achievements": {
+      "title": "Profile Achievements",
+      "description": "View unlocked badges, tiers, and progress toward every Split the G achievement.",
+      "keywords": "split the g achievements|badges|stickers"
+    },
     "expenses": {
       "title": "Spese del profilo",
       "description": "Visualizza la spesa totale della pinta e l'andamento dei prezzi dai tuoi Split the G versati collegati.",

@@ -159,6 +159,81 @@ export function pourStreakCalendarDays(scores: ScoreSummary[]): number {
   return streak;
 }
 
+/**
+ * Consecutive ISO weeks (Mon–Sun) with at least one pour, anchored from the current
+ * week’s Monday backward. Matches progress-page analytics.
+ */
+export function weeklyStreakFromScores(scores: ScoreSummary[]): number {
+  if (scores.length === 0) return 0;
+  const weekKeys = new Set(
+    scores.map((s) => {
+      const d = new Date(s.created_at);
+      const day = d.getDay();
+      const mondayShift = (day + 6) % 7;
+      const monday = new Date(d);
+      monday.setHours(12, 0, 0, 0);
+      monday.setDate(monday.getDate() - mondayShift);
+      return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
+    }),
+  );
+  const probe = new Date();
+  const day = probe.getDay();
+  const mondayShift = (day + 6) % 7;
+  probe.setHours(12, 0, 0, 0);
+  probe.setDate(probe.getDate() - mondayShift);
+  let streak = 0;
+  for (let i = 0; i < 104; i++) {
+    const key = `${probe.getFullYear()}-${probe.getMonth()}-${probe.getDate()}`;
+    if (weekKeys.has(key)) {
+      streak++;
+      probe.setDate(probe.getDate() - 7);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+/**
+ * Consecutive weeks with at least one pour on Sat/Sun (local), anchored from the
+ * current week's Saturday backward. Matches progress-page achievement logic.
+ */
+export function weekendStreakFromScores(scores: ScoreSummary[]): number {
+  if (scores.length === 0) return 0;
+  const weekendKeys = new Set(
+    scores
+      .filter((s) => {
+        const d = new Date(s.created_at).getDay();
+        return d === 0 || d === 6;
+      })
+      .map((s) => {
+        const d = new Date(s.created_at);
+        const day = d.getDay();
+        const saturdayShift = day === 0 ? 1 : day - 6;
+        const saturday = new Date(d);
+        saturday.setHours(12, 0, 0, 0);
+        saturday.setDate(saturday.getDate() - saturdayShift);
+        return `${saturday.getFullYear()}-${saturday.getMonth()}-${saturday.getDate()}`;
+      }),
+  );
+  const probe = new Date();
+  const pDay = probe.getDay();
+  const saturdayShift = pDay === 0 ? 1 : pDay - 6;
+  probe.setHours(12, 0, 0, 0);
+  probe.setDate(probe.getDate() - saturdayShift);
+  let streak = 0;
+  for (let i = 0; i < 104; i++) {
+    const key = `${probe.getFullYear()}-${probe.getMonth()}-${probe.getDate()}`;
+    if (weekendKeys.has(key)) {
+      streak++;
+      probe.setDate(probe.getDate() - 7);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 export function buildFriendLeaderboard(
   rows: ComparisonScoreRow[],
   labels: Record<string, string>,

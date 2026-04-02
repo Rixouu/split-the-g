@@ -1,10 +1,13 @@
 import type { User } from "@supabase/supabase-js";
-import { useEffect, useMemo, useState } from "react";
+import { Trophy } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { AppLink } from "~/i18n/app-link";
 import { useI18n } from "~/i18n/context";
 import type { TranslateFn } from "~/i18n/translate";
 import { homePourButtonClass } from "~/components/PageHeader";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
+import { achievementHubSummaryFromSnapshot } from "./profile-achievements";
+import type { StreakSnapshot } from "./profile-context";
 import {
   buildFriendLeaderboard,
   emailDisplayName,
@@ -147,6 +150,8 @@ interface ProfileMobileSignedInHubProps {
   comparisonLabels: Record<string, string>;
   incomingFriendRequestCount: number;
   outgoingFriendPendingCount: number;
+  persistedAchievementCodes: string[];
+  streakSnapshot: StreakSnapshot | null;
 }
 
 function friendsHubSubtitle(
@@ -189,6 +194,8 @@ export function ProfileMobileSignedInHub({
   comparisonLabels,
   incomingFriendRequestCount,
   outgoingFriendPendingCount,
+  persistedAchievementCodes,
+  streakSnapshot,
 }: ProfileMobileSignedInHubProps) {
   const { t } = useI18n();
   const email = user.email ?? "";
@@ -209,6 +216,16 @@ export function ProfileMobileSignedInHub({
   const totalPoints = scores.reduce((a, s) => a + Number(s.split_score ?? 0), 0);
   const friendCount = acceptedFriends.length;
   const streak = pourStreakCalendarDays(scores);
+
+  const achievementSummary = useMemo(
+    () =>
+      achievementHubSummaryFromSnapshot(
+        scores,
+        persistedAchievementCodes,
+        streakSnapshot,
+      ),
+    [scores, persistedAchievementCodes, streakSnapshot],
+  );
 
   const weekStart = progressRangeStart("7d");
   const weekComparisonRows =
@@ -266,6 +283,16 @@ export function ProfileMobileSignedInHub({
   const avatarPhotoUrl = useMemo(() => oauthProfilePictureUrl(user), [user]);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const showGoogleAvatar = Boolean(avatarPhotoUrl) && !avatarLoadFailed;
+  const tierRingUid = useId();
+  const ringGradientId = `stg-tier-ring-${tierRingUid.replace(/:/g, "")}`;
+  const totalAch = achievementSummary.totalCount;
+  const unlockedAch = achievementSummary.unlockedCount;
+  const ringCirc = 2 * Math.PI * 21;
+  const ringFillRatio =
+    totalAch > 0
+      ? Math.min(1, Math.max(0.06, unlockedAch / totalAch))
+      : 0.1;
+  const ringDash = ringFillRatio * ringCirc;
 
   useEffect(() => {
     setAvatarLoadFailed(false);
@@ -276,27 +303,87 @@ export function ProfileMobileSignedInHub({
       <header className="flex gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div
-            className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 ${MOBILE_PROFILE_STROKE} bg-guinness-brown/45 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.12)]`}
+            className="relative h-[4.25rem] w-[4.25rem] shrink-0"
             aria-hidden
           >
-            {showGoogleAvatar ? (
-              <img
-                key={avatarPhotoUrl}
-                src={avatarPhotoUrl}
-                alt=""
-                width={64}
-                height={64}
-                loading="lazy"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                className="h-full w-full object-cover"
-                onError={() => setAvatarLoadFailed(true)}
+            <svg
+              className="absolute inset-0 h-full w-full -rotate-90"
+              viewBox="0 0 72 72"
+              fill="none"
+              aria-hidden
+            >
+              <defs>
+                <linearGradient
+                  id={ringGradientId}
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
+                  <stop offset="0%" stopColor="rgb(212 175 55)" stopOpacity="0.95" />
+                  <stop offset="55%" stopColor="rgb(245 220 140)" stopOpacity="0.85" />
+                  <stop offset="100%" stopColor="rgb(180 140 50)" stopOpacity="0.75" />
+                </linearGradient>
+              </defs>
+              <circle
+                cx="36"
+                cy="36"
+                r="21"
+                stroke="rgba(42,34,17,0.9)"
+                strokeWidth="4"
+                fill="none"
               />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-guinness-gold/45">
-                <DefaultProfileAvatarIcon className="h-8 w-8" />
+              <circle
+                cx="36"
+                cy="36"
+                r="21"
+                stroke={`url(#${ringGradientId})`}
+                strokeWidth="4"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${ringDash} ${ringCirc}`}
+                className="drop-shadow-[0_0_6px_rgba(212,175,55,0.35)]"
+              />
+            </svg>
+            <div
+              className={`absolute left-1/2 top-1/2 h-[3.15rem] w-[3.15rem] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 ${MOBILE_PROFILE_STROKE} bg-guinness-brown/45 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.12)]`}
+            >
+              {showGoogleAvatar ? (
+                <img
+                  key={avatarPhotoUrl}
+                  src={avatarPhotoUrl}
+                  alt=""
+                  width={64}
+                  height={64}
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                  className="h-full w-full object-cover"
+                  onError={() => setAvatarLoadFailed(true)}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-guinness-gold/45">
+                  <DefaultProfileAvatarIcon className="h-7 w-7" />
+                </div>
+              )}
+            </div>
+            {achievementSummary.unlockedCount > 0 &&
+            achievementSummary.maxTierAmongUnlocked > 0 ? (
+              <div
+                className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex items-center gap-0.5 rounded-full border border-guinness-gold/40 bg-guinness-black/90 px-1 py-0.5 text-guinness-gold shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
+                title={t("pages.profile.mobileHubTierBadgeTitle", {
+                  tier: String(achievementSummary.maxTierAmongUnlocked),
+                })}
+              >
+                <span
+                  className="stg-nav-icon stg-nav-icon--rank h-2.5 w-2.5 shrink-0"
+                  aria-hidden
+                />
+                <span className="text-[9px] font-bold tabular-nums leading-none">
+                  {achievementSummary.maxTierAmongUnlocked}
+                </span>
               </div>
-            )}
+            ) : null}
           </div>
           <div className="min-w-0 flex-1 py-0.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-guinness-gold/55">
@@ -458,6 +545,30 @@ export function ProfileMobileSignedInHub({
                     : t("pages.profile.mobileHubProgressSubNoStreak", {
                         count: pourCount,
                       })}
+                </p>
+              </div>
+              <ChevronRightIcon className="h-5 w-5 shrink-0 text-guinness-gold/70" />
+            </AppLink>
+          </li>
+          <li>
+            <AppLink
+              to="/profile/achievements"
+              prefetch="intent"
+              viewTransition
+              className={rowClass}
+            >
+              <span className={iconWellClass} aria-hidden>
+                <Trophy className="h-5 w-5" strokeWidth={1.75} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-guinness-cream">
+                  {t("pages.profile.navAchievements")}
+                </p>
+                <p className="type-meta text-guinness-tan/60">
+                  {t("pages.profile.mobileHubAchievementsSub", {
+                    unlocked: achievementSummary.unlockedCount,
+                    total: achievementSummary.totalCount,
+                  })}
                 </p>
               </div>
               <ChevronRightIcon className="h-5 w-5 shrink-0 text-guinness-gold/70" />
