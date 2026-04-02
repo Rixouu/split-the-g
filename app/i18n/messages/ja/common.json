@@ -10,5 +10,7 @@
   "tryAgain": "もう一度やり直してください",
   "headsUp": "注意喚起",
   "couldntProcessImage": "その画像を処理できませんでした",
-  "buyCreatorBeer": "制作者にビールをおごる"
+  "buyCreatorBeer": "制作者にビールをおごる",
+  "footerAria": "著作権表示",
+  "footerCopyright": "© {year} Split the G"
 }

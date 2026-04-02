@@ -126,7 +126,7 @@ export default function App() {
           id="root"
           className={
             padForShellNav
-              ? "stg-route-surface min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-0 md:pb-0 md:pt-[3.75rem]"
+              ? "stg-route-surface flex min-h-dvh flex-col pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-0 md:pb-0 md:pt-[3.75rem]"
               : "stg-route-surface min-h-dvh"
           }
         >

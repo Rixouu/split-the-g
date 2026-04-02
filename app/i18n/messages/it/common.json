@@ -10,5 +10,7 @@
   "tryAgain": "Riprova",
   "headsUp": "Dritta",
   "couldntProcessImage": "Impossibile elaborare l'immagine",
-  "buyCreatorBeer": "Offri una birra al creatore"
+  "buyCreatorBeer": "Offri una birra al creatore",
+  "footerAria": "Copyright",
+  "footerCopyright": "© {year} Split the G"
 }

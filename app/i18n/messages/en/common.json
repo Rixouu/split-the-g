@@ -10,5 +10,7 @@
   "tryAgain": "Try Again",
   "headsUp": "Heads up",
   "couldntProcessImage": "Couldn't process that image",
-  "buyCreatorBeer": "Buy the creator a beer"
+  "buyCreatorBeer": "Buy the creator a beer",
+  "footerAria": "Copyright",
+  "footerCopyright": "© {year} Split the G"
 }

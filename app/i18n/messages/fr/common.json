@@ -10,5 +10,7 @@
   "tryAgain": "Essayer à nouveau",
   "headsUp": "Attention",
   "couldntProcessImage": "Impossible de traiter cette image",
-  "buyCreatorBeer": "Offrir une bière au créateur"
+  "buyCreatorBeer": "Offrir une bière au créateur",
+  "footerAria": "Copyright",
+  "footerCopyright": "© {year} Split the G"
 }

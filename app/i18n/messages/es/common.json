@@ -10,5 +10,7 @@
   "tryAgain": "Intentar otra vez",
   "headsUp": "Aviso",
   "couldntProcessImage": "No se pudo procesar esa imagen",
-  "buyCreatorBeer": "Invitar una cerveza al creador"
+  "buyCreatorBeer": "Invitar una cerveza al creador",
+  "footerAria": "Copyright",
+  "footerCopyright": "© {year} Split the G"
 }

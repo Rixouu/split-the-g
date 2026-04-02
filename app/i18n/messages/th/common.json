@@ -10,5 +10,7 @@
   "tryAgain": "ลองอีกครั้ง",
   "headsUp": "เงยหน้าขึ้น",
   "couldntProcessImage": "ไม่สามารถประมวลผลภาพนั้นได้",
-  "buyCreatorBeer": "ซื้อเบียร์ให้ผู้สร้าง"
+  "buyCreatorBeer": "ซื้อเบียร์ให้ผู้สร้าง",
+  "footerAria": "ลิขสิทธิ์",
+  "footerCopyright": "© {year} Split the G"
 }

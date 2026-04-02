@@ -1,3 +1,5 @@
+import { CircleHelp, X } from "lucide-react";
+import { useState } from "react";
 import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { useI18n } from "~/i18n/context";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
@@ -14,6 +16,7 @@ export function meta({ params }: { params: { lang?: string } }) {
 
 export default function ProfileProgressPage() {
   const { t } = useI18n();
+  const [scoreInsightsOpen, setScoreInsightsOpen] = useState(false);
   const {
     scores,
     progressStats,
@@ -31,7 +34,6 @@ export default function ProfileProgressPage() {
     all: t("pages.profile.progressTabAll"),
   };
 
-  const scoreTrend = scores.slice(0, 24).reverse();
   const totalPints = scores.length;
   const averageScore = progressStats.avg;
   const mostVisitedPubEntry = (() => {
@@ -179,17 +181,6 @@ export default function ProfileProgressPage() {
   const streakWeekly = streakSnapshot?.weekly ?? weeklyStreak;
   const streakWeekend = streakSnapshot?.weekend ?? weekendStreak;
 
-  const trendPoints =
-    scoreTrend.length <= 1
-      ? ""
-      : scoreTrend
-          .map((s, i) => {
-            const x = (i / (scoreTrend.length - 1)) * 100;
-            const y = 100 - (Math.max(0, Math.min(5, s.split_score)) / 5) * 100;
-            return `${x},${y}`;
-          })
-          .join(" ");
-
   const scoreBuckets = [
     { key: "0-2", min: 0, max: 2 },
     { key: "2-3", min: 2, max: 3 },
@@ -202,6 +193,29 @@ export default function ProfileProgressPage() {
     return { ...bucket, count };
   });
   const maxBucket = Math.max(1, ...scoreBuckets.map((b) => b.count));
+  const strongestBucket = scoreBuckets.reduce((best, current) =>
+    current.count > best.count ? current : best,
+  );
+  const recentScores = [...scores]
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+    .slice(0, 4);
+  const latestScore = recentScores[0]?.split_score ?? null;
+  const previousScore = recentScores[1]?.split_score ?? null;
+  const scoreDelta =
+    latestScore != null && previousScore != null
+      ? latestScore - previousScore
+      : null;
+  const consistencyStdDev = (() => {
+    if (scores.length < 2) return null;
+    const mean = scores.reduce((sum, s) => sum + s.split_score, 0) / scores.length;
+    const variance =
+      scores.reduce((sum, s) => sum + (s.split_score - mean) ** 2, 0) /
+      scores.length;
+    return Math.sqrt(variance);
+  })();
 
   return (
     <div className="space-y-8">
@@ -385,47 +399,186 @@ export default function ProfileProgressPage() {
           </section>
 
           <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-4 sm:p-6">
-            <h2 className="type-card-title">{t("pages.profile.scoreHistoryTitle")}</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="type-card-title">{t("pages.profile.scoreHistoryTitle")}</h2>
+              <button
+                type="button"
+                onClick={() => setScoreInsightsOpen(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-guinness-gold/25 bg-guinness-black/40 text-guinness-gold transition-colors hover:bg-guinness-gold/10"
+                aria-label={t("pages.profile.scoreInsightsOpenAria")}
+                title={t("pages.profile.scoreInsightsOpenAria")}
+              >
+                <CircleHelp className="h-4 w-4" />
+              </button>
+            </div>
             <p className="type-meta mt-1 text-guinness-tan/70">
               {t("pages.profile.scoreHistoryBlurb")}
             </p>
-            <div className="mt-4 rounded-xl border border-[#322914] bg-guinness-black/40 p-3 sm:p-4">
-              <svg viewBox="0 0 100 100" className="h-44 w-full" role="img" aria-label="score trend chart">
-                <line x1="0" y1="100" x2="100" y2="100" stroke="rgba(213,178,99,0.25)" strokeWidth="1" />
-                <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(213,178,99,0.18)" strokeWidth="1" />
-                <line x1="0" y1="0" x2="100" y2="0" stroke="rgba(213,178,99,0.12)" strokeWidth="1" />
-                {trendPoints ? (
-                  <polyline
-                    fill="none"
-                    stroke="rgba(213,178,99,0.95)"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    points={trendPoints}
-                  />
-                ) : null}
-              </svg>
-            </div>
-            <div className="mt-4 rounded-xl border border-[#322914] bg-guinness-black/30 p-3">
-              <p className="type-meta text-guinness-tan/65">
-                {t("pages.profile.scoreDistributionTitle")}
-              </p>
-              <div className="mt-2 space-y-2">
-                {scoreBuckets.map((bucket) => (
-                  <div key={bucket.key} className="grid grid-cols-[2.5rem_minmax(0,1fr)_2rem] items-center gap-2">
-                    <span className="text-xs tabular-nums text-guinness-tan/80">{bucket.key}</span>
-                    <div className="h-2.5 overflow-hidden rounded-full border border-[#322914] bg-guinness-black/50">
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <article className="rounded-xl border border-[#322914] bg-guinness-black/35 p-3">
+                <p className="type-meta text-guinness-tan/65">{t("pages.profile.scoreHistoryTitle")}</p>
+                <div className="mt-2 space-y-2">
+                  {recentScores.length > 0 ? (
+                    recentScores.map((score) => (
                       <div
-                        className="h-full rounded-full bg-guinness-gold"
-                        style={{ width: `${Math.max(6, (bucket.count / maxBucket) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs tabular-nums text-guinness-tan/80">{bucket.count}</span>
+                        key={score.id}
+                        className="flex items-center justify-between rounded-lg border border-[#322914] bg-guinness-black/40 px-2 py-1.5"
+                      >
+                        <span className="text-[11px] text-guinness-tan/75">
+                          {new Date(score.created_at).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <span className="text-sm font-semibold tabular-nums text-guinness-gold">
+                          {score.split_score.toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-guinness-tan/70">
+                      {t("pages.profile.analyticsNotEnoughData")}
+                    </p>
+                  )}
+                </div>
+              </article>
+
+              <article className="rounded-xl border border-[#322914] bg-guinness-black/35 p-3">
+                <p className="type-meta text-guinness-tan/65">{t("pages.profile.analyticsTitle")}</p>
+                <div className="mt-2 space-y-2">
+                  <div className="rounded-lg border border-[#322914] bg-guinness-black/40 px-2 py-1.5">
+                    <p className="text-[11px] text-guinness-tan/70">{t("pages.profile.progressBest")}</p>
+                    <p className="text-sm font-semibold tabular-nums text-guinness-gold">
+                      {progressStats.best.toFixed(2)}
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <div className="rounded-lg border border-[#322914] bg-guinness-black/40 px-2 py-1.5">
+                    <p className="text-[11px] text-guinness-tan/70">Momentum</p>
+                    <p className="text-sm font-semibold tabular-nums text-guinness-cream">
+                      {scoreDelta == null ? "n/a" : `${scoreDelta >= 0 ? "+" : ""}${scoreDelta.toFixed(2)}`}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-[#322914] bg-guinness-black/40 px-2 py-1.5">
+                    <p className="text-[11px] text-guinness-tan/70">Consistency</p>
+                    <p className="text-sm font-semibold tabular-nums text-guinness-cream">
+                      {consistencyStdDev == null ? "n/a" : `\u03c3 ${consistencyStdDev.toFixed(2)}`}
+                    </p>
+                  </div>
+                </div>
+              </article>
+
+              <article className="col-span-2 rounded-xl border border-[#322914] bg-guinness-black/35 p-3">
+                <p className="type-meta text-guinness-tan/65">
+                  {t("pages.profile.scoreDistributionTitle")}
+                </p>
+                <div className="mt-2 space-y-2">
+                  {scoreBuckets.map((bucket) => (
+                    <div
+                      key={bucket.key}
+                      className="grid grid-cols-[2.5rem_minmax(0,1fr)_3.5rem] items-center gap-2"
+                    >
+                      <span className="text-xs tabular-nums text-guinness-tan/80">
+                        {bucket.key}
+                      </span>
+                      <div className="h-3 overflow-hidden rounded-full border border-[#322914] bg-guinness-black/50">
+                        <div
+                          className="h-full rounded-full bg-guinness-gold"
+                          style={{
+                            width: `${Math.max(4, (bucket.count / maxBucket) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs tabular-nums text-guinness-tan/80">
+                        {bucket.count} ({Math.round((bucket.count / totalPints) * 100)}%)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="col-span-2 rounded-xl border border-[#322914] bg-guinness-black/35 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="type-meta text-guinness-tan/65">Top scoring band</p>
+                  <p className="text-sm font-semibold tabular-nums text-guinness-gold">
+                    {strongestBucket.key}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-guinness-tan/70">
+                  {strongestBucket.count} / {totalPints} pours fall in this range.
+                </p>
+              </article>
             </div>
           </section>
+
+          {scoreInsightsOpen ? (
+            <div
+              className="fixed inset-0 z-[60] bg-guinness-black/70 backdrop-blur-[1px]"
+              onClick={() => setScoreInsightsOpen(false)}
+              aria-hidden
+            >
+              <aside
+                role="dialog"
+                aria-modal="true"
+                aria-label={t("pages.profile.scoreInsightsPanelTitle")}
+                className="absolute right-0 top-0 h-full w-[92vw] max-w-sm border-l border-guinness-gold/20 bg-guinness-black p-4 shadow-2xl md:right-6 md:top-24 md:h-[min(78vh,44rem)] md:w-[26rem] md:max-w-none md:rounded-2xl md:border md:border-guinness-gold/25"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="type-card-title">{t("pages.profile.scoreInsightsPanelTitle")}</h3>
+                    <p className="type-meta mt-1 text-guinness-tan/70">
+                      {t("pages.profile.scoreInsightsPanelBlurb")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScoreInsightsOpen(false)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-guinness-gold/25 bg-guinness-black/40 text-guinness-gold transition-colors hover:bg-guinness-gold/10"
+                    aria-label={t("pages.profile.close")}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-3 overflow-y-auto pr-1 md:max-h-[calc(78vh-6.5rem)]">
+                  {[
+                    {
+                      title: t("pages.profile.scoreInsightsHistoryTitle"),
+                      body: t("pages.profile.scoreInsightsHistoryBody"),
+                    },
+                    {
+                      title: t("pages.profile.scoreInsightsMomentumTitle"),
+                      body: t("pages.profile.scoreInsightsMomentumBody"),
+                    },
+                    {
+                      title: t("pages.profile.scoreInsightsConsistencyTitle"),
+                      body: t("pages.profile.scoreInsightsConsistencyBody"),
+                    },
+                    {
+                      title: t("pages.profile.scoreInsightsDistributionTitle"),
+                      body: t("pages.profile.scoreInsightsDistributionBody"),
+                    },
+                    {
+                      title: t("pages.profile.scoreInsightsBandTitle"),
+                      body: t("pages.profile.scoreInsightsBandBody"),
+                    },
+                  ].map((item) => (
+                    <article
+                      key={item.title}
+                      className="rounded-xl border border-[#322914] bg-guinness-black/40 p-3"
+                    >
+                      <h4 className="text-sm font-semibold text-guinness-cream">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1 text-xs leading-relaxed text-guinness-tan/80">
+                        {item.body}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </aside>
+            </div>
+          ) : null}
 
           <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

@@ -35,6 +35,21 @@ The current product was substantially revamped by [Jonathan Rycx](https://github
 - Live leaderboard + **Who’s in** tabs
 - Friends and comparisons from profile
 
+### 🎯 Profile gamification
+- **Progress** hub (`/profile/progress`): achievements, streak snapshots, and score insights (distribution, momentum, consistency) with a help panel — copy is fully localized
+- Server-side awards and streak updates driven by score events (see `supabase/migrations/*profile_gamification*`)
+
+### 📬 Sponsorship & contact slots
+- **`AdSlotBanner`** (`app/components/ad-slot-banner.tsx`): horizontal “ad slot” strip (dashed frame, subtle texture, megaphone, **Contact** mailto CTA) with per-surface i18n
+- **Placements:** **Feed** (above *Latest pours*), **Wall**, **Competitions** (above listings), **Pubs** list (below filters), **Pub detail** (above Promos / Competitions / Wall). Pubs list copy pitches directory listings; pub detail copy pitches **banner advertising** (distinct email subjects per surface)
+
+### 🖥️ Desktop footer
+- Minimal **copyright strip** only (`AppDesktopFooter`, `md+`); no duplicate branding or nav links. Layout uses a flex column in `lang-layout` + `#root` so short pages still fill the viewport under the fixed header
+
+### 🛡️ Pour trust & safety
+- Server guards in `app/utils/pour-submission-guards.server.ts`: per-user **rate limits**, **duplicate image** detection (hash), optional **EXIF capture-time** freshness window (`POUR_RATE_LIMIT_MAX_PER_HOUR`, `POUR_EXIF_MAX_AGE_MINUTES`)
+- Related migrations under `supabase/migrations/` for pour metadata / anti-cheat columns; **offline pour queue** on the client for flaky networks (see home pour flow)
+
 ## 🛠 Tech Stack
 
 ### Frontend
@@ -89,6 +104,13 @@ WEB_PUSH_PRIVATE_KEY=your-vapid-private-key
 WEB_PUSH_SUBJECT=mailto:you@example.com
 ```
 
+#### Pour submission guards (optional)
+```env
+POUR_RATE_LIMIT_MAX_PER_HOUR=5
+POUR_EXIF_MAX_AGE_MINUTES=12
+```
+See `app/utils/pour-submission-guards.server.ts` for behavior.
+
 #### Roboflow (pour scoring)
 ```env
 VITE_ROBOFLOW_API_URL=https://detect.roboflow.com
@@ -111,7 +133,7 @@ ROBOFLOW_PRIVATE_API_KEY=your-private-api-key
 split-the-g/
 ├── app/
 │   ├── routes/                # Pages, loaders, and actions (SSR)
-│   ├── components/           # Shared UI (nav, competitions, wall, pub, branded)
+│   ├── components/           # Shared UI (nav, competitions, wall, pub, ad-slot-banner, desktop footer, branded)
 │   ├── utils/                # Supabase client, scoring, maps, emails, paths
 │   └── ...                   # Route tables, i18n, etc.
 ├── public/                   # Static assets (including mobile dock icons)

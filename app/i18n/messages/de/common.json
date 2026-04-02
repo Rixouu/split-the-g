@@ -10,5 +10,7 @@
   "tryAgain": "Versuchen Sie es erneut",
   "headsUp": "Kopf hoch",
   "couldntProcessImage": "Das Bild konnte nicht verarbeitet werden",
-  "buyCreatorBeer": "Dem Ersteller ein Bier spendieren"
+  "buyCreatorBeer": "Dem Ersteller ein Bier spendieren",
+  "footerAria": "Urheberrecht",
+  "footerCopyright": "© {year} Split the G"
 }

@@ -192,5 +192,19 @@
   "badgePints25": "25 Pints Poured",
   "badgeDailyStreak7": "7-Day Streak",
   "badgeEliteAverage": "Elite Average (10 pours, 4.3+ avg)",
-  "scoreDistributionTitle": "Score distribution"
+  "scoreDistributionTitle": "Score distribution",
+  "close": "Close",
+  "scoreInsightsOpenAria": "Open score insights help",
+  "scoreInsightsPanelTitle": "How score insights work",
+  "scoreInsightsPanelBlurb": "Quick guide to the stats shown in this section.",
+  "scoreInsightsHistoryTitle": "Score history",
+  "scoreInsightsHistoryBody": "Shows your most recent pours with date and score so you can spot short-term form changes.",
+  "scoreInsightsMomentumTitle": "Momentum",
+  "scoreInsightsMomentumBody": "Difference between your latest score and the one before it. Positive means improving.",
+  "scoreInsightsConsistencyTitle": "Consistency",
+  "scoreInsightsConsistencyBody": "Standard deviation (sigma) of your scores. Lower means steadier pours.",
+  "scoreInsightsDistributionTitle": "Score distribution",
+  "scoreInsightsDistributionBody": "How your pours are spread across score bands (count and percentage).",
+  "scoreInsightsBandTitle": "Top scoring band",
+  "scoreInsightsBandBody": "The score range where you land most often. Useful for setting your next target."
 }
