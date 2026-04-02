@@ -2,7 +2,11 @@ import { SegmentedTabs } from "~/components/ui/segmented-tabs";
 import { useI18n } from "~/i18n/context";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { useProfileOutlet } from "./profile-context";
-import { progressRangeOptions, type ProgressRange } from "./profile-shared";
+import {
+  pourStreakCalendarDays,
+  progressRangeOptions,
+  type ProgressRange,
+} from "./profile-shared";
 
 export function meta({ params }: { params: { lang?: string } }) {
   return seoMetaForRoute(params, "/profile/progress", "progress");
@@ -24,6 +28,134 @@ export default function ProfileProgressPage() {
     "90d": t("pages.profile.progressTab90d"),
     all: t("pages.profile.progressTabAll"),
   };
+
+  const scoreTrend = scores.slice(0, 24).reverse();
+  const totalPints = scores.length;
+  const averageScore = progressStats.avg;
+  const mostVisitedPubEntry = (() => {
+    const counter = new Map<string, number>();
+    for (const s of scores) {
+      const key = s.bar_name?.trim();
+      if (!key) continue;
+      counter.set(key, (counter.get(key) ?? 0) + 1);
+    }
+    let bestName = "";
+    let bestCount = 0;
+    for (const [name, count] of counter.entries()) {
+      if (count > bestCount) {
+        bestName = name;
+        bestCount = count;
+      }
+    }
+    return bestName ? { name: bestName, count: bestCount } : null;
+  })();
+
+  const weeklyStreak = (() => {
+    if (scores.length === 0) return 0;
+    const weekKeys = new Set(
+      scores.map((s) => {
+        const d = new Date(s.created_at);
+        const day = d.getDay();
+        const mondayShift = (day + 6) % 7;
+        const monday = new Date(d);
+        monday.setHours(12, 0, 0, 0);
+        monday.setDate(monday.getDate() - mondayShift);
+        return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
+      }),
+    );
+    const probe = new Date();
+    const day = probe.getDay();
+    const mondayShift = (day + 6) % 7;
+    probe.setHours(12, 0, 0, 0);
+    probe.setDate(probe.getDate() - mondayShift);
+    let streak = 0;
+    for (let i = 0; i < 104; i++) {
+      const key = `${probe.getFullYear()}-${probe.getMonth()}-${probe.getDate()}`;
+      if (weekKeys.has(key)) {
+        streak++;
+        probe.setDate(probe.getDate() - 7);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  })();
+
+  const weekendStreak = (() => {
+    if (scores.length === 0) return 0;
+    const weekendKeys = new Set(
+      scores
+        .filter((s) => {
+          const d = new Date(s.created_at).getDay();
+          return d === 0 || d === 6;
+        })
+        .map((s) => {
+          const d = new Date(s.created_at);
+          const day = d.getDay();
+          const saturdayShift = day === 0 ? 1 : day - 6;
+          const saturday = new Date(d);
+          saturday.setHours(12, 0, 0, 0);
+          saturday.setDate(saturday.getDate() - saturdayShift);
+          return `${saturday.getFullYear()}-${saturday.getMonth()}-${saturday.getDate()}`;
+        }),
+    );
+    const probe = new Date();
+    const pDay = probe.getDay();
+    const saturdayShift = pDay === 0 ? 1 : pDay - 6;
+    probe.setHours(12, 0, 0, 0);
+    probe.setDate(probe.getDate() - saturdayShift);
+    let streak = 0;
+    for (let i = 0; i < 104; i++) {
+      const key = `${probe.getFullYear()}-${probe.getMonth()}-${probe.getDate()}`;
+      if (weekendKeys.has(key)) {
+        streak++;
+        probe.setDate(probe.getDate() - 7);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  })();
+
+  const achievements = [
+    {
+      key: "perfect",
+      label: t("pages.profile.badgePerfect"),
+      unlocked: scores.some((s) => s.split_score >= 4.95),
+    },
+    {
+      key: "pints10",
+      label: t("pages.profile.badgePints10"),
+      unlocked: totalPints >= 10,
+    },
+    {
+      key: "crawler",
+      label: t("pages.profile.badgePubCrawler"),
+      unlocked:
+        new Set(scores.map((s) => s.bar_name?.trim()).filter(Boolean)).size >= 5,
+    },
+    {
+      key: "early",
+      label: t("pages.profile.badgeEarlyBird"),
+      unlocked: scores.some((s) => new Date(s.created_at).getHours() < 17),
+    },
+    {
+      key: "weekend",
+      label: t("pages.profile.badgeWeekendStreak"),
+      unlocked: weekendStreak >= 3,
+    },
+  ];
+
+  const trendPoints =
+    scoreTrend.length <= 1
+      ? ""
+      : scoreTrend
+          .map((s, i) => {
+            const x = (i / (scoreTrend.length - 1)) * 100;
+            const y = 100 - (Math.max(0, Math.min(5, s.split_score)) / 5) * 100;
+            return `${x},${y}`;
+          })
+          .join(" ");
 
   return (
     <div className="space-y-8">
@@ -135,6 +267,100 @@ export default function ProfileProgressPage() {
               </div>
             </div>
           </div>
+
+          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
+            <h2 className="type-card-title">{t("pages.profile.gamificationTitle")}</h2>
+            <p className="type-meta mt-1 text-guinness-tan/70">
+              {t("pages.profile.gamificationBlurb")}
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {achievements.map((badge) => (
+                <div
+                  key={badge.key}
+                  className={`rounded-xl border px-4 py-3 ${
+                    badge.unlocked
+                      ? "border-guinness-gold/35 bg-guinness-gold/10"
+                      : "border-[#322914] bg-guinness-black/35"
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-guinness-cream">{badge.label}</p>
+                  <p className="type-meta mt-1 text-guinness-tan/70">
+                    {badge.unlocked
+                      ? t("pages.profile.badgeUnlocked")
+                      : t("pages.profile.badgeLocked")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
+            <h2 className="type-card-title">{t("pages.profile.analyticsTitle")}</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-[#322914] bg-guinness-black/35 p-4">
+                <p className="type-meta text-guinness-tan/70">
+                  {t("pages.profile.analyticsAverageScore")}
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-guinness-gold">
+                  {averageScore.toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#322914] bg-guinness-black/35 p-4">
+                <p className="type-meta text-guinness-tan/70">
+                  {t("pages.profile.analyticsTotalPints")}
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-guinness-gold">
+                  {totalPints}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#322914] bg-guinness-black/35 p-4">
+                <p className="type-meta text-guinness-tan/70">
+                  {t("pages.profile.analyticsMostVisitedPub")}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-guinness-cream">
+                  {mostVisitedPubEntry
+                    ? `${mostVisitedPubEntry.name} (${mostVisitedPubEntry.count})`
+                    : t("pages.profile.analyticsNotEnoughData")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#322914] bg-guinness-black/35 p-4">
+                <p className="type-meta text-guinness-tan/70">
+                  {t("pages.profile.analyticsStreaks")}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-guinness-cream">
+                  {t("pages.profile.analyticsStreakValues", {
+                    day: String(pourStreakCalendarDays(scores)),
+                    week: String(weeklyStreak),
+                    weekend: String(weekendStreak),
+                  })}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
+            <h2 className="type-card-title">{t("pages.profile.scoreHistoryTitle")}</h2>
+            <p className="type-meta mt-1 text-guinness-tan/70">
+              {t("pages.profile.scoreHistoryBlurb")}
+            </p>
+            <div className="mt-4 rounded-xl border border-[#322914] bg-guinness-black/40 p-4">
+              <svg viewBox="0 0 100 100" className="h-44 w-full" role="img" aria-label="score trend chart">
+                <line x1="0" y1="100" x2="100" y2="100" stroke="rgba(213,178,99,0.25)" strokeWidth="1" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(213,178,99,0.18)" strokeWidth="1" />
+                <line x1="0" y1="0" x2="100" y2="0" stroke="rgba(213,178,99,0.12)" strokeWidth="1" />
+                {trendPoints ? (
+                  <polyline
+                    fill="none"
+                    stroke="rgba(213,178,99,0.95)"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={trendPoints}
+                  />
+                ) : null}
+              </svg>
+            </div>
+          </section>
 
           <section className="rounded-2xl border border-[#322914] bg-guinness-brown/30 p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
