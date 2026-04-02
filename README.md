@@ -37,6 +37,9 @@ The current product was substantially revamped by [Jonathan Rycx](https://github
 
 ### 🎯 Profile gamification
 - **Progress** hub (`/profile/progress`): achievements, streak snapshots, and score insights (distribution, momentum, consistency) with a help panel — copy is fully localized
+- **Achievements** (`/profile/achievements`): mobile-first **grid** of badges (no horizontal carousel), hero summary, **crown** tier pills, and **profile tier avatar** (gold progress ring + crown chip) on the mobile hub and desktop **Account** header
+- **Sharing unlocked badges (mobile)**: branded **bottom sheet** above the dock with a **preview card** (`SplitTheGLogo`, sticker art, tier, title), **slide-up animation** (`app/app.css`), primary **Share to social apps** (`navigator.share`) and **Copy achievements link**; desktop/narrow desktop still uses one-shot Web Share + clipboard fallback (`profile-share-achievement.ts`)
+- **Account (desktop)**: **Save profile** is full width from the `md` breakpoint up; **push notifications** sit in a bordered row with the toggle **beside** the copy; extra spacing before **Sign out**
 - Server-side awards and streak updates driven by score events (see `supabase/migrations/*profile_gamification*`)
 
 ### 📬 Sponsorship & contact slots

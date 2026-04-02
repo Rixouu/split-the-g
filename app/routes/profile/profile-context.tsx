@@ -59,6 +59,8 @@ export type ProfileOutletContextValue = {
   persistedAchievementCodes: string[];
   streakSnapshot: StreakSnapshot | null;
   inputClass: string;
+  /** Branded toast from profile layout (e.g. share fallback). */
+  showProfileToast: (message: string, title?: string) => void;
 };
 
 const ProfilePageContext = createContext<ProfileOutletContextValue | null>(

@@ -1,6 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { Trophy } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { AppLink } from "~/i18n/app-link";
 import { useI18n } from "~/i18n/context";
 import type { TranslateFn } from "~/i18n/translate";
@@ -8,6 +8,7 @@ import { homePourButtonClass } from "~/components/PageHeader";
 import { flagEmojiFromIso2 } from "~/utils/countryDisplay";
 import { achievementHubSummaryFromSnapshot } from "./profile-achievements";
 import type { StreakSnapshot } from "./profile-context";
+import { ProfileTierAvatar } from "./profile-tier-avatar";
 import {
   buildFriendLeaderboard,
   emailDisplayName,
@@ -35,42 +36,6 @@ function ChevronRightIcon(props: { className?: string }) {
       <path
         fillRule="evenodd"
         d="M8.22 5.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 010-1.06z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
-
-/** Google / Supabase OAuth often expose `picture` or `avatar_url` on metadata or identities. */
-function oauthProfilePictureUrl(user: User): string | undefined {
-  const meta = user.user_metadata as Record<string, unknown> | undefined;
-  for (const key of ["avatar_url", "picture"] as const) {
-    const v = meta?.[key];
-    if (typeof v === "string" && /^https?:\/\//i.test(v.trim())) return v.trim();
-  }
-  for (const id of user.identities ?? []) {
-    const d = id.identity_data as Record<string, unknown> | undefined;
-    if (!d) continue;
-    for (const key of ["avatar_url", "picture"] as const) {
-      const v = d[key];
-      if (typeof v === "string" && /^https?:\/\//i.test(v.trim())) return v.trim();
-    }
-  }
-  return undefined;
-}
-
-function DefaultProfileAvatarIcon(props: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={props.className}
-      aria-hidden
-    >
-      <path
-        fillRule="evenodd"
-        d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-8.433.649A7.23 7.23 0 005.25 12a7.23 7.23 0 011-3.746 7.204 7.204 0 0115.002 0 7.23 7.23 0 011 3.746 7.23 7.23 0 01-5.002 6.746zM16.706 9.706a4.25 4.25 0 11-8.5 0 4.25 4.25 0 018.5 0z"
         clipRule="evenodd"
       />
     </svg>
@@ -280,111 +245,25 @@ export function ProfileMobileSignedInHub({
       ? flagEmojiFromIso2(countryCode)
       : "";
 
-  const avatarPhotoUrl = useMemo(() => oauthProfilePictureUrl(user), [user]);
-  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
-  const showGoogleAvatar = Boolean(avatarPhotoUrl) && !avatarLoadFailed;
-  const tierRingUid = useId();
-  const ringGradientId = `stg-tier-ring-${tierRingUid.replace(/:/g, "")}`;
-  const totalAch = achievementSummary.totalCount;
-  const unlockedAch = achievementSummary.unlockedCount;
-  const ringCirc = 2 * Math.PI * 21;
-  const ringFillRatio =
-    totalAch > 0
-      ? Math.min(1, Math.max(0.06, unlockedAch / totalAch))
-      : 0.1;
-  const ringDash = ringFillRatio * ringCirc;
-
-  useEffect(() => {
-    setAvatarLoadFailed(false);
-  }, [avatarPhotoUrl, user.id]);
-
   return (
     <div className="space-y-6 md:hidden">
       <header className="flex gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div
-            className="relative h-[4.25rem] w-[4.25rem] shrink-0"
-            aria-hidden
-          >
-            <svg
-              className="absolute inset-0 h-full w-full -rotate-90"
-              viewBox="0 0 72 72"
-              fill="none"
-              aria-hidden
-            >
-              <defs>
-                <linearGradient
-                  id={ringGradientId}
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor="rgb(212 175 55)" stopOpacity="0.95" />
-                  <stop offset="55%" stopColor="rgb(245 220 140)" stopOpacity="0.85" />
-                  <stop offset="100%" stopColor="rgb(180 140 50)" stopOpacity="0.75" />
-                </linearGradient>
-              </defs>
-              <circle
-                cx="36"
-                cy="36"
-                r="21"
-                stroke="rgba(42,34,17,0.9)"
-                strokeWidth="4"
-                fill="none"
-              />
-              <circle
-                cx="36"
-                cy="36"
-                r="21"
-                stroke={`url(#${ringGradientId})`}
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray={`${ringDash} ${ringCirc}`}
-                className="drop-shadow-[0_0_6px_rgba(212,175,55,0.35)]"
-              />
-            </svg>
-            <div
-              className={`absolute left-1/2 top-1/2 h-[3.15rem] w-[3.15rem] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 ${MOBILE_PROFILE_STROKE} bg-guinness-brown/45 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.12)]`}
-            >
-              {showGoogleAvatar ? (
-                <img
-                  key={avatarPhotoUrl}
-                  src={avatarPhotoUrl}
-                  alt=""
-                  width={64}
-                  height={64}
-                  loading="lazy"
-                  decoding="async"
-                  referrerPolicy="no-referrer"
-                  className="h-full w-full object-cover"
-                  onError={() => setAvatarLoadFailed(true)}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-guinness-gold/45">
-                  <DefaultProfileAvatarIcon className="h-7 w-7" />
-                </div>
-              )}
-            </div>
-            {achievementSummary.unlockedCount > 0 &&
-            achievementSummary.maxTierAmongUnlocked > 0 ? (
-              <div
-                className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex items-center gap-0.5 rounded-full border border-guinness-gold/40 bg-guinness-black/90 px-1 py-0.5 text-guinness-gold shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
-                title={t("pages.profile.mobileHubTierBadgeTitle", {
-                  tier: String(achievementSummary.maxTierAmongUnlocked),
-                })}
-              >
-                <span
-                  className="stg-nav-icon stg-nav-icon--rank h-2.5 w-2.5 shrink-0"
-                  aria-hidden
-                />
-                <span className="text-[9px] font-bold tabular-nums leading-none">
-                  {achievementSummary.maxTierAmongUnlocked}
-                </span>
-              </div>
-            ) : null}
-          </div>
+          <ProfileTierAvatar
+            user={user}
+            summary={achievementSummary}
+            variant="hub"
+            ariaLabel={
+              achievementSummary.unlockedCount > 0 &&
+              achievementSummary.maxTierAmongUnlocked > 0
+                ? t("pages.profile.profileTierAvatarAria", {
+                    tier: String(achievementSummary.maxTierAmongUnlocked),
+                    unlocked: String(achievementSummary.unlockedCount),
+                    total: String(achievementSummary.totalCount),
+                  })
+                : t("pages.profile.profileAvatarAriaSimple")
+            }
+          />
           <div className="min-w-0 flex-1 py-0.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-guinness-gold/55">
               {t("pages.profile.mobileHubKicker")}

@@ -54,7 +54,9 @@ import {
   type ScoreSummary,
   type UserFriendRow,
 } from "./profile-shared";
+import { achievementHubSummaryFromSnapshot } from "./profile-achievements";
 import { AchievementUnlockCelebration } from "./achievement-unlock-celebration";
+import { ProfileTierAvatar } from "./profile-tier-avatar";
 import {
   ProfileMobileGuestHub,
   ProfileMobileSignedInHub,
@@ -245,6 +247,16 @@ export default function ProfileLayout() {
       totalSpend,
     };
   }, [scores]);
+
+  const accountAchievementSummary = useMemo(
+    () =>
+      achievementHubSummaryFromSnapshot(
+        scores,
+        persistedAchievementCodes,
+        streakSnapshot,
+      ),
+    [scores, persistedAchievementCodes, streakSnapshot],
+  );
 
   const acceptedFriends = useMemo(
     () => friends.filter((f) => user != null && f.user_id === user.id),
@@ -1203,6 +1215,9 @@ export default function ProfileLayout() {
                 persistedAchievementCodes,
                 streakSnapshot,
                 inputClass,
+                showProfileToast: (message: string, title?: string) => {
+                  showToast(message, title);
+                },
               }}
             >
               {user && isProfileHubPath ? (
@@ -1268,8 +1283,32 @@ export default function ProfileLayout() {
 
               {showAccountFormSection ? (
                 <section className="mt-6 rounded-xl border border-guinness-gold/20 bg-guinness-brown/40 p-5 sm:p-6">
-                  <div className="flex flex-col gap-1 border-b border-guinness-gold/10 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <div className="min-w-0">
+                  <div className="flex flex-col gap-5 border-b border-guinness-gold/10 pb-4 sm:flex-row sm:items-start sm:gap-6">
+                    {user ? (
+                      <ProfileTierAvatar
+                        user={user}
+                        summary={accountAchievementSummary}
+                        variant="account"
+                        ariaLabel={
+                          accountAchievementSummary.unlockedCount > 0 &&
+                          accountAchievementSummary.maxTierAmongUnlocked > 0
+                            ? t("pages.profile.profileTierAvatarAria", {
+                                tier: String(
+                                  accountAchievementSummary.maxTierAmongUnlocked,
+                                ),
+                                unlocked: String(
+                                  accountAchievementSummary.unlockedCount,
+                                ),
+                                total: String(
+                                  accountAchievementSummary.totalCount,
+                                ),
+                              })
+                            : t("pages.profile.profileAvatarAriaSimple")
+                        }
+                        className="mx-auto sm:mx-0"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1 text-center sm:text-left">
                       <p className="type-label text-guinness-gold">
                         {t("pages.profile.signedIn")}
                       </p>
@@ -1358,7 +1397,7 @@ export default function ProfileLayout() {
                     <button
                       type="submit"
                       disabled={profileSaving}
-                      className="w-full rounded-lg bg-guinness-gold py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:px-8"
+                      className="w-full rounded-lg bg-guinness-gold px-4 py-2.5 text-sm font-semibold text-guinness-black transition-colors hover:bg-guinness-tan disabled:opacity-50 sm:w-auto sm:px-8 md:w-full"
                     >
                       {profileSaving
                         ? t("pages.profile.savingProfile")
@@ -1367,7 +1406,9 @@ export default function ProfileLayout() {
                   </form>
 
                   <div className="mt-5 border-t border-guinness-gold/10 pt-4">
-                    <PushNotificationsManager />
+                    <div className="mb-6 md:mb-8">
+                      <PushNotificationsManager />
+                    </div>
                     <button
                       type="button"
                       onClick={() => setSignOutConfirmOpen(true)}

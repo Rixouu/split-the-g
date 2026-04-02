@@ -116,37 +116,41 @@ export function PushNotificationsManager() {
   const canRenderToggle = supported && Boolean(pushPublicKey);
 
   return (
-    <div className="mt-4 rounded-lg border border-guinness-gold/20 bg-guinness-black/30 p-4">
-      <p className="text-sm font-semibold text-guinness-gold">Push notifications</p>
-      <p className="mt-1 text-xs text-guinness-tan/70">
-        Get alerts for friend requests, competition invites, friend pours, and top 10 changes.
-      </p>
-      {!supported ? (
-        <p className="mt-2 text-xs text-amber-300/90">
-          This browser does not support Web Push in the current context.
+    <div className="mt-4 rounded-xl border border-guinness-gold/20 bg-guinness-black/30 p-4 shadow-[inset_0_1px_0_rgba(212,175,55,0.06)] md:mt-0 md:flex md:flex-row md:items-stretch md:gap-6 md:p-5">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-guinness-gold">Push notifications</p>
+        <p className="mt-1 text-xs text-guinness-tan/70">
+          Get alerts for friend requests, competition invites, friend pours, and top 10 changes.
         </p>
-      ) : null}
-      {!pushPublicKey ? (
-        <p className="mt-2 text-xs text-amber-300/90">
-          Missing VITE_WEB_PUSH_PUBLIC_KEY at runtime. Restart dev server after updating env.
-        </p>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => void (enabled ? disablePush() : enablePush())}
-        disabled={!canRenderToggle || busy || permission === "denied"}
-        className="mt-3 w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-2 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/45 disabled:opacity-50"
-      >
-        {busy ? "Updating..." : enabled ? "Disable notifications" : "Enable notifications"}
-      </button>
-      {permission === "denied" ? (
-        <p className="mt-2 text-xs text-amber-300/90">
-          Notifications are blocked in your browser settings.
-        </p>
-      ) : null}
-      {statusMessage ? (
-        <p className="mt-2 text-xs text-guinness-tan/85">{statusMessage}</p>
-      ) : null}
+        {!supported ? (
+          <p className="mt-2 text-xs text-amber-300/90">
+            This browser does not support Web Push in the current context.
+          </p>
+        ) : null}
+        {!pushPublicKey ? (
+          <p className="mt-2 text-xs text-amber-300/90">
+            Missing VITE_WEB_PUSH_PUBLIC_KEY at runtime. Restart dev server after updating env.
+          </p>
+        ) : null}
+        {permission === "denied" ? (
+          <p className="mt-2 text-xs text-amber-300/90">
+            Notifications are blocked in your browser settings.
+          </p>
+        ) : null}
+        {statusMessage ? (
+          <p className="mt-2 text-xs text-guinness-tan/85">{statusMessage}</p>
+        ) : null}
+      </div>
+      <div className="mt-3 flex shrink-0 md:mt-0 md:w-52 md:flex-col md:justify-center">
+        <button
+          type="button"
+          onClick={() => void (enabled ? disablePush() : enablePush())}
+          disabled={!canRenderToggle || busy || permission === "denied"}
+          className="w-full rounded-lg border border-guinness-gold/35 bg-guinness-black/50 py-2.5 text-sm font-semibold text-guinness-gold transition-colors hover:bg-guinness-brown/45 disabled:opacity-50 md:py-3"
+        >
+          {busy ? "Updating..." : enabled ? "Disable notifications" : "Enable notifications"}
+        </button>
+      </div>
     </div>
   );
 }

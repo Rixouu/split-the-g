@@ -1,14 +1,15 @@
 "use client";
 
+import { Crown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n, useOptionalLang } from "~/i18n/context";
-import { localizePath } from "~/i18n/paths";
 import {
   defByPersistCode,
   profileAchievementTitleKey,
   sortPersistCodesByAchievementOrder,
   stickerSrc,
 } from "./profile-achievements";
+import { shareUnlockedAchievement } from "./profile-share-achievement";
 
 const STORAGE_PREFIX = "stg_profile_ach_seen_v1_";
 
@@ -95,12 +96,6 @@ export function AchievementUnlockCelebration({
     setQueue((q) => q.slice(1));
   }, [userId, activeCode]);
 
-  const shareUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    const path = localizePath("/profile/achievements", lang);
-    return `${window.location.origin}${path}`;
-  }, [lang]);
-
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -121,30 +116,23 @@ export function AchievementUnlockCelebration({
 
   const handleShare = useCallback(async () => {
     if (!def) return;
-    const title = t("pages.profile.achievementUnlockTitle");
-    const achievementName = t(profileAchievementTitleKey(def.uiKey));
-    const text = t("pages.profile.achievementShareText", { name: achievementName });
-    try {
-      if (navigator.share) {
-        await navigator.share({ title, text, url: shareUrl });
-        return;
-      }
-    } catch (e) {
-      if ((e as Error)?.name === "AbortError") return;
-    }
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      showToast(
-        t("pages.profile.achievementShareCopied"),
-        t("toasts.toastInfoTitle"),
-      );
-    } catch {
-      showToast(
-        t("pages.profile.achievementShareFailed"),
-        t("toasts.toastWarningTitle"),
-      );
-    }
-  }, [def, shareUrl, showToast, t]);
+    const name = t(profileAchievementTitleKey(def.uiKey));
+    await shareUnlockedAchievement(
+      lang,
+      t,
+      name,
+      () =>
+        showToast(
+          t("pages.profile.achievementShareCopied"),
+          t("toasts.toastInfoTitle"),
+        ),
+      () =>
+        showToast(
+          t("pages.profile.achievementShareFailed"),
+          t("toasts.toastWarningTitle"),
+        ),
+    );
+  }, [def, lang, showToast, t]);
 
   if (!open || !def) return null;
 
@@ -187,8 +175,9 @@ export function AchievementUnlockCelebration({
               className="inline-flex items-center gap-1 rounded-full border border-guinness-gold/30 bg-guinness-black/45 px-2.5 py-1 text-guinness-gold shadow-[0_0_12px_rgba(212,175,55,0.08)]"
               title={t("pages.profile.badgeRankTitle", { tier: String(def.tierRank) })}
             >
-              <span
-                className="stg-nav-icon stg-nav-icon--rank h-3.5 w-3.5 shrink-0"
+              <Crown
+                className="h-3.5 w-3.5 shrink-0 fill-guinness-gold/85 text-guinness-gold"
+                strokeWidth={1.75}
                 aria-hidden
               />
               <span className="text-[11px] font-bold tabular-nums">
