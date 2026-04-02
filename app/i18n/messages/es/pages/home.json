@@ -42,5 +42,9 @@
   "pwaBannerChromeHint": "Toca Instalar y confirma en el aviso del navegador.",
   "flashOn": "Flash encendido",
   "flashOff": "Flash apagado",
-  "flashUnavailable": "El flash no está disponible en esta cámara."
+  "flashUnavailable": "El flash no está disponible en esta cámara.",
+  "pourQueuedOffline": "Sin conexión: guardamos tu vertido y lo puntuaremos cuando vuelvas a estar en línea.",
+  "pourQueueSaveFailed": "No se pudo guardar el vertido para subirlo sin conexión. Inténtalo cuando tengas señal.",
+  "pourSyncedFromQueue": "Vertido en cola subido y puntuado.",
+  "pourQueueSyncFailed": "No se pudo subir un vertido en cola. Reintentaremos cuando estés en línea."
 }

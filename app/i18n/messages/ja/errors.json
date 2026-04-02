@@ -18,5 +18,8 @@
   "pintPriceTooLarge": "パイントの価格が高すぎます。",
   "saveRatingFailed": "評価を保存できませんでした。",
   "signInGoogleFailed": "Google サインインを開始できませんでした。 {detail}",
-  "couldNotUpdatePours": "打設記録を更新できませんでした。"
+  "couldNotUpdatePours": "打設記録を更新できませんでした。",
+  "pourRateLimited": "1時間あたりの提出上限に達しました。しばらくしてからお試しください。",
+  "duplicatePourImage": "この写真はすでに送信されています。",
+  "imageTimestampStale": "ファイル内の撮影日時が古すぎます。店内で新しく撮影してください。"
 }

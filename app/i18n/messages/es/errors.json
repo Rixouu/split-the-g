@@ -18,5 +18,8 @@
   "pintPriceTooLarge": "El precio de la pinta es demasiado alto.",
   "saveRatingFailed": "No se pudo guardar la calificación.",
   "signInGoogleFailed": "No se pudo iniciar el inicio de sesión de Google. {detail}",
-  "couldNotUpdatePours": "No se pudieron actualizar los registros de vertido."
+  "couldNotUpdatePours": "No se pudieron actualizar los registros de vertido.",
+  "pourRateLimited": "Demasiados vertidos esta hora. Inténtalo más tarde.",
+  "duplicatePourImage": "Esta foto exacta ya se envió.",
+  "imageTimestampStale": "La fecha de la foto en el archivo parece demasiado antigua. Haz una foto nueva en el pub."
 }

@@ -42,5 +42,9 @@
   "pwaBannerChromeHint": "Touchez Installer, puis confirmez dans la fenêtre du navigateur.",
   "flashOn": "Flash activé",
   "flashOff": "Flash désactivé",
-  "flashUnavailable": "Le flash n'est pas disponible sur cette caméra."
+  "flashUnavailable": "Le flash n'est pas disponible sur cette caméra.",
+  "pourQueuedOffline": "Hors ligne — nous avons enregistré votre coulage et le noterons dès que vous serez de retour en ligne.",
+  "pourQueueSaveFailed": "Impossible d’enregistrer le coulage pour un envoi hors ligne. Réessayez avec du réseau.",
+  "pourSyncedFromQueue": "Coulage en file d’attente envoyé et noté.",
+  "pourQueueSyncFailed": "Échec d’envoi d’un coulage en file. Nouvel essai dès que vous serez en ligne."
 }

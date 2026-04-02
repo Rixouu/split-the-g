@@ -18,5 +18,8 @@
   "pintPriceTooLarge": "Pint price is too large.",
   "saveRatingFailed": "Could not save rating.",
   "signInGoogleFailed": "Couldn't start Google sign-in. {detail}",
-  "couldNotUpdatePours": "Could not update pour records."
+  "couldNotUpdatePours": "Could not update pour records.",
+  "pourRateLimited": "Too many pours this hour. Try again later.",
+  "duplicatePourImage": "This exact photo was already submitted.",
+  "imageTimestampStale": "Photo date in the file looks too old. Take a new picture at the bar."
 }

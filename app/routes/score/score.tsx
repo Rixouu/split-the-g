@@ -21,6 +21,10 @@ import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { ScoreSharePanel } from "~/components/score/ScoreSharePanel";
 import type { ParsedPlaceGeo } from "~/utils/placeGeoFromComponents";
+import {
+  DEFAULT_PUB_GEOFENCE_MAX_METERS,
+  haversineDistanceMeters,
+} from "~/utils/geo-distance";
 import { isScoreUuidRef, scorePourPath } from "~/utils/scorePath";
 import {
   clearPostOAuthReturnIfMatchesCurrentPath,
@@ -226,6 +230,11 @@ export default function Score() {
   const [barAddress, setBarAddress] = useState(score.bar_address || "");
   /** Parsed from Google when user picks a suggestion; cleared when they type. */
   const [placeGeo, setPlaceGeo] = useState<ParsedPlaceGeo | null>(null);
+  /** When the user picks a Google suggestion with geometry — used to verify device GPS at save. */
+  const [placeLatLng, setPlaceLatLng] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [googlePlaceId, setGooglePlaceId] = useState<string | null>(
     score.google_place_id?.trim() || null,
   );
@@ -484,6 +493,36 @@ export default function Score() {
       if (placeGeo.countryCode) geoPatch.country_code = placeGeo.countryCode;
     }
 
+    const placeIdForSave = googlePlaceId?.trim() || null;
+    if (placeIdForSave && placeLatLng) {
+      const geoOk = await new Promise<boolean>((resolve) => {
+        if (typeof navigator === "undefined" || !navigator.geolocation) {
+          resolve(false);
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const d = haversineDistanceMeters(placeLatLng, {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            });
+            resolve(d <= DEFAULT_PUB_GEOFENCE_MAX_METERS);
+          },
+          () => resolve(false),
+          {
+            enableHighAccuracy: true,
+            timeout: 18_000,
+            maximumAge: 0,
+          },
+        );
+      });
+      if (!geoOk) {
+        setSubmitError(t("pages.score.geofenceVenueMismatch"));
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const supabase = await getSupabaseBrowserClient();
       const { error } = await supabase
@@ -491,7 +530,7 @@ export default function Score() {
         .update({
           bar_name: nameTrim,
           bar_address: barAddress.trim() || null,
-          google_place_id: googlePlaceId?.trim() || null,
+          google_place_id: placeIdForSave,
           pour_rating: ratingVal,
           pint_price: pintPriceVal,
           ...geoPatch,
@@ -888,6 +927,7 @@ export default function Score() {
                       onChangeText={(v) => {
                         setBarName(v);
                         setPlaceGeo(null);
+                        setPlaceLatLng(null);
                         setGooglePlaceId(null);
                       }}
                       onSelect={(data) => {
@@ -895,6 +935,18 @@ export default function Score() {
                         setBarAddress(data.address);
                         setPlaceGeo(data.geo);
                         setGooglePlaceId(data.placeId?.trim() || null);
+                        const lat = data.placeLatitude;
+                        const lng = data.placeLongitude;
+                        if (
+                          typeof lat === "number" &&
+                          typeof lng === "number" &&
+                          Number.isFinite(lat) &&
+                          Number.isFinite(lng)
+                        ) {
+                          setPlaceLatLng({ lat, lng });
+                        } else {
+                          setPlaceLatLng(null);
+                        }
                       }}
                     />
                   </div>

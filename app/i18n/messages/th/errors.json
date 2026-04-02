@@ -18,5 +18,8 @@
   "pintPriceTooLarge": "ราคาไพน์สูงเกินไป",
   "saveRatingFailed": "ไม่สามารถบันทึกคะแนนได้",
   "signInGoogleFailed": "ไม่สามารถเริ่มการลงชื่อเข้าใช้ Google ได้ {detail}",
-  "couldNotUpdatePours": "ไม่สามารถอัปเดตบันทึกเทได้"
+  "couldNotUpdatePours": "ไม่สามารถอัปเดตบันทึกเทได้",
+  "pourRateLimited": "รินเกินกำหนดต่อชั่วโมง ลองใหม่ภายหลัง",
+  "duplicatePourImage": "รูปนี้เคยถูกส่งไปแล้ว",
+  "imageTimestampStale": "วันที่ในไฟล์รูปดูเก่าเกินไป ถ่ายใหม่ที่ร้าน"
 }

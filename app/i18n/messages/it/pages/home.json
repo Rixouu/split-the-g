@@ -42,5 +42,9 @@
   "pwaBannerChromeHint": "Tocca Installa, poi conferma nel messaggio del browser.",
   "flashOn": "Flash acceso",
   "flashOff": "Flash spento",
-  "flashUnavailable": "Il flash non è disponibile su questa fotocamera."
+  "flashUnavailable": "Il flash non è disponibile su questa fotocamera.",
+  "pourQueuedOffline": "Sei offline: abbiamo salvato il tuo versamento e lo valuteremo quando tornerai online.",
+  "pourQueueSaveFailed": "Impossibile salvare il versamento per l’upload offline. Riprova quando hai segnale.",
+  "pourSyncedFromQueue": "Versamento in coda caricato e valutato.",
+  "pourQueueSyncFailed": "Impossibile caricare un versamento in coda. Riproviamo quando sei online."
 }

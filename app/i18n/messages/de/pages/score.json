@@ -83,6 +83,7 @@
   "placesUnavailable": "Google Karten wurden nicht geladen. Aktivieren Sie Maps JavaScript API + Places API (Neu), Abrechnung, und fügen Sie diese Site zur HTTP-Referrer-Zulassungsliste des Schlüssels hinzu (siehe Browserkonsole).",
   "placesPlaceholder": "Suchen Sie nach einer Bar in Thailand oder geben Sie den Namen ein",
   "placesUseName": "Verwenden Sie diesen Namen: „{name}“",
+  "geofenceVenueMismatch": "Aktiviere Standort und bleib in der Nähe dieser Kneipe, um einen Google-POI zu speichern.",
   "shareHookHigh": "Denken Sie, dass Sie den G sauberer als diesen Guss teilen können?",
   "shareHookMid": "Du bist dran: Schlage meine Linie und zeige den Feed.",
   "shareHookLow": "Gießen Sie Ihren auf Split the G und versuchen Sie, eine höhere Punktzahl zu erzielen.",

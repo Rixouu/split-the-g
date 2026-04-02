@@ -42,5 +42,9 @@
   "pwaBannerChromeHint": "Tap Install, then confirm in the prompt.",
   "flashOn": "Flash on",
   "flashOff": "Flash off",
-  "flashUnavailable": "Flash isn't available on this camera."
+  "flashUnavailable": "Flash isn't available on this camera.",
+  "pourQueuedOffline": "You’re offline — we saved your pour and will score it when you’re back online.",
+  "pourQueueSaveFailed": "Couldn’t save your pour for offline upload. Try again when you have a signal.",
+  "pourSyncedFromQueue": "Queued pour uploaded and scored.",
+  "pourQueueSyncFailed": "Couldn’t upload a queued pour. We’ll retry when you’re online."
 }

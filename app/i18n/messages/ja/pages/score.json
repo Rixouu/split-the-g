@@ -83,6 +83,7 @@
   "placesUnavailable": "Google マップが読み込まれませんでした。 Maps JavaScript API + Places API (新規)、課金を有効にし、このサイトをキーの HTTP リファラー許可リストに追加します (ブラウザー コンソールを参照)。",
   "placesPlaceholder": "タイのバーを検索するか、名前を入力してください",
   "placesUseName": "この名前を使用します:「{name}」",
+  "geofenceVenueMismatch": "位置情報をオンにし、この店の近くにいてから Google の場所として保存してください。",
   "shareHookHigh": "この注ぎ方よりも G クリーナーを分割できると思いますか?",
   "shareHookMid": "あなたの番です。私のラインを破ってフィードを見せてください。",
   "shareHookLow": "Split the G に注いで、より高いスコアを目指してください。",

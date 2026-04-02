@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useSubmit,
+  useFetcher,
   useActionData,
   redirect,
   useSearchParams,
@@ -31,6 +32,10 @@ import {
   sendKnockedOutTop10NotificationForNewScore,
 } from "~/utils/push-notifications.server";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import {
+  enqueueOfflinePour,
+  flushOfflinePourQueue,
+} from "~/utils/offline-pour-queue";
 
 const isClient = typeof window !== "undefined";
 
@@ -173,7 +178,73 @@ export async function action({ request, params }: ActionFunctionArgs) {
       );
     }
 
+    if (typeof base64Image !== "string" || !base64Image.trim()) {
+      return {
+        success: false,
+        error: "INVALID_IMAGE",
+        status: 400,
+      };
+    }
+
     const imagePayload = stripBase64ImagePayload(base64Image);
+    let imageBuf: Buffer;
+    try {
+      imageBuf = Buffer.from(imagePayload, "base64");
+    } catch {
+      return { success: false, error: "INVALID_IMAGE", status: 400 };
+    }
+    if (!imageBuf.length) {
+      return { success: false, error: "INVALID_IMAGE", status: 400 };
+    }
+
+    const cookieHeader = request.headers.get("Cookie") ?? "";
+    const cookies = Object.fromEntries(
+      cookieHeader.split("; ").map((c) => {
+        const [key, ...v] = c.split("=");
+        return [key.trim(), v.join("=")];
+      }).filter(([k]) => k),
+    );
+    const sessionFromCookie = cookies["split-g-session"];
+
+    const {
+      assertPourSubmissionRateAllowed,
+      assertPourImageNotDuplicate,
+      validatePourImageExifAge,
+      sha256HexOfBuffer,
+    } = await import("~/utils/pour-submission-guards.server");
+
+    const sourceImageSha256 = sha256HexOfBuffer(imageBuf);
+
+    const rateFail = await assertPourSubmissionRateAllowed(supabase, {
+      ingestIp: clientIP,
+      sessionIdFromCookie: sessionFromCookie?.trim() || undefined,
+      submitterUserId: actorUserId || undefined,
+    });
+    if (rateFail) {
+      return {
+        success: false,
+        error: rateFail.code,
+        status: 429,
+      };
+    }
+
+    const dupFail = await assertPourImageNotDuplicate(supabase, sourceImageSha256);
+    if (dupFail) {
+      return {
+        success: false,
+        error: dupFail.code,
+        status: 400,
+      };
+    }
+
+    const exifFail = await validatePourImageExifAge(imageBuf);
+    if (exifFail) {
+      return {
+        success: false,
+        error: exifFail.code,
+        status: 400,
+      };
+    }
     let splitImage: string;
     let pintImage: string;
     let splitScore: number;
@@ -328,7 +399,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const locationData = await getLocationData(clientIP);
 
     // Create database record with session_id, location, and short public slug when supported
-    const insertPayload = {
+    type InsertShape = Record<string, unknown>;
+    let insertPayload: InsertShape = {
       split_score: splitScore,
       split_image_url: splitImageUrl,
       pint_image_url: pintImageUrl,
@@ -340,13 +412,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
       region: locationData.region,
       country: locationData.country,
       country_code: locationData.country_code,
+      source_image_sha256: sourceImageSha256,
+      ingest_ip: clientIP !== "unknown" ? clientIP : null,
+      submitter_user_id: actorUserId || null,
     };
+
+    function isImageHashUniqueViolation(msg: string): boolean {
+      return (
+        msg.includes("source_image_sha256") ||
+        msg.includes("scores_source_image_sha256")
+      );
+    }
 
     let score: {
       id: string;
       slug?: string | null;
     } | null = null;
     let dbError: Error | null = null;
+    let strippedAnticheatCols = false;
 
     for (let attempt = 0; attempt < 10; attempt++) {
       const slug = generatePourSlug(8);
@@ -363,7 +446,31 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
       const msg = res.error?.message ?? "";
       const code = (res.error as { code?: string })?.code;
+      if (code === "23505" && isImageHashUniqueViolation(msg)) {
+        return {
+          success: false,
+          error: "DUPLICATE_IMAGE",
+          status: 400,
+        };
+      }
       if (code === "23505" || msg.includes("unique") || msg.includes("duplicate")) {
+        continue;
+      }
+      if (
+        !strippedAnticheatCols &&
+        code === "42703" &&
+        (msg.includes("source_image_sha256") ||
+          msg.includes("ingest_ip") ||
+          msg.includes("submitter_user_id"))
+      ) {
+        strippedAnticheatCols = true;
+        const {
+          source_image_sha256: _s,
+          ingest_ip: _i,
+          submitter_user_id: _u,
+          ...rest
+        } = insertPayload;
+        insertPayload = rest;
         continue;
       }
       // Slug column not migrated yet — fall through to insert without slug
@@ -386,8 +493,46 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (!res.error && res.data) {
         score = res.data;
         dbError = null;
-      } else if (res.error && !dbError) {
-        dbError = res.error as Error;
+      } else if (res.error) {
+        const msg = res.error.message ?? "";
+        const code = (res.error as { code?: string })?.code;
+        if (code === "23505" && isImageHashUniqueViolation(msg)) {
+          return {
+            success: false,
+            error: "DUPLICATE_IMAGE",
+            status: 400,
+          };
+        }
+        if (
+          !strippedAnticheatCols &&
+          code === "42703" &&
+          (msg.includes("source_image_sha256") ||
+            msg.includes("ingest_ip") ||
+            msg.includes("submitter_user_id")) &&
+          !dbError
+        ) {
+          strippedAnticheatCols = true;
+          const {
+            source_image_sha256: _s,
+            ingest_ip: _i,
+            submitter_user_id: _u,
+            ...rest
+          } = insertPayload;
+          insertPayload = rest;
+          const retry = await supabase
+            .from("scores")
+            .insert(rest)
+            .select("id")
+            .single();
+          if (!retry.error && retry.data) {
+            score = retry.data;
+            dbError = null;
+          } else if (retry.error && !dbError) {
+            dbError = retry.error as Error;
+          }
+        } else if (!dbError) {
+          dbError = res.error as Error;
+        }
       }
     }
 
@@ -473,7 +618,175 @@ export default function Home() {
     setIsFlashUpdating(false);
   }, []);
   const submit = useSubmit();
+  const queueFetcher = useFetcher<typeof action>();
   const actionData = useActionData<typeof action>();
+  const offlineFlushPendingRef = useRef<{
+    resolve: () => void;
+    reject: (e: Error) => void;
+  } | null>(null);
+
+  const submitQueuedPourItem = useCallback(
+    (item: {
+      imageBase64: string;
+      competitionId: string;
+      actorUserId: string;
+      actorName: string;
+    }) => {
+      return new Promise<void>((resolve, reject) => {
+        offlineFlushPendingRef.current = {
+          resolve,
+          reject,
+        };
+        const fd = new FormData();
+        fd.append("image", item.imageBase64);
+        if (item.competitionId && UUID_RE.test(item.competitionId)) {
+          fd.append("competition", item.competitionId);
+        }
+        if (item.actorUserId) fd.append("actorUserId", item.actorUserId);
+        if (item.actorName) fd.append("actorName", item.actorName);
+        queueFetcher.submit(fd, {
+          method: "post",
+          encType: "multipart/form-data",
+          action: ".",
+        });
+      });
+    },
+    [queueFetcher],
+  );
+
+  useEffect(() => {
+    if (queueFetcher.state !== "idle") return;
+    const pending = offlineFlushPendingRef.current;
+    if (!pending) return;
+    offlineFlushPendingRef.current = null;
+    const d = queueFetcher.data;
+    if (
+      d &&
+      typeof d === "object" &&
+      "success" in d &&
+      (d as { success: boolean }).success === false
+    ) {
+      const code = (d as { error?: string }).error ?? "PROCESS_FAILED";
+      pending.reject(new Error(code));
+      return;
+    }
+    pending.resolve();
+  }, [queueFetcher.state, queueFetcher.data]);
+
+  const tryFlushOfflineQueue = useCallback(() => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    void flushOfflinePourQueue({
+      submitPour: submitQueuedPourItem,
+      onBatchSynced: () => {
+        setHomeToast({
+          message: t("pages.home.pourSyncedFromQueue"),
+          variant: "success",
+        });
+      },
+      onItemFailed: (_item, err) => {
+        const code = err instanceof Error ? err.message : "";
+        if (code === "RATE_LIMITED") {
+          setHomeToast({ message: t("errors.pourRateLimited"), variant: "danger" });
+        } else if (code === "DUPLICATE_IMAGE") {
+          setHomeToast({ message: t("errors.duplicatePourImage"), variant: "danger" });
+        } else if (code === "STALE_IMAGE_EXIF") {
+          setHomeToast({ message: t("errors.imageTimestampStale"), variant: "danger" });
+        } else {
+          setHomeToast({
+            message: t("pages.home.pourQueueSyncFailed"),
+            variant: "danger",
+          });
+        }
+      },
+    });
+  }, [submitQueuedPourItem, t]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onOnline = () => {
+      tryFlushOfflineQueue();
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") tryFlushOfflineQueue();
+    };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVis);
+    void tryFlushOfflineQueue();
+    return () => {
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [tryFlushOfflineQueue]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+    function onSwMessage(e: MessageEvent) {
+      if (e.data?.type === "FLUSH_POUR_QUEUE") {
+        tryFlushOfflineQueue();
+      }
+    }
+    navigator.serviceWorker.addEventListener("message", onSwMessage);
+    return () =>
+      navigator.serviceWorker.removeEventListener("message", onSwMessage);
+  }, [tryFlushOfflineQueue]);
+
+  const sendPourImageBase64 = useCallback(
+    (
+      base64Image: string,
+      opts?: {
+        onQueuedOffline?: () => void;
+      },
+    ) => {
+      void (async () => {
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          try {
+            await enqueueOfflinePour({
+              id: crypto.randomUUID(),
+              imageBase64: base64Image,
+              competitionId:
+                competitionIdParam && UUID_RE.test(competitionIdParam)
+                  ? competitionIdParam
+                  : "",
+              actorUserId: actorMeta.userId,
+              actorName: actorMeta.actorName,
+              queuedAt: Date.now(),
+            });
+            opts?.onQueuedOffline?.();
+            setHomeToast({
+              message: t("pages.home.pourQueuedOffline"),
+              variant: "info",
+            });
+          } catch {
+            opts?.onQueuedOffline?.();
+            setHomeToast({
+              message: t("pages.home.pourQueueSaveFailed"),
+              variant: "danger",
+            });
+          }
+          return;
+        }
+        const formData = new FormData();
+        formData.append("image", base64Image);
+        if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
+          formData.append("competition", competitionIdParam);
+        }
+        if (actorMeta.userId) formData.append("actorUserId", actorMeta.userId);
+        if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
+        submit(formData, {
+          method: "post",
+          action: ".",
+          encType: "multipart/form-data",
+        });
+      })();
+    },
+    [
+      actorMeta.actorName,
+      actorMeta.userId,
+      competitionIdParam,
+      submit,
+      t,
+    ],
+  );
 
   // Load inferencejs only when the user turns the camera on — keeps first paint / upload-only path light.
   const [inferEngine, setInferEngine] =
@@ -717,18 +1030,11 @@ export default function Home() {
                     stopCameraTracks();
                     setIsCameraActive(false);
 
-                    const formData = new FormData();
-                    formData.append("image", base64Image);
-                    if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
-                      formData.append("competition", competitionIdParam);
-                    }
-                    if (actorMeta.userId) formData.append("actorUserId", actorMeta.userId);
-                    if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
-
-                    submit(formData, {
-                      method: "post",
-                      action: ".",
-                      encType: "multipart/form-data",
+                    sendPourImageBase64(base64Image, {
+                      onQueuedOffline: () => {
+                        setIsProcessing(false);
+                        setIsSubmitting(false);
+                      },
                     });
                   }
                 } else if (next >= 2) {
@@ -766,7 +1072,7 @@ export default function Home() {
     isCameraActive,
     inferEngine,
     isVideoReady,
-    submit,
+    sendPourImageBase64,
     stopCameraTracks,
     competitionIdParam,
     t,
@@ -777,6 +1083,7 @@ export default function Home() {
     if (!actionData) return;
     setIsUploadProcessing(false);
     setIsSubmitting(false);
+    setIsProcessing(false);
 
     if (actionData.error === "NO_G") {
       setShowNoGModal(true);
@@ -784,12 +1091,23 @@ export default function Home() {
     }
 
     if ("success" in actionData && actionData.success === false) {
-      const msg =
-        actionData.error === "PROCESS_FAILED"
-          ? t("errors.failedProcessImage")
-          : typeof (actionData as { detail?: string }).detail === "string"
-            ? (actionData as { detail: string }).detail
-            : t("errors.genericPourError");
+      const err = actionData.error;
+      let msg: string;
+      if (err === "PROCESS_FAILED") {
+        msg = t("errors.failedProcessImage");
+      } else if (err === "RATE_LIMITED") {
+        msg = t("errors.pourRateLimited");
+      } else if (err === "DUPLICATE_IMAGE") {
+        msg = t("errors.duplicatePourImage");
+      } else if (err === "STALE_IMAGE_EXIF") {
+        msg = t("errors.imageTimestampStale");
+      } else if (err === "INVALID_IMAGE") {
+        msg = t("errors.readImageFailedShort");
+      } else if (typeof (actionData as { detail?: string }).detail === "string") {
+        msg = (actionData as { detail: string }).detail;
+      } else {
+        msg = t("errors.genericPourError");
+      }
       setHomeToast({
         message: msg,
         variant: "danger",
@@ -846,17 +1164,8 @@ export default function Home() {
         });
         return;
       }
-      const formData = new FormData();
-      formData.append("image", base64Image);
-      if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
-        formData.append("competition", competitionIdParam);
-      }
-      if (actorMeta.userId) formData.append("actorUserId", actorMeta.userId);
-      if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
-      submit(formData, {
-        method: "post",
-        action: ".",
-        encType: "multipart/form-data",
+      sendPourImageBase64(base64Image, {
+        onQueuedOffline: () => setIsUploadProcessing(false),
       });
     };
     reader.readAsDataURL(file);

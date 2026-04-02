@@ -42,5 +42,9 @@
   "pwaBannerChromeHint": "Installieren antippen und im Browser bestätigen.",
   "flashOn": "Blitz an",
   "flashOff": "Blitz aus",
-  "flashUnavailable": "Blitz ist auf dieser Kamera nicht verfügbar."
+  "flashUnavailable": "Blitz ist auf dieser Kamera nicht verfügbar.",
+  "pourQueuedOffline": "Offline — dein Pour wurde gespeichert und wird bewertet, sobald du wieder online bist.",
+  "pourQueueSaveFailed": "Offline-Warteschlange konnte nicht gespeichert werden. Bitte mit Verbindung erneut versuchen.",
+  "pourSyncedFromQueue": "Warteschlangen-Pour hochgeladen und bewertet.",
+  "pourQueueSyncFailed": "Warteschlangen-Pour konnte nicht hochgeladen werden. Wir versuchen es erneut, sobald du online bist."
 }

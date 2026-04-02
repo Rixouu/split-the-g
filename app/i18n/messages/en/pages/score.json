@@ -83,6 +83,7 @@
   "placesUnavailable": "Google Maps didn’t load. Enable Maps JavaScript API + Places API (New), billing, and add this site to the key’s HTTP referrer allowlist (see browser console).",
   "placesPlaceholder": "Search for a bar in Thailand or type the name",
   "placesUseName": "Use this name: \"{name}\"",
+  "geofenceVenueMismatch": "Enable location and stand near this pub to save a Google-tagged venue.",
   "shareHookHigh": "Think you can split the G cleaner than this pour?",
   "shareHookMid": "Your turn: beat my line and show the feed.",
   "shareHookLow": "Pour yours on Split the G and try to score higher.",

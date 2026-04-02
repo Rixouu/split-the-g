@@ -18,5 +18,8 @@
   "pintPriceTooLarge": "Il prezzo della pinta è troppo alto.",
   "saveRatingFailed": "Impossibile salvare la valutazione.",
   "signInGoogleFailed": "Impossibile avviare l'accesso Google. {detail}",
-  "couldNotUpdatePours": "Impossibile aggiornare i record dei getti."
+  "couldNotUpdatePours": "Impossibile aggiornare i record dei getti.",
+  "pourRateLimited": "Troppi versamenti in quest’ora. Riprova più tardi.",
+  "duplicatePourImage": "Questa foto è già stata inviata.",
+  "imageTimestampStale": "La data della foto nel file sembra troppo vecchia. Scatta una nuova foto al pub."
 }

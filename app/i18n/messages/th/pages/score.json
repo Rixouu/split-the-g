@@ -83,6 +83,7 @@
   "placesUnavailable": "Google แผนที่ไม่โหลด เปิดใช้งาน Maps JavaScript API + Places API (ใหม่) การเรียกเก็บเงิน และเพิ่มไซต์นี้ลงในรายการผู้อ้างอิง HTTP ที่อนุญาตของคีย์ (ดูคอนโซลของเบราว์เซอร์)",
   "placesPlaceholder": "ค้นหาบาร์ในประเทศไทยหรือพิมพ์ชื่อ",
   "placesUseName": "ใช้ชื่อนี้: \"{name}\"",
+  "geofenceVenueMismatch": "เปิดตำแหน่งและยืนใกล้ร้านนี้เพื่อบันทึกสถานที่จาก Google",
   "shareHookHigh": "คิดว่าคุณสามารถแยก G Cleaner ได้มากกว่านี้ไหม?",
   "shareHookMid": "ตาของคุณ: เอาชนะสายของฉันและแสดงฟีด",
   "shareHookLow": "เทลงใน Split the G และพยายามทำคะแนนให้สูงขึ้น",

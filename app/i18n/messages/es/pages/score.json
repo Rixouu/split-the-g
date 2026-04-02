@@ -83,6 +83,7 @@
   "placesUnavailable": "Google Los mapas no se cargaron. Habilite Maps JavaScript API + Places API (Nuevo), facturación y agregue este sitio a la lista de referencias HTTP permitidas de la clave (consulte la consola del navegador).",
   "placesPlaceholder": "Busca un bar en Tailandia o escribe el nombre",
   "placesUseName": "Utilice este nombre: \"{name}\"",
+  "geofenceVenueMismatch": "Activa la ubicación y acércate a este pub para guardar el sitio de Google.",
   "shareHookHigh": "¿Crees que puedes dividir el G más limpio que este vertido?",
   "shareHookMid": "Tu turno: supera mi línea y muestra el feed.",
   "shareHookLow": "Vierte el tuyo en Split the G e intenta obtener una puntuación más alta.",

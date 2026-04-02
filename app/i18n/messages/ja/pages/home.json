@@ -42,5 +42,9 @@
   "pwaBannerChromeHint": "「インストール」をタップし、表示された確認に従ってください。",
   "flashOn": "フラッシュオン",
   "flashOff": "フラッシュオフ",
-  "flashUnavailable": "このカメラではフラッシュを利用できません。"
+  "flashUnavailable": "このカメラではフラッシュを利用できません。",
+  "pourQueuedOffline": "オフラインです。注ぎ写真を保存しました。オンラインに戻ったら採点します。",
+  "pourQueueSaveFailed": "オフライン用の保存に失敗しました。通信が安定してから再度お試しください。",
+  "pourSyncedFromQueue": "キューに入れた注ぎをアップロードして採点しました。",
+  "pourQueueSyncFailed": "キューのアップロードに失敗しました。オンライン時に再試行します。"
 }

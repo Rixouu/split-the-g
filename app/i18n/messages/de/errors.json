@@ -18,5 +18,8 @@
   "pintPriceTooLarge": "Der Pint-Preis ist zu hoch.",
   "saveRatingFailed": "Bewertung konnte nicht gespeichert werden.",
   "signInGoogleFailed": "Die Anmeldung für Google konnte nicht gestartet werden. {detail}",
-  "couldNotUpdatePours": "Die Ortungsdatensätze konnten nicht aktualisiert werden."
+  "couldNotUpdatePours": "Die Ortungsdatensätze konnten nicht aktualisiert werden.",
+  "pourRateLimited": "Zu viele Ausschenkungen in dieser Stunde. Bitte später erneut versuchen.",
+  "duplicatePourImage": "Dieses Foto wurde bereits eingereicht.",
+  "imageTimestampStale": "Das Aufnahmedatum in der Datei ist zu alt. Mach ein neues Foto vor Ort."
 }

@@ -18,5 +18,8 @@
   "pintPriceTooLarge": "Le prix de la pinte est trop élevé.",
   "saveRatingFailed": "Impossible d'enregistrer la note.",
   "signInGoogleFailed": "Impossible de démarrer la connexion à Google. {detail}",
-  "couldNotUpdatePours": "Impossible de mettre à jour les enregistrements de coulage."
+  "couldNotUpdatePours": "Impossible de mettre à jour les enregistrements de coulage.",
+  "pourRateLimited": "Trop de coulages cette heure-ci. Réessayez plus tard.",
+  "duplicatePourImage": "Cette photo exacte a déjà été envoyée.",
+  "imageTimestampStale": "La date de prise de vue du fichier semble trop ancienne. Refaites une photo sur place."
 }

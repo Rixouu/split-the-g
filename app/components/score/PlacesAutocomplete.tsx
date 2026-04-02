@@ -16,6 +16,9 @@ export type PlaceSelection = {
    * Stored on scores for pub pages (opening hours via Place Details).
    */
   placeId?: string | null;
+  /** WGS84 when Google returns geometry — used for at-venue checks on save. */
+  placeLatitude?: number | null;
+  placeLongitude?: number | null;
 };
 
 export type PlacesAutocompleteProps = {
@@ -167,7 +170,13 @@ export function PlacesAutocomplete({
     try {
       const place = row.placePrediction.toPlace();
       await place.fetchFields({
-        fields: ["displayName", "formattedAddress", "addressComponents", "id"],
+        fields: [
+          "displayName",
+          "formattedAddress",
+          "addressComponents",
+          "id",
+          "location",
+        ],
       });
       const name = place.displayName?.trim() || row.name;
       const address = place.formattedAddress?.trim() || row.address;
@@ -175,7 +184,35 @@ export function PlacesAutocomplete({
       const rawPid =
         (typeof place.id === "string" && place.id.trim()) || row.placeId;
       const placeId = rawPid ? normalizeGooglePlaceId(rawPid) : null;
-      onSelect({ name, address, geo, placeId });
+
+      let placeLatitude: number | null = null;
+      let placeLongitude: number | null = null;
+      const loc = place.location;
+      if (loc) {
+        let lat: number;
+        let lng: number;
+        if (typeof loc.lat === "function" && typeof loc.lng === "function") {
+          lat = loc.lat();
+          lng = loc.lng();
+        } else {
+          const lit = loc as unknown as google.maps.LatLngLiteral;
+          lat = Number(lit.lat);
+          lng = Number(lit.lng);
+        }
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          placeLatitude = lat;
+          placeLongitude = lng;
+        }
+      }
+
+      onSelect({
+        name,
+        address,
+        geo,
+        placeId,
+        placeLatitude,
+        placeLongitude,
+      });
       setInputValue(name);
       onChangeText(name);
       setShowSuggestions(false);
@@ -187,6 +224,8 @@ export function PlacesAutocomplete({
         address: row.address,
         geo: null,
         placeId: row.placeId ? normalizeGooglePlaceId(row.placeId) : null,
+        placeLatitude: null,
+        placeLongitude: null,
       });
       setInputValue(row.name);
       onChangeText(row.name);
@@ -259,6 +298,8 @@ export function PlacesAutocomplete({
                   address: "",
                   geo: null,
                   placeId: null,
+                  placeLatitude: null,
+                  placeLongitude: null,
                 });
                 onChangeText(inputValue.trim());
                 setShowSuggestions(false);

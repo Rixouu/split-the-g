@@ -11,6 +11,23 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(fetch(event.request));
 });
 
+/** Wake the app to flush IndexedDB pour queue after connectivity returns (see app/utils/offline-pour-queue.ts). */
+self.addEventListener("sync", (event) => {
+  if (event.tag === "pour-queue") {
+    event.waitUntil(
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        for (const c of clients) {
+          try {
+            c.postMessage({ type: "FLUSH_POUR_QUEUE" });
+          } catch {
+            /* ignore */
+          }
+        }
+      }),
+    );
+  }
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   const payload = event.data.json();

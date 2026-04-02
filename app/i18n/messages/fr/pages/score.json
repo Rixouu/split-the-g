@@ -83,6 +83,7 @@
   "placesUnavailable": "Google Les cartes ne se sont pas chargées. Activez Maps JavaScript API + Places API (Nouveau), la facturation et ajoutez ce site à la liste autorisée des référents HTTP de la clé (voir la console du navigateur).",
   "placesPlaceholder": "Recherchez un bar en Thaïlande ou tapez son nom",
   "placesUseName": "Utilisez ce nom : \"{name}\"",
+  "geofenceVenueMismatch": "Activez la localisation et rapprochez-vous de ce pub pour enregistrer le lieu Google.",
   "shareHookHigh": "Pensez-vous que vous pouvez diviser le G plus proprement que cette coulée ?",
   "shareHookMid": "À votre tour : battez ma ligne et montrez le flux.",
   "shareHookLow": "Versez le vôtre sur Split the G et essayez d'obtenir un score plus élevé.",
