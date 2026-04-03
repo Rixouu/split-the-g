@@ -115,59 +115,61 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const lang = langFromParams(params);
-  const formData = await request.formData();
-  const base64Image = formData.get("image") as string;
-  const competitionRaw = formData.get("competition");
-  const competitionId =
-    typeof competitionRaw === "string" && UUID_RE.test(competitionRaw.trim())
-      ? competitionRaw.trim()
-      : "";
-  const actorUserIdRaw = formData.get("actorUserId");
-  const actorUserId =
-    typeof actorUserIdRaw === "string" && UUID_RE.test(actorUserIdRaw.trim())
-      ? actorUserIdRaw.trim()
-      : "";
-  const actorNameRaw = formData.get("actorName");
-  const actorName =
-    typeof actorNameRaw === "string" && actorNameRaw.trim() ? actorNameRaw.trim() : null;
-  const { randomUUID } = await import("node:crypto");
-  const [
-    { calculateScore },
-    { uploadImage },
-    { getLocationData },
-    {
-      extractDetectionsFromWorkflow,
-      extractWorkflowOutputImageByNames,
-      extractPreferredWorkflowImageBase64,
-      predictionsIncludeClass,
-      runServerlessWorkflow,
-      stripBase64ImagePayload,
-      toLegacyScoringOutputs,
-    },
-    { generatePourSlug },
-  ] = await Promise.all([
-    import("~/utils/scoring"),
-    import("~/utils/imageStorage"),
-    import("~/utils/locationService"),
-    import("~/utils/roboflowWorkflow"),
-    import("~/utils/pourSlug"),
-  ]);
-  const username = generateBeerUsername();
-  const sessionId = randomUUID();
-
-  // Prioritize Fly.io headers since we're using Fly hosting
-  const clientIP =
-    request.headers.get("Fly-Client-IP") ||
-    request.headers.get("fly-client-ip") ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-client-ip") ||
-    request.headers.get("fastly-client-ip") ||
-    "unknown";
-
   try {
+    const lang = langFromParams(params);
+    const formData = await request.formData();
+    const base64Image = formData.get("image") as string;
+    const competitionRaw = formData.get("competition");
+    const competitionId =
+      typeof competitionRaw === "string" && UUID_RE.test(competitionRaw.trim())
+        ? competitionRaw.trim()
+        : "";
+    const actorUserIdRaw = formData.get("actorUserId");
+    const actorUserId =
+      typeof actorUserIdRaw === "string" && UUID_RE.test(actorUserIdRaw.trim())
+        ? actorUserIdRaw.trim()
+        : "";
+    const actorNameRaw = formData.get("actorName");
+    const actorName =
+      typeof actorNameRaw === "string" && actorNameRaw.trim()
+        ? actorNameRaw.trim()
+        : null;
+    const { randomUUID } = await import("node:crypto");
+    const [
+      { calculateScore },
+      { uploadImage },
+      { getLocationData },
+      {
+        extractDetectionsFromWorkflow,
+        extractWorkflowOutputImageByNames,
+        extractPreferredWorkflowImageBase64,
+        predictionsIncludeClass,
+        runServerlessWorkflow,
+        stripBase64ImagePayload,
+        toLegacyScoringOutputs,
+      },
+      { generatePourSlug },
+    ] = await Promise.all([
+      import("~/utils/scoring"),
+      import("~/utils/imageStorage"),
+      import("~/utils/locationService"),
+      import("~/utils/roboflowWorkflow"),
+      import("~/utils/pourSlug"),
+    ]);
+    const username = generateBeerUsername();
+    const sessionId = randomUUID();
+
+    // Prioritize Fly.io headers since we're using Fly hosting
+    const clientIP =
+      request.headers.get("Fly-Client-IP") ||
+      request.headers.get("fly-client-ip") ||
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-client-ip") ||
+      request.headers.get("fastly-client-ip") ||
+      "unknown";
+
     /** Server workflow API — use Roboflow Private API key (not publishable). Non-VITE so it is not bundled for the browser. */
     const roboflowServerKey =
       (typeof process !== "undefined" && process.env?.ROBOFLOW_PRIVATE_API_KEY) ||
@@ -573,8 +575,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
   } catch (error) {
     console.error("Error processing image:", error);
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
-    console.error("Detailed error:", JSON.stringify(error, null, 2));
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "Unknown error occurred";
 
     return {
       success: false,
@@ -830,8 +835,19 @@ export default function Home() {
         ROBOFLOW_INFERENCE_VERSION,
         ROBOFLOW_PUBLISHABLE_KEY
       )
-      .then((id: string) => setModelWorkerId(id));
-  }, [inferEngine, modelLoading]);
+      .then((id: string) => setModelWorkerId(id))
+      .catch((error) => {
+        console.error("Could not start inference worker:", error);
+        setModelWorkerId(null);
+        setHomeToast({
+          message: t("pages.home.inferenceUnavailable"),
+          variant: "warning",
+        });
+      })
+      .finally(() => {
+        setModelLoading(false);
+      });
+  }, [inferEngine, modelLoading, t]);
 
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
