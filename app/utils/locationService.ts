@@ -16,7 +16,11 @@ export async function getLocationData(ipAddress?: string): Promise<LocationData>
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
-      console.error('Failed to fetch location data:', response.statusText);
+      console.warn(
+        "Location lookup unavailable:",
+        response.status,
+        response.statusText,
+      );
       return { city: null, region: null, country: null, country_code: null };
     }
 
@@ -33,7 +37,7 @@ export async function getLocationData(ipAddress?: string): Promise<LocationData>
       country_code: data.country_code || null
     };
   } catch (error) {
-    console.error('Error fetching location data:', error);
+    console.warn("Location lookup request failed:", error);
     return { city: null, region: null, country: null, country_code: null };
   }
 } 

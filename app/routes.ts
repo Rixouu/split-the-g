@@ -5,8 +5,6 @@ import {
 } from "@react-router/dev/routes";
 
 export default [
-  route("wp-admin/*", "routes/bot-probe.tsx"),
-  route("wordpress/wp-admin/*", "routes/bot-probe-wordpress.tsx"),
   route(
     ".well-known/appspecific/com.chrome.devtools.json",
     "routes/well-known.chrome-devtools.tsx",
