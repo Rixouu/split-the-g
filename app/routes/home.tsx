@@ -247,6 +247,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
         status: 400,
       };
     }
+
+    const locationPromise = getLocationData(
+      clientIP !== "unknown" ? clientIP : undefined,
+      request.headers,
+    );
+
     let splitImage: string;
     let pintImage: string;
     let splitScore: number;
@@ -385,20 +391,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
       }
     }
 
-    // Upload images to storage
-    const splitImageUrl = await uploadImage(splitImage, "split-images");
-    const pintImageUrl = await uploadImage(pintImage, "pint-images");
-    let gCloseupImageUrl: string | null = null;
-    if (gCloseupBase64) {
-      try {
-        gCloseupImageUrl = await uploadImage(gCloseupBase64, "g-closeup-images");
-      } catch (uploadErr) {
-        console.error("G close-up upload failed:", uploadErr);
-      }
-    }
+    const closeupUpload =
+      gCloseupBase64 != null
+        ? uploadImage(gCloseupBase64, "g-closeup-images").catch((uploadErr) => {
+            console.error("G close-up upload failed:", uploadErr);
+            return null;
+          })
+        : Promise.resolve(null);
 
-    // Get location data with client IP
-    const locationData = await getLocationData(clientIP);
+    const [splitImageUrl, pintImageUrl, gCloseupImageUrl] = await Promise.all([
+      uploadImage(splitImage, "split-images"),
+      uploadImage(pintImage, "pint-images"),
+      closeupUpload,
+    ]);
+
+    const locationData = await locationPromise;
 
     // Create database record with session_id, location, and short public slug when supported
     type InsertShape = Record<string, unknown>;
@@ -555,18 +562,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
       : localized;
 
     if (actorUserId) {
-      await sendFriendSplitNotifications({
+      void sendFriendSplitNotifications({
         actorUserId,
         actorName,
         score: splitScore,
         path: localized,
-      });
+      }).catch((e) => console.error("sendFriendSplitNotifications:", e));
     }
     if (score.id) {
-      await sendKnockedOutTop10NotificationForNewScore({
+      void sendKnockedOutTop10NotificationForNewScore({
         newScoreId: score.id,
         scorePath: localized,
-      });
+      }).catch((e) =>
+        console.error("sendKnockedOutTop10NotificationForNewScore:", e),
+      );
     }
 
     return redirect(dest, {
@@ -574,18 +583,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
     });
   } catch (error) {
     console.error("Error processing image:", error);
-    const errorMessage =
+    const detail =
       error instanceof Error
         ? error.message
         : typeof error === "string"
           ? error
           : "Unknown error occurred";
 
+    let code = "PROCESS_FAILED";
+    if (error instanceof Error && error.name === "AbortError") {
+      code = "ANALYSIS_TIMEOUT";
+    } else if (/Roboflow workflow failed|API request failed/i.test(detail)) {
+      code = "ROBOFLOW_FAILED";
+    } else if (/timeout|timed out|ETIMEDOUT|TIMEOUT/i.test(detail)) {
+      code = "ANALYSIS_TIMEOUT";
+    }
+
     return {
       success: false,
-      error: "PROCESS_FAILED",
-      detail: errorMessage,
-      status: 500,
+      error: code,
+      detail,
+      status: code === "ANALYSIS_TIMEOUT" ? 504 : 500,
     };
   }
 }
@@ -1111,6 +1129,10 @@ export default function Home() {
       let msg: string;
       if (err === "PROCESS_FAILED") {
         msg = t("errors.failedProcessImage");
+      } else if (err === "ANALYSIS_TIMEOUT") {
+        msg = t("errors.pourAnalysisTimedOut");
+      } else if (err === "ROBOFLOW_FAILED") {
+        msg = t("errors.pourScoringServiceUnavailable");
       } else if (err === "RATE_LIMITED") {
         msg = t("errors.pourRateLimited");
       } else if (err === "DUPLICATE_IMAGE") {

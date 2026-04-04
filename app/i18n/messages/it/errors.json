@@ -21,5 +21,7 @@
   "couldNotUpdatePours": "Impossibile aggiornare i record dei getti.",
   "pourRateLimited": "Troppi versamenti in quest’ora. Riprova più tardi.",
   "duplicatePourImage": "Questa foto è già stata inviata.",
-  "imageTimestampStale": "La data della foto nel file sembra troppo vecchia. Scatta una nuova foto al pub."
+  "imageTimestampStale": "La data della foto nel file sembra troppo vecchia. Scatta una nuova foto al pub.",
+  "pourAnalysisTimedOut": "L’analisi è andata in timeout (ANALYSIS_TIMEOUT). Prova con una foto più piccola o riprova tra poco.",
+  "pourScoringServiceUnavailable": "Impossibile raggiungere il servizio di punteggio (ROBOFLOW_FAILED). Riprova tra un attimo."
 }

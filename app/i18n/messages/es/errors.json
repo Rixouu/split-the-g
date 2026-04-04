@@ -21,5 +21,7 @@
   "couldNotUpdatePours": "No se pudieron actualizar los registros de vertido.",
   "pourRateLimited": "Demasiados vertidos esta hora. Inténtalo más tarde.",
   "duplicatePourImage": "Esta foto exacta ya se envió.",
-  "imageTimestampStale": "La fecha de la foto en el archivo parece demasiado antigua. Haz una foto nueva en el pub."
+  "imageTimestampStale": "La fecha de la foto en el archivo parece demasiado antigua. Haz una foto nueva en el pub.",
+  "pourAnalysisTimedOut": "El análisis tardó demasiado (ANALYSIS_TIMEOUT). Prueba con una foto más pequeña o inténtalo de nuevo.",
+  "pourScoringServiceUnavailable": "No se pudo contactar el servicio de puntuación (ROBOFLOW_FAILED). Inténtalo de nuevo en un momento."
 }

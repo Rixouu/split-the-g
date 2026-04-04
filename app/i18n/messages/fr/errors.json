@@ -21,5 +21,7 @@
   "couldNotUpdatePours": "Impossible de mettre à jour les enregistrements de coulage.",
   "pourRateLimited": "Trop de coulages cette heure-ci. Réessayez plus tard.",
   "duplicatePourImage": "Cette photo exacte a déjà été envoyée.",
-  "imageTimestampStale": "La date de prise de vue du fichier semble trop ancienne. Refaites une photo sur place."
+  "imageTimestampStale": "La date de prise de vue du fichier semble trop ancienne. Refaites une photo sur place.",
+  "pourAnalysisTimedOut": "L’analyse a expiré (ANALYSIS_TIMEOUT). Essayez une photo plus petite ou réessayez dans un instant.",
+  "pourScoringServiceUnavailable": "Service de notation indisponible (ROBOFLOW_FAILED). Réessayez dans un moment."
 }

@@ -21,5 +21,7 @@
   "couldNotUpdatePours": "ไม่สามารถอัปเดตบันทึกเทได้",
   "pourRateLimited": "รินเกินกำหนดต่อชั่วโมง ลองใหม่ภายหลัง",
   "duplicatePourImage": "รูปนี้เคยถูกส่งไปแล้ว",
-  "imageTimestampStale": "วันที่ในไฟล์รูปดูเก่าเกินไป ถ่ายใหม่ที่ร้าน"
+  "imageTimestampStale": "วันที่ในไฟล์รูปดูเก่าเกินไป ถ่ายใหม่ที่ร้าน",
+  "pourAnalysisTimedOut": "การวิเคราะห์หมดเวลา (ANALYSIS_TIMEOUT) ลองใช้รูปที่เล็กลงหรือลองอีกครั้ง",
+  "pourScoringServiceUnavailable": "เชื่อมต่อบริการให้คะแนนไม่ได้ (ROBOFLOW_FAILED) ลองอีกครั้งในอีกสักครู่"
 }

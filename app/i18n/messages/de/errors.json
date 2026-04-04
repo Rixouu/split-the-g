@@ -21,5 +21,7 @@
   "couldNotUpdatePours": "Die Ortungsdatensätze konnten nicht aktualisiert werden.",
   "pourRateLimited": "Zu viele Ausschenkungen in dieser Stunde. Bitte später erneut versuchen.",
   "duplicatePourImage": "Dieses Foto wurde bereits eingereicht.",
-  "imageTimestampStale": "Das Aufnahmedatum in der Datei ist zu alt. Mach ein neues Foto vor Ort."
+  "imageTimestampStale": "Das Aufnahmedatum in der Datei ist zu alt. Mach ein neues Foto vor Ort.",
+  "pourAnalysisTimedOut": "Analyse hat das Zeitlimit überschritten (ANALYSIS_TIMEOUT). Versuchen Sie ein kleineres Foto oder später erneut.",
+  "pourScoringServiceUnavailable": "Bewertungsdienst nicht erreichbar (ROBOFLOW_FAILED). Bitte kurz warten und erneut versuchen."
 }

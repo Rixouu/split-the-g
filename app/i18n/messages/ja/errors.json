@@ -21,5 +21,7 @@
   "couldNotUpdatePours": "打設記録を更新できませんでした。",
   "pourRateLimited": "1時間あたりの提出上限に達しました。しばらくしてからお試しください。",
   "duplicatePourImage": "この写真はすでに送信されています。",
-  "imageTimestampStale": "ファイル内の撮影日時が古すぎます。店内で新しく撮影してください。"
+  "imageTimestampStale": "ファイル内の撮影日時が古すぎます。店内で新しく撮影してください。",
+  "pourAnalysisTimedOut": "解析がタイムアウトしました（ANALYSIS_TIMEOUT）。写真を小さくするか、しばらくしてから再度お試しください。",
+  "pourScoringServiceUnavailable": "採点サービスに接続できません（ROBOFLOW_FAILED）。しばらくしてから再度お試しください。"
 }

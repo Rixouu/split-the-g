@@ -21,5 +21,7 @@
   "couldNotUpdatePours": "Could not update pour records.",
   "pourRateLimited": "Too many pours this hour. Try again later.",
   "duplicatePourImage": "This exact photo was already submitted.",
-  "imageTimestampStale": "Photo date in the file looks too old. Take a new picture at the bar."
+  "imageTimestampStale": "Photo date in the file looks too old. Take a new picture at the bar.",
+  "pourAnalysisTimedOut": "Analysis timed out (ANALYSIS_TIMEOUT). Try a smaller photo or try again in a moment.",
+  "pourScoringServiceUnavailable": "Could not reach the scoring service (ROBOFLOW_FAILED). Try again shortly."
 }
