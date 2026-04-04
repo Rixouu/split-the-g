@@ -9,6 +9,13 @@ export default [
     ".well-known/appspecific/com.chrome.devtools.json",
     "routes/well-known.chrome-devtools.tsx",
   ),
+  /** Before `:lang` — otherwise `/wordpress/...` is parsed as locale `wordpress` and explodes. */
+  route("wp-admin/*", "routes/external-probe-404.tsx", {
+    id: "routes/sink-wp-admin",
+  }),
+  route("wordpress/*", "routes/external-probe-404.tsx", {
+    id: "routes/sink-wordpress-root",
+  }),
   route("api/email", "./routes/email.tsx"),
   route("api/friend-invite", "./routes/friend-invite-email.tsx"),
   route("api/push-subscriptions", "./routes/api.push-subscriptions.tsx"),
