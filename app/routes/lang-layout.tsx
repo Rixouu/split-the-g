@@ -8,6 +8,11 @@ import {
   getMessagesForLocale,
 } from "~/i18n/load-messages";
 
+/** Vercel: one Node bundle for all `/:lang/*` routes — avoids client-nav 404s when only `home` had `maxDuration`. */
+export const config = {
+  maxDuration: 60,
+};
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const raw = (params.lang ?? "").trim();
   if (!isSupportedLocale(raw)) {

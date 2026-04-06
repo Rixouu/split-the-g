@@ -4,12 +4,13 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { useMatches } from "react-router";
+import { useLocation, useMatches } from "react-router";
 import {
   DEFAULT_LOCALE,
   isSupportedLocale,
   type SupportedLocale,
 } from "./config";
+import { getLocaleFromPathname } from "./paths";
 import { createTranslator, makeTFromFlat } from "./load-messages";
 import type { TranslateFn } from "./translate";
 
@@ -53,6 +54,10 @@ export function useI18n(): I18nContextValue {
  * (e.g. root shell, API).
  */
 export function useOptionalLang(): SupportedLocale {
+  const { pathname } = useLocation();
+  const fromPath = getLocaleFromPathname(pathname);
+  if (fromPath) return fromPath;
+
   const matches = useMatches();
   for (let i = matches.length - 1; i >= 0; i--) {
     const data = matches[i]?.data as { lang?: string } | undefined;
