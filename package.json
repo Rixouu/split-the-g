@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.51.0",
     "@react-router/dev": "^7.13.2",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/google.maps": "^3.58.1",
@@ -42,8 +43,8 @@
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "@types/web-push": "^3.6.4",
+    "@vercel/react-router": "^1.2.6",
     "cross-env": "^7.0.3",
-    "@playwright/test": "^1.51.0",
     "eslint": "^9.39.4",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.2.2",
