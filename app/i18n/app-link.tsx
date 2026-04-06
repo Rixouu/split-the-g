@@ -31,3 +31,15 @@ export function AppNavLink({ to, ...props }: NavLinkProps) {
   const lang = useOptionalLang();
   return <NavLink to={localizeTo(to, lang)} {...props} />;
 }
+
+/**
+ * For chrome rendered outside `I18nProvider` (e.g. `AppNavigation`).
+ * Full document navigation avoids broken client-side data requests on some hosts
+ * (split server bundles) while keeping locale-prefixed `to` targets.
+ */
+export function AppShellNavLink({ to, ...props }: NavLinkProps) {
+  const lang = useOptionalLang();
+  return (
+    <NavLink to={localizeTo(to, lang)} reloadDocument {...props} />
+  );
+}
