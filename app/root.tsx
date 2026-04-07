@@ -17,6 +17,7 @@ import {
   AppNavigation,
   shouldShowAppNav,
 } from "~/components/AppNavigation";
+import { VercelSpeedInsights } from "~/components/vercel-speed-insights";
 import { GoogleMapsScript } from "~/components/GoogleMapsScript";
 import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
 import { htmlLangAttribute, DEFAULT_LOCALE } from "~/i18n/config";
@@ -139,6 +140,7 @@ export default function App() {
           <PostOAuthReturnRedirect />
         </Suspense>
         <ScrollRestoration />
+        <VercelSpeedInsights />
         <Scripts />
         <script
           dangerouslySetInnerHTML={{
