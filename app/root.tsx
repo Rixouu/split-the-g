@@ -10,6 +10,7 @@ import {
   useLocation,
   useNavigation,
 } from "react-router";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
@@ -140,6 +141,7 @@ export default function App() {
         </Suspense>
         <ScrollRestoration />
         <Scripts />
+        <SpeedInsights />
         <script
           dangerouslySetInnerHTML={{
             __html: `window.ENV = ${JSON.stringify(env)}`,
