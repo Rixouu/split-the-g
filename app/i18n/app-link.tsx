@@ -27,6 +27,12 @@ export function AppLink({ to, ...props }: LinkProps) {
   return <Link to={localizeTo(to, lang)} {...props} />;
 }
 
+/** Localized link that intentionally performs a full document navigation. */
+export function AppDocumentLink({ to, ...props }: LinkProps) {
+  const lang = useOptionalLang();
+  return <Link to={localizeTo(to, lang)} reloadDocument {...props} />;
+}
+
 export function AppNavLink({ to, ...props }: NavLinkProps) {
   const lang = useOptionalLang();
   return <NavLink to={localizeTo(to, lang)} {...props} />;

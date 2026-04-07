@@ -77,6 +77,12 @@ export async function loader(_args: LoaderFunctionArgs) {
   };
 }
 
+export function headers() {
+  return {
+    "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+  };
+}
+
 export function meta({ params }: { params: { lang?: string } }) {
   return seoMetaForRoute(params, "/feed", "feed");
 }

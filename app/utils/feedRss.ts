@@ -22,6 +22,7 @@ const BANGKOK_POST_RSS_FEEDS = [
 
 const MAX_NEWS_AGE_MS = 120 * 24 * 60 * 60 * 1000;
 const FEED_NEWS_CACHE_TTL_MS = 5 * 60 * 1000;
+const FEED_NEWS_FETCH_TIMEOUT_MS = 2_500;
 
 type FeedNewsCacheEntry = {
   expiresAt: number;
@@ -85,7 +86,7 @@ async function fetchRssUrl(url: string): Promise<string> {
       Accept: "application/rss+xml, application/xml, text/xml, */*",
       "User-Agent": RSS_FETCH_UA,
     },
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(FEED_NEWS_FETCH_TIMEOUT_MS),
   });
   if (!response.ok) return "";
   return response.text();
@@ -166,7 +167,7 @@ async function fetchGoogleNewsRssItems(
         Accept: "application/rss+xml, application/xml, text/xml, */*",
         "User-Agent": RSS_FETCH_UA,
       },
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(FEED_NEWS_FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) return [];
@@ -226,33 +227,21 @@ export async function fetchThailandGuinnessFeedNews(limit: number): Promise<Feed
     return cached.items;
   }
 
-  const bp = await fetchBangkokPostGuinnessNews();
-  let merged = [...bp];
+  const q1 = encodeURIComponent(
+    '"Guinness" (beer OR stout) (Thailand OR Bangkok)',
+  );
+  const [bp, extra] = await Promise.all([
+    fetchBangkokPostGuinnessNews(),
+    fetchGoogleNewsRssItems(q1, limit * 2),
+  ]);
 
-  if (merged.length < Math.min(4, limit)) {
-    const q1 = encodeURIComponent(
-      '"Guinness" (beer OR stout) (Thailand OR Bangkok)',
-    );
-    const extra = await fetchGoogleNewsRssItems(q1, limit * 2);
-    const filtered = extra.filter(
-      (item) =>
-        mentionsGuinnessStout(item.title) &&
-        thailandHeadlineHint(item) &&
-        isRecentEnough(item.publishedAt),
-    );
-    merged = dedupeByLink([...merged, ...filtered]);
-  }
-
-  if (merged.length < Math.min(3, limit)) {
-    const q2 = encodeURIComponent("Guinness beer Thailand");
-    const extra2 = await fetchGoogleNewsRssItems(q2, limit * 2);
-    const filtered2 = extra2.filter(
-      (item) =>
-        mentionsGuinnessStout(item.title) &&
-        isRecentEnough(item.publishedAt),
-    );
-    merged = dedupeByLink([...merged, ...filtered2]);
-  }
+  const filteredExtra = extra.filter(
+    (item) =>
+      mentionsGuinnessStout(item.title) &&
+      thailandHeadlineHint(item) &&
+      isRecentEnough(item.publishedAt),
+  );
+  const merged = dedupeByLink([...bp, ...filteredExtra]);
 
   merged.sort(
     (a, b) =>

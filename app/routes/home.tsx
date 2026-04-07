@@ -7,7 +7,7 @@ import {
   useSearchParams,
 } from "react-router";
 import { Zap, ZapOff } from "lucide-react";
-import { AppLink } from "~/i18n/app-link";
+import { AppDocumentLink } from "~/i18n/app-link";
 import { PintGlassOverlay } from "~/components/PintGlassOverlay";
 import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
@@ -1294,43 +1294,43 @@ export default function Home() {
                 className="flex w-full max-w-sm flex-col items-stretch gap-2 lg:mt-2 lg:max-w-none"
               >
                 <div className="mx-auto grid w-full max-w-[17.5rem] grid-cols-2 gap-2 lg:hidden">
-                  <AppLink
+                  <AppDocumentLink
                     to="/leaderboard"
                     prefetch="intent"
                     viewTransition
                     className={homeMobileBrowseLinkClass}
                   >
                     {t("pages.home.topSplits")}
-                  </AppLink>
-                  <AppLink
+                  </AppDocumentLink>
+                  <AppDocumentLink
                     to="/wall"
                     prefetch="intent"
                     viewTransition
                     className={homeMobileBrowseLinkClass}
                   >
                     {t("pages.home.wall")}
-                  </AppLink>
+                  </AppDocumentLink>
                 </div>
                 <div className="hidden items-center gap-2 text-sm text-guinness-tan/65 lg:flex">
-                  <AppLink
+                  <AppDocumentLink
                     to="/leaderboard"
                     prefetch="intent"
                     viewTransition
                     className="font-medium text-guinness-tan/88 underline decoration-guinness-tan/20 underline-offset-[3px] transition-colors hover:text-guinness-gold hover:decoration-guinness-gold/40"
                   >
                     {t("pages.home.topSplits")}
-                  </AppLink>
+                  </AppDocumentLink>
                   <span className="text-guinness-tan/28" aria-hidden>
                     ·
                   </span>
-                  <AppLink
+                  <AppDocumentLink
                     to="/wall"
                     prefetch="intent"
                     viewTransition
                     className="font-medium text-guinness-tan/88 underline decoration-guinness-tan/20 underline-offset-[3px] transition-colors hover:text-guinness-gold hover:decoration-guinness-gold/40"
                   >
                     {t("pages.home.theWall")}
-                  </AppLink>
+                  </AppDocumentLink>
                 </div>
               </nav>
 
