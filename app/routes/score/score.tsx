@@ -16,7 +16,7 @@ import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import { type Score } from "~/types/score";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { LeaderboardButton } from "~/components/leaderboard/LeaderboardButton";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import { PlacesAutocomplete } from "~/components/score/PlacesAutocomplete";
 import { ScoreSharePanel } from "~/components/score/ScoreSharePanel";
@@ -50,6 +50,30 @@ function emailsMatchClaim(
   const x = a?.trim().toLowerCase() ?? "";
   const y = b?.trim().toLowerCase() ?? "";
   return Boolean(x && y && x === y);
+}
+
+async function leaderboardDisplayNameForAuthUserClient(
+  user: User,
+): Promise<string> {
+  const supabase = await getSupabaseBrowserClient();
+  const { data: profile } = await supabase
+    .from("public_profiles")
+    .select("nickname")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const nick =
+    typeof profile?.nickname === "string" ? profile.nickname.trim() : "";
+
+  const rawMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const googleFullName =
+    (typeof rawMeta.full_name === "string" && rawMeta.full_name.trim()) ||
+    (typeof rawMeta.name === "string" && rawMeta.name.trim()) ||
+    (typeof rawMeta.given_name === "string" && rawMeta.given_name.trim()) ||
+    user.email?.split("@")[0] ||
+    "Drinker";
+
+  return nick || googleFullName;
 }
 
 export function meta({
@@ -366,6 +390,39 @@ export default function Score() {
     };
   }, []);
 
+  const jwtUsernameSyncDoneKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthLoading) return;
+    if (!authUser?.email || !score.email?.trim()) return;
+    if (!emailsMatchClaim(authUser.email, score.email)) return;
+
+    const doneKey = `${score.id}:${authUser.id}`;
+    if (jwtUsernameSyncDoneKeyRef.current === doneKey) return;
+
+    void (async () => {
+      try {
+        const supabase = await getSupabaseBrowserClient();
+        const leaderboardName =
+          await leaderboardDisplayNameForAuthUserClient(authUser);
+        const { error } = await supabase.rpc("sync_scores_username_for_jwt", {
+          p_username: leaderboardName,
+        });
+        if (error) return;
+        jwtUsernameSyncDoneKeyRef.current = doneKey;
+        revalidator.revalidate();
+      } catch {
+        // best-effort: keep page usable if RPC fails
+      }
+    })();
+  }, [
+    authUser,
+    isAuthLoading,
+    revalidator,
+    score.email,
+    score.id,
+  ]);
+
   const handleGoogleSignIn = async () => {
     setClaimMessage(null);
     setSignInToastError(null);
@@ -395,23 +452,8 @@ export default function Score() {
 
     try {
       const supabase = await getSupabaseBrowserClient();
-      const { data: profile } = await supabase
-        .from("public_profiles")
-        .select("nickname")
-        .eq("user_id", authUser.id)
-        .maybeSingle();
-
-      const nick =
-        typeof profile?.nickname === "string" ? profile.nickname.trim() : "";
-
-      const rawMeta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
-      const googleFullName =
-        (typeof rawMeta.full_name === "string" && rawMeta.full_name.trim()) ||
-        (typeof rawMeta.name === "string" && rawMeta.name.trim()) ||
-        (typeof rawMeta.given_name === "string" && rawMeta.given_name.trim()) ||
-        authUser.email.split("@")[0];
-
-      const leaderboardName = nick || googleFullName;
+      const leaderboardName =
+        await leaderboardDisplayNameForAuthUserClient(authUser);
 
       const { error } = await supabase
         .from("scores")
