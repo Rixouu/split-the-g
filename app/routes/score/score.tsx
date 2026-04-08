@@ -214,7 +214,7 @@ export default function Score() {
     isOwner: boolean;
     pubPageBarKey: string | null;
   }>();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const revalidator = useRevalidator();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -1030,7 +1030,7 @@ export default function Score() {
           aria-label={t("pages.score.shareActionsAria")}
         >
           <ScoreSharePanel
-            sharePath={scorePourPath(score)}
+            sharePath={localizePath(scorePourPath(score), lang)}
             splitScore={score.split_score}
             allTimeRank={allTimeRank}
             totalSplits={totalSplits}
