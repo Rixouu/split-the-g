@@ -112,6 +112,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   );
   const sessionId = cookies["split-g-session"];
 
+  const {
+    getSupabaseAccessTokenFromRequestCookies,
+    getSupabaseUserFromAccessToken,
+  } = await import("~/utils/pour-auth-claim.server");
+  const sbAccess = getSupabaseAccessTokenFromRequestCookies(request);
+  let authedUserId: string | null = null;
+  if (sbAccess) {
+    const u = await getSupabaseUserFromAccessToken(sbAccess);
+    authedUserId = u?.id ?? null;
+  }
+
   // Get the score data: UUID path uses id; short slug uses slug column
   const query = isScoreUuidRef(ref)
     ? supabase.from("scores").select("*").eq("id", ref).single()
@@ -123,7 +134,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Score not found", { status: 404 });
   }
 
-  const row = score as Score;
+  const row = score as Score & { submitter_user_id?: string | null };
   if (isScoreUuidRef(ref) && row.slug?.trim()) {
     return redirect(
       localizePath(
@@ -170,8 +181,15 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const allTimeRank = (higherScoresCount ?? 0) + 1;
   const weeklyRank = (weeklyHigherScoresCount ?? 0) + 1;
 
-  // Check if the user owns this score
-  const isOwner = sessionId === score.session_id;
+  const submitterId =
+    typeof row.submitter_user_id === "string"
+      ? row.submitter_user_id.trim()
+      : "";
+  const isOwner =
+    sessionId === score.session_id ||
+    Boolean(
+      authedUserId && submitterId && authedUserId === submitterId,
+    );
 
   /** When the venue name matches a pub in the directory (`bar_pub_stats`). */
   let pubPageBarKey: string | null = null;
@@ -203,7 +221,7 @@ export default function Score() {
     weeklyRank,
     totalSplits,
     weeklyTotalSplits,
-    isOwner,
+    isOwner: isOwnerFromLoader,
     pubPageBarKey,
   } = useLoaderData<{
     score: Score;
@@ -260,6 +278,17 @@ export default function Score() {
   const [signInToastError, setSignInToastError] = useState<string | null>(null);
   const [unclaimConfirmOpen, setUnclaimConfirmOpen] = useState(false);
   const [isUnclaiming, setIsUnclaiming] = useState(false);
+
+  const isPourOwner = useMemo(
+    () =>
+      isOwnerFromLoader ||
+      Boolean(
+        authUser?.id &&
+          score.submitter_user_id &&
+          authUser.id === score.submitter_user_id,
+      ),
+    [isOwnerFromLoader, authUser?.id, score.submitter_user_id],
+  );
 
   async function attachScoreToCompetition(compId: string, scoreId: string) {
     const supabase = await getSupabaseBrowserClient();
@@ -359,7 +388,7 @@ export default function Score() {
   };
 
   const handleClaimWithGoogle = async () => {
-    if (!authUser?.email || !isOwner) return;
+    if (!authUser?.email || !isPourOwner) return;
 
     setIsClaiming(true);
     setClaimMessage(null);
@@ -416,7 +445,7 @@ export default function Score() {
   };
 
   const handleUnclaim = async () => {
-    if (!authUser?.email || !isOwner || !score.email) return;
+    if (!authUser?.email || !isPourOwner || !score.email) return;
     if (!emailsMatchClaim(authUser.email, score.email)) return;
 
     setUnclaimConfirmOpen(false);
@@ -576,7 +605,7 @@ export default function Score() {
     (score.bar_name?.trim() ?? "") !== "" && score.pour_rating != null;
 
   const canUnclaim =
-    isOwner &&
+    isPourOwner &&
     Boolean(authUser?.email) &&
     Boolean(score.email?.trim()) &&
     emailsMatchClaim(authUser?.email, score.email);
@@ -812,7 +841,7 @@ export default function Score() {
           </div>
         </section>
 
-        {isOwner && (
+        {isPourOwner && (
           <div className="mx-auto mt-8 max-w-3xl md:grid md:grid-cols-2 md:items-start md:gap-x-10 lg:gap-x-14">
             <section className="border-b border-guinness-gold/15 pb-8 md:border-b-0 md:border-r md:border-guinness-gold/15 md:pb-0 md:pr-8 lg:pr-10">
               <h2 className="type-card-title">

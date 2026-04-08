@@ -128,11 +128,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
       typeof competitionRaw === "string" && UUID_RE.test(competitionRaw.trim())
         ? competitionRaw.trim()
         : "";
-    const actorUserIdRaw = formData.get("actorUserId");
-    const actorUserId =
-      typeof actorUserIdRaw === "string" && UUID_RE.test(actorUserIdRaw.trim())
-        ? actorUserIdRaw.trim()
-        : "";
     const actorNameRaw = formData.get("actorName");
     const actorName =
       typeof actorNameRaw === "string" && actorNameRaw.trim()
@@ -160,7 +155,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
       import("~/utils/roboflowWorkflow"),
       import("~/utils/pourSlug"),
     ]);
-    const username = generateBeerUsername();
     const sessionId = randomUUID();
 
     // Prioritize Fly.io headers since we're using Fly hosting
@@ -213,6 +207,29 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const sessionFromCookie = cookies["split-g-session"];
 
     const {
+      getSupabaseAccessTokenFromRequestCookies,
+      getSupabaseUserFromAccessToken,
+      resolveLeaderboardUsernameForAuthUser,
+    } = await import("~/utils/pour-auth-claim.server");
+
+    const formAccessRaw = formData.get("accessToken");
+    const formAccess =
+      typeof formAccessRaw === "string" ? formAccessRaw.trim() : "";
+    const authHeader = request.headers.get("authorization") ?? "";
+    const bearer =
+      authHeader.toLowerCase().startsWith("bearer ")
+        ? authHeader.slice(7).trim()
+        : "";
+    const cookieAccess = getSupabaseAccessTokenFromRequestCookies(request);
+    const accessToken = formAccess || bearer || cookieAccess;
+
+    const verifiedAuthUser = accessToken
+      ? await getSupabaseUserFromAccessToken(accessToken)
+      : null;
+    // Never trust `actorUserId` from the form without a verified JWT; mismatches are ignored.
+    const verifiedUserId = verifiedAuthUser?.id ?? "";
+
+    const {
       assertPourSubmissionRateAllowed,
       assertPourImageNotDuplicate,
       validatePourImageExifAge,
@@ -224,7 +241,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const rateFail = await assertPourSubmissionRateAllowed(supabase, {
       ingestIp: clientIP,
       sessionIdFromCookie: sessionFromCookie?.trim() || undefined,
-      submitterUserId: actorUserId || undefined,
+      submitterUserId: verifiedUserId || undefined,
     });
     if (rateFail) {
       return {
@@ -411,6 +428,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const locationData = await locationPromise;
 
+    const rowUsername = verifiedAuthUser
+      ? await resolveLeaderboardUsernameForAuthUser(verifiedAuthUser, supabase)
+      : generateBeerUsername();
+
     // Create database record with session_id, location, and short public slug when supported
     type InsertShape = Record<string, unknown>;
     let insertPayload: InsertShape = {
@@ -418,7 +439,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       split_image_url: splitImageUrl,
       pint_image_url: pintImageUrl,
       g_closeup_image_url: gCloseupImageUrl,
-      username: username,
+      username: rowUsername,
       created_at: new Date().toISOString(),
       session_id: sessionId,
       city: locationData.city,
@@ -427,8 +448,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
       country_code: locationData.country_code,
       source_image_sha256: sourceImageSha256,
       ingest_ip: clientIP !== "unknown" ? clientIP : null,
-      submitter_user_id: actorUserId || null,
+      submitter_user_id: verifiedUserId || null,
     };
+
+    if (verifiedAuthUser?.email?.trim()) {
+      insertPayload.email = verifiedAuthUser.email.trim();
+      insertPayload.email_opted_out = false;
+    }
 
     function isImageHashUniqueViolation(msg: string): boolean {
       return (
@@ -565,10 +591,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
       ? `${localized}${localized.includes("?") ? "&" : "?"}competition=${encodeURIComponent(competitionId)}`
       : localized;
 
-    if (actorUserId) {
+    if (verifiedUserId) {
+      const notifyName =
+        (typeof actorName === "string" && actorName.trim()
+          ? actorName.trim()
+          : null) ??
+        rowUsername;
       void sendFriendSplitNotifications({
-        actorUserId,
-        actorName,
+        actorUserId: verifiedUserId,
+        actorName: notifyName,
         score: splitScore,
         path: localized,
       }).catch((e) => console.error("sendFriendSplitNotifications:", e));
@@ -586,6 +617,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       {
         success: true,
         redirectTo: dest,
+        scoreId: score.id,
       },
       { headers },
     );
@@ -673,13 +705,21 @@ export default function Home() {
         if (item.competitionId && UUID_RE.test(item.competitionId)) {
           fd.append("competition", item.competitionId);
         }
-        if (item.actorUserId) fd.append("actorUserId", item.actorUserId);
         if (item.actorName) fd.append("actorName", item.actorName);
-        queueFetcher.submit(fd, {
-          method: "post",
-          encType: "multipart/form-data",
-          action: ".",
-        });
+        void getSupabaseBrowserClient()
+          .then(async (sb) => {
+            const { data: sessionData } = await sb.auth.getSession();
+            const at = sessionData.session?.access_token;
+            if (at) fd.append("accessToken", at);
+          })
+          .catch(() => null)
+          .finally(() => {
+            queueFetcher.submit(fd, {
+              method: "post",
+              encType: "multipart/form-data",
+              action: ".",
+            });
+          });
       });
     },
     [queueFetcher],
@@ -801,8 +841,15 @@ export default function Home() {
         if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
           formData.append("competition", competitionIdParam);
         }
-        if (actorMeta.userId) formData.append("actorUserId", actorMeta.userId);
         if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
+        try {
+          const sb = await getSupabaseBrowserClient();
+          const { data: sessionData } = await sb.auth.getSession();
+          const at = sessionData.session?.access_token;
+          if (at) formData.append("accessToken", at);
+        } catch {
+          // anonymous pour still works
+        }
         submit(formData, {
           method: "post",
           action: ".",
@@ -1133,7 +1180,33 @@ export default function Home() {
       "redirectTo" in actionData &&
       typeof actionData.redirectTo === "string"
     ) {
-      window.location.assign(actionData.redirectTo);
+      const redirectTo = actionData.redirectTo;
+      const scoreId =
+        "scoreId" in actionData && typeof actionData.scoreId === "string"
+          ? actionData.scoreId
+          : "";
+      void (async () => {
+        try {
+          const comp =
+            competitionIdParam && UUID_RE.test(competitionIdParam)
+              ? competitionIdParam
+              : "";
+          if (comp && scoreId) {
+            const sb = await getSupabaseBrowserClient();
+            const { data: u } = await sb.auth.getUser();
+            if (u.user) {
+              await sb.from("competition_scores").insert({
+                competition_id: comp,
+                score_id: scoreId,
+                user_id: u.user.id,
+              });
+            }
+          }
+        } catch {
+          // best-effort; pour is already saved
+        }
+        window.location.assign(redirectTo);
+      })();
       return;
     }
 
@@ -1169,7 +1242,7 @@ export default function Home() {
         variant: "danger",
       });
     }
-  }, [actionData, t]);
+  }, [actionData, competitionIdParam, t]);
 
   // Update the handleFileChange function
   const handleFileChange = async (

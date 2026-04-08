@@ -10,6 +10,8 @@ export interface Score {
   username: string;
   email?: string;
   email_opted_out?: boolean;
+  /** Set on pour when the uploader was a verified signed-in user. */
+  submitter_user_id?: string | null;
   session_id?: string;
   city?: string;
   region?: string;
