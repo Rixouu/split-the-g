@@ -24,7 +24,7 @@ function localizeTo(to: To, lang: ReturnType<typeof useOptionalLang>): To {
 /** Internal app paths — prefixes `/:lang`. External URLs unchanged. */
 export function AppLink({ to, ...props }: LinkProps) {
   const lang = useOptionalLang();
-  return <Link to={localizeTo(to, lang)} {...props} />;
+  return <Link to={localizeTo(to, lang)} reloadDocument {...props} />;
 }
 
 /** Localized link that intentionally performs a full document navigation. */
@@ -35,7 +35,7 @@ export function AppDocumentLink({ to, ...props }: LinkProps) {
 
 export function AppNavLink({ to, ...props }: NavLinkProps) {
   const lang = useOptionalLang();
-  return <NavLink to={localizeTo(to, lang)} {...props} />;
+  return <NavLink to={localizeTo(to, lang)} reloadDocument {...props} />;
 }
 
 /**

@@ -3,7 +3,6 @@ import {
   useSubmit,
   useFetcher,
   useActionData,
-  redirect,
   useSearchParams,
 } from "react-router";
 import { Zap, ZapOff } from "lucide-react";
@@ -583,9 +582,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
       );
     }
 
-    return redirect(dest, {
-      headers,
-    });
+    return Response.json(
+      {
+        success: true,
+        redirectTo: dest,
+      },
+      { headers },
+    );
   } catch (error) {
     console.error("Error processing image:", error);
     const detail =
@@ -1123,6 +1126,16 @@ export default function Home() {
     setIsUploadProcessing(false);
     setIsSubmitting(false);
     setIsProcessing(false);
+
+    if (
+      "success" in actionData &&
+      actionData.success === true &&
+      "redirectTo" in actionData &&
+      typeof actionData.redirectTo === "string"
+    ) {
+      window.location.assign(actionData.redirectTo);
+      return;
+    }
 
     if (actionData.error === "NO_G") {
       setShowNoGModal(true);
