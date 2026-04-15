@@ -51,7 +51,7 @@ export function PostOAuthReturnRedirect() {
       isDisposed = true;
       unsubscribe?.();
     };
-  }, [location.pathname, location.search, navigate]);
+  }, [location.pathname, location.search]);
 
   return null;
 }
