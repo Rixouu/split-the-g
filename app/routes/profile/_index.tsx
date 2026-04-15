@@ -1,5 +1,5 @@
+import { useLayoutEffect } from "react";
 import {
-  Navigate,
   redirect,
   useLoaderData,
   useLocation,
@@ -63,15 +63,15 @@ export default function ProfileIndex() {
   const { search } = useLocation();
   const isDesktop = useIsDesktopMd();
 
+  const accountPath = `${localizePath("/profile/account", langFromParams(params))}${search}`;
+
+  useLayoutEffect(() => {
+    if (!data?.profileHub || !isDesktop) return;
+    window.location.replace(accountPath);
+  }, [accountPath, data?.profileHub, isDesktop]);
+
   if (!data?.profileHub) return null;
 
-  if (isDesktop) {
-    return (
-      <Navigate
-        to={`${localizePath("/profile/account", langFromParams(params))}${search}`}
-        replace
-      />
-    );
-  }
+  // Mobile hub: layout renders the dashboard. Desktop: `useLayoutEffect` hard-redirects.
   return null;
 }

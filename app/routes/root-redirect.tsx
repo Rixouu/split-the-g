@@ -1,8 +1,10 @@
-import { redirect } from "react-router";
+import { redirect, type LoaderFunctionArgs } from "react-router";
 import { DEFAULT_LOCALE } from "~/i18n/config";
 
-export function loader() {
-  return redirect(`/${DEFAULT_LOCALE}/`);
+/** Keep `?code=` / `error=` from Supabase PKCE when Site URL is `/`. */
+export function loader({ request }: LoaderFunctionArgs) {
+  const search = new URL(request.url).search;
+  return redirect(`/${DEFAULT_LOCALE}/${search}`);
 }
 
 export default function RootRedirect() {
