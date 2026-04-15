@@ -2,6 +2,7 @@ import {
   Navigate,
   redirect,
   useLoaderData,
+  useLocation,
   useParams,
   type LoaderFunctionArgs,
 } from "react-router";
@@ -26,10 +27,25 @@ function requestLooksMobile(request: Request): boolean {
 }
 
 /**
+ * Server redirects must keep the query string. Supabase PKCE returns
+ * `?code=...` (and `error` / `error_description`) on the configured redirect URI.
+ * Dropping it breaks session exchange and can surface as broken post-login
+ * navigation (including route errors that look like 404).
+ *
+ * Hash fragments (`#access_token=...`) are never visible to this loader; use
+ * Site URL at `/` or `/:lang` for implicit flows, or ensure redirect URIs are
+ * not rewritten away before the client reads the hash.
+ */
+function redirectProfileDesktop(request: Request, lang: SupportedLocale) {
+  const path = localizePath("/profile/progress", lang);
+  const search = new URL(request.url).search;
+  return redirect(`${path}${search}`);
+}
+
+/**
  * Mobile: stay on `/profile` (layout shows hub). Desktop-class clients: redirect
- * to Progress on the server so full navigations (Me link + OAuth return with
- * `reloadDocument`) never depend on a post-hydration `<Navigate />` — that
- * flow could race the router on production and surface a 404.
+ * to Progress on the server so full navigations (Me link + `reloadDocument`)
+ * do not rely only on a post-hydration `<Navigate />`.
  */
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const raw = (params.lang ?? "").trim();
@@ -38,12 +54,13 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (requestLooksMobile(request)) {
     return { profileHub: true as const };
   }
-  return redirect(localizePath("/profile/progress", lang));
+  return redirectProfileDesktop(request, lang);
 }
 
 export default function ProfileIndex() {
   const data = useLoaderData<typeof loader>();
   const params = useParams();
+  const { search } = useLocation();
   const isDesktop = useIsDesktopMd();
 
   if (!data?.profileHub) return null;
@@ -51,7 +68,7 @@ export default function ProfileIndex() {
   if (isDesktop) {
     return (
       <Navigate
-        to={localizePath("/profile/progress", langFromParams(params))}
+        to={`${localizePath("/profile/progress", langFromParams(params))}${search}`}
         replace
       />
     );
