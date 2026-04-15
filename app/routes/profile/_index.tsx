@@ -37,14 +37,14 @@ function requestLooksMobile(request: Request): boolean {
  * not rewritten away before the client reads the hash.
  */
 function redirectProfileDesktop(request: Request, lang: SupportedLocale) {
-  const path = localizePath("/profile/progress", lang);
+  const path = localizePath("/profile/account", lang);
   const search = new URL(request.url).search;
   return redirect(`${path}${search}`);
 }
 
 /**
  * Mobile: stay on `/profile` (layout shows hub). Desktop-class clients: redirect
- * to Progress on the server so full navigations (Me link + `reloadDocument`)
+ * to Account on the server so full navigations (Me link + `reloadDocument`)
  * do not rely only on a post-hydration `<Navigate />`.
  */
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -68,7 +68,7 @@ export default function ProfileIndex() {
   if (isDesktop) {
     return (
       <Navigate
-        to={`${localizePath("/profile/progress", langFromParams(params))}${search}`}
+        to={`${localizePath("/profile/account", langFromParams(params))}${search}`}
         replace
       />
     );

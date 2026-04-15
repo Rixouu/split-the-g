@@ -26,6 +26,8 @@
   "nicknameHint": "Déjelo en blanco para usar su nombre completo en feeds y foros. Debe ser único (letras, números, espacios - o _). 2 a 30 caracteres.",
   "country": "País",
   "countryNotSet": "No establecido",
+  "countrySearchPlaceholder": "Buscar países…",
+  "countryNoMatches": "No hay países que coincidan.",
   "countryHint": "Se muestra como una bandera al lado de su nombre.",
   "countryHintBold": "Tabla de clasificación local",
   "countryHintRest": "enumera los mejores lanzamientos de esta semana de todos los que eligieron este mismo país en su perfil.",

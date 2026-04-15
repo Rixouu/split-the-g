@@ -26,6 +26,8 @@
   "nicknameHint": "Laissez vide pour utiliser votre nom complet sur les flux et les tableaux. Doit être unique (lettres, chiffres, espaces, - ou _). 2 à 30 caractères.",
   "country": "Pays",
   "countryNotSet": "Non défini",
+  "countrySearchPlaceholder": "Rechercher un pays…",
+  "countryNoMatches": "Aucun pays correspondant.",
   "countryHint": "Affiché sous forme de drapeau à côté de votre nom.",
   "countryHintBold": "Classement local",
   "countryHintRest": "répertorie les meilleurs versements cette semaine de tous ceux qui ont choisi ce même pays sur leur profil.",

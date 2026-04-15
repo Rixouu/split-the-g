@@ -26,6 +26,8 @@
   "nicknameHint": "Lascia vuoto per utilizzare il tuo nome completo su feed e bacheche. Deve essere univoco (lettere, numeri, spazi - o _). 2-30 caratteri.",
   "country": "Paese",
   "countryNotSet": "Non impostato",
+  "countrySearchPlaceholder": "Cerca paesi…",
+  "countryNoMatches": "Nessun paese corrispondente.",
   "countryHint": "Mostrato come una bandiera accanto al tuo nome.",
   "countryHintBold": "Classifica locale",
   "countryHintRest": "elenca i migliori versamenti di questa settimana da parte di tutti coloro che hanno scelto questo stesso paese sul proprio profilo.",

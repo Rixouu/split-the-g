@@ -26,6 +26,8 @@
   "nicknameHint": "Lassen Sie das Feld leer, um Ihren vollständigen Namen in Feeds und Foren zu verwenden. Muss eindeutig sein (Buchstaben, Zahlen, Leerzeichen, - oder _). 2–30 Zeichen.",
   "country": "Land",
   "countryNotSet": "Nicht festgelegt",
+  "countrySearchPlaceholder": "Länder suchen…",
+  "countryNoMatches": "Keine passenden Länder.",
   "countryHint": "Wird als Flagge neben Ihrem Namen angezeigt.",
   "countryHintBold": "Lokale Bestenliste",
   "countryHintRest": "listet die Top-Gourmets dieser Woche von allen auf, die dasselbe Land in ihrem Profil ausgewählt haben.",

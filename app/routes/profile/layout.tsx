@@ -24,7 +24,6 @@ import {
 } from "~/components/branded/feedback-variant";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { isValidNickname } from "~/utils/profile-nickname";
-import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 import {
   clearPostOAuthReturnIfMatchesCurrentPath,
   googleOAuthRedirectToSiteRoot,
@@ -71,6 +70,7 @@ import { seoMetaForRoute } from "~/i18n/seo-meta";
 import { stripLocalePrefix } from "~/i18n/paths";
 import { useIsDesktopMd } from "~/utils/useDesktopMd";
 import { PushNotificationsManager } from "~/components/PushNotificationsManager";
+import { ProfileCountryPicker } from "~/components/profile/ProfileCountryPicker";
 
 export function meta({ params }: { params: { lang?: string } }) {
   return seoMetaForRoute(params, "/profile/progress", "profile");
@@ -1060,9 +1060,8 @@ export default function ProfileLayout() {
   const profileMobileBackTopClass =
     "inline-flex min-h-10 shrink-0 items-center rounded-lg border border-guinness-gold/40 bg-guinness-black/60 px-3.5 py-2 text-sm font-semibold text-guinness-gold shadow-[0_0_0_1px_rgba(212,175,55,0.08)] transition-colors hover:border-guinness-gold/60 hover:bg-guinness-gold/10";
 
-  const countrySelectClass =
-    "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 py-2 pl-3 text-guinness-cream focus:border-guinness-gold focus:outline-none " +
-    NATIVE_SELECT_APPEARANCE_CLASS;
+  const countryTriggerClass =
+    "inline-flex w-full items-center justify-between gap-2 rounded-lg border border-guinness-gold/25 bg-guinness-black/60 py-2 pl-3 pr-3 text-left text-guinness-cream focus:border-guinness-gold focus:outline-none";
 
   const messageVariant = message ? feedbackVariantFromMessage(message) : "info";
 
@@ -1373,19 +1372,17 @@ export default function ProfileLayout() {
                       >
                         {t("pages.profile.country")}
                       </label>
-                      <select
+                      <ProfileCountryPicker
                         id="profile-country"
                         value={countryCode}
-                        onChange={(e) => setCountryCode(e.target.value)}
-                        className={countrySelectClass}
-                      >
-                        <option value="">{t("pages.profile.countryNotSet")}</option>
-                        {countryOptions.map((c) => (
-                          <option key={c.code} value={c.code}>
-                            {flagEmojiFromIso2(c.code)} {c.name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setCountryCode}
+                        options={countryOptions}
+                        notSetLabel={t("pages.profile.countryNotSet")}
+                        fieldLabel={t("pages.profile.country")}
+                        searchPlaceholder={t("pages.profile.countrySearchPlaceholder")}
+                        noMatchesLabel={t("pages.profile.countryNoMatches")}
+                        triggerClassName={countryTriggerClass}
+                      />
                       <p className="type-meta mt-1.5 text-guinness-tan/60">
                         {t("pages.profile.countryHint")}{" "}
                         <strong className="font-medium text-guinness-tan/75">

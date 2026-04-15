@@ -26,6 +26,8 @@
   "nicknameHint": "Leave blank to use your full name on feeds and boards. Must be unique (letters including accents, numbers, spaces, - or _). 2–30 characters.",
   "country": "Country",
   "countryNotSet": "Not set",
+  "countrySearchPlaceholder": "Search countries…",
+  "countryNoMatches": "No matching countries.",
   "countryHint": "Shown as a flag next to your name.",
   "countryHintBold": "Local leaderboard",
   "countryHintRest": "lists top pours this week from everyone who chose this same country on their profile.",

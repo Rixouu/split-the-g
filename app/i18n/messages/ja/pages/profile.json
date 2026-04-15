@@ -26,6 +26,8 @@
   "nicknameHint": "フィードやボードでフルネームを使用するには、空白のままにします。一意である必要があります (文字、数字、スペース、- または _)。 2 ～ 30 文字。",
   "country": "国",
   "countryNotSet": "未設定",
+  "countrySearchPlaceholder": "国を検索…",
+  "countryNoMatches": "一致する国がありません。",
   "countryHint": "自分の名前の横に旗として表示されます。",
   "countryHintBold": "ローカルリーダーボード",
   "countryHintRest": "プロフィールで同じ国を選択した人全員からの、今週のトップの投稿をリストします。",

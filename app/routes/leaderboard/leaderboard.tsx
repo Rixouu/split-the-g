@@ -70,6 +70,12 @@ export const loader: LoaderFunction = async () => {
   return { entries: (data ?? []) as LeaderboardEntry[] };
 };
 
+export function headers() {
+  return {
+    "Cache-Control": "private, no-store, must-revalidate",
+  };
+}
+
 export function meta({ params }: { params: { lang?: string } }) {
   return seoMetaForRoute(params, "/leaderboard", "leaderboard");
 }

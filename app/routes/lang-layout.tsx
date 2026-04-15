@@ -1,4 +1,5 @@
-import { Outlet, redirect, useLoaderData } from "react-router";
+import { useEffect } from "react";
+import { Outlet, redirect, useLoaderData, useRevalidator } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { AppDesktopFooter } from "~/components/AppDesktopFooter";
 import { I18nProvider } from "~/i18n/context";
@@ -32,6 +33,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export default function LangLayout() {
   const { lang, messages } = useLoaderData<typeof loader>();
+  const revalidator = useRevalidator();
+
+  useEffect(() => {
+    function onPageShow(ev: PageTransitionEvent) {
+      if (ev.persisted) revalidator.revalidate();
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [revalidator]);
+
   return (
     <I18nProvider lang={lang} messages={messages}>
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
