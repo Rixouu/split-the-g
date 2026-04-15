@@ -79,8 +79,8 @@ export async function loader(_args: LoaderFunctionArgs) {
 
 export function headers() {
   /**
-   * Flags and copy lean on `feed_scores_recent` (pour geo + profile country).
-   * Public edge caching made the document lag `/wall`, which does not set this.
+   * Leaderboard/feed flags depend on `public_profiles` + RPCs. Public edge caching
+   * of this document can show stale flags after profile updates; keep it private.
    */
   return {
     "Cache-Control": "private, no-store, must-revalidate",

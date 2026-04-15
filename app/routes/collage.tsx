@@ -62,6 +62,12 @@ export const loader: LoaderFunction = async () => {
   return { submissions: (data ?? []) as Submission[] };
 };
 
+export function headers() {
+  return {
+    "Cache-Control": "private, no-store, must-revalidate",
+  };
+}
+
 export function meta({ params }: { params: { lang?: string } }) {
   return seoMetaForRoute(params, "/wall", "wall");
 }

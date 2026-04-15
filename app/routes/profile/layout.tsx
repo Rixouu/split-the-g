@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from "react-router";
+import { Outlet, useLocation, useRevalidator } from "react-router";
 import { AppLink } from "~/i18n/app-link";
 import type { User } from "@supabase/supabase-js";
 import {
@@ -79,6 +79,7 @@ export function meta({ params }: { params: { lang?: string } }) {
 export default function ProfileLayout() {
   const { t } = useI18n();
   const location = useLocation();
+  const revalidator = useRevalidator();
   const profileNavItemsWithFaq = useMemo(
     () =>
       [
@@ -769,6 +770,7 @@ export default function ProfileLayout() {
       setNickname(nickTrim);
       setCountryCode(ccRaw);
       await loadProfileData(user, { includeScores: true, includeSocial: true });
+      revalidator.revalidate();
       showToast(t("pages.profile.msgProfileSaved"));
     } finally {
       setProfileSaving(false);
