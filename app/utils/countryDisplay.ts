@@ -1,4 +1,13 @@
 import countries from "i18n-iso-countries";
+import type { LocaleData } from "i18n-iso-countries";
+import enLocale from "i18n-iso-countries/langs/en.json";
+
+/**
+ * The package's `browser` entry is `index.js` (empty `registeredLocales`).
+ * Node uses `entry-node.js` which registers every lang — so SSR had names but
+ * the client bundle did not, and `getNames("en")` returned `{}` after hydrate.
+ */
+countries.registerLocale(enLocale as LocaleData);
 
 export interface CountryOption {
   code: string;
@@ -6,10 +15,7 @@ export interface CountryOption {
 }
 
 /**
- * Full ISO 3166-1 alpha-2 list with English names.
- * Uses `i18n-iso-countries` so SSR (Node) and browsers without
- * `Intl.supportedValuesOf("region")` still get every country — not the short
- * hardcoded fallback from the previous implementation.
+ * Full ISO 3166-1 alpha-2 list with English names (after `registerLocale` above).
  */
 export function getCountryOptions(): CountryOption[] {
   const names = countries.getNames("en", { select: "official" });
