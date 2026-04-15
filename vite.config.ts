@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ""));
 
   return {
+    resolve: {
+      /** Avoid two React copies (hooks dispatcher null → "Cannot read properties of null (reading 'useState')"). */
+      dedupe: ["react", "react-dom"],
+    },
     ssr: {
       external: ["sharp"],
     },
