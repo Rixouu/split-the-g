@@ -45,7 +45,7 @@ export async function resolveBarKeyFromPubPathSegment(
     .select("bar_key")
     .eq("bar_key", lowered)
     .maybeSingle();
-  if (directQuery.error) {
+  if (directQuery.error || !directQuery.data) {
     directQuery = await client
       .from("bar_pub_stats")
       .select("bar_key")

@@ -63,7 +63,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     .select(barStatProjection)
     .eq("bar_key", barKey)
     .maybeSingle();
-  if (statQuery.error) {
+  if (statQuery.error || !statQuery.data) {
     statQuery = await supabase
       .from("bar_pub_stats")
       .select(barStatProjection)

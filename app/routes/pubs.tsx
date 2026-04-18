@@ -123,25 +123,27 @@ const selectFieldClass = `${filterFieldShell} pl-3 ${NATIVE_SELECT_APPEARANCE_CL
 export async function loader(_args: LoaderFunctionArgs) {
   const projection =
     "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
+  /**
+   * Prefer the live `bar_pub_stats` view so new pours appear in the directory
+   * immediately. `bar_pub_stats_mv` is only refreshed periodically and caused
+   * pub detail 404s + missing list rows for new venues.
+   */
+  const live = await supabase
+    .from("bar_pub_stats")
+    .select(projection)
+    .order("rating_count", { ascending: false })
+    .limit(120);
+  if (!live.error) {
+    return { bars: (live.data ?? []) as BarStat[], source: "view" as const };
+  }
+
   const mv = await supabase
     .from("bar_pub_stats_mv")
     .select(projection)
     .order("rating_count", { ascending: false })
     .limit(120);
   if (!mv.error) {
-    return { bars: (mv.data ?? []) as BarStat[], source: "view" as const };
-  }
-
-  const { data, error } = await supabase
-    .from("bar_pub_stats")
-    .select(
-      projection,
-    )
-    .order("rating_count", { ascending: false })
-    .limit(120);
-
-  if (!error) {
-    return { bars: (data ?? []) as BarStat[], source: "view" as const };
+    return { bars: (mv.data ?? []) as BarStat[], source: "mv" as const };
   }
 
   const { data: scores, error: scoresError } = await supabase
