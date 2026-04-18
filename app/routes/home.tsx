@@ -1571,11 +1571,10 @@ export default function Home() {
                       />
                       <div className="absolute inset-0 flex translate-y-3 items-center justify-center sm:translate-y-4 lg:translate-y-3">
                         {/*
-                          Height-first + w-auto keeps 400:600 viewBox; caps stop the guide
-                          from dominating the preview (users had to move the phone far
-                          back for a real pint to “fit”).
+                          Uniform scale only: fixed max-height + w:auto preserves the
+                          SVG viewBox 400:600 aspect ratio (no skew transforms).
                         */}
-                        <PintGlassOverlay className="h-[min(20rem,58dvh)] w-auto text-guinness-gold opacity-[0.55] sm:h-[min(22rem,54dvh)] lg:h-[min(24rem,min(52dvh,calc(100dvh-12rem)))]" />
+                        <PintGlassOverlay className="block h-[min(20rem,52dvh)] w-auto shrink-0 text-guinness-gold opacity-50 sm:h-[min(22rem,50dvh)] lg:h-[min(23rem,min(48dvh,calc(100dvh-12rem)))]" />
                       </div>
                     </div>
                   ) : (
