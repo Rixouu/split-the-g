@@ -1,12 +1,20 @@
 export function PintGlassOverlay({ className = "" }: { className?: string }) {
   return (
-    <svg 
+    <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 400 600"
-      className={`${className}`}
+      preserveAspectRatio="xMidYMid meet"
+      className={className}
+      aria-hidden
     >
-      <path
-        d="
+      {/*
+        Slight non-uniform scale around viewBox center (200,300): wider bowl, shorter
+        stem-to-rim so the guide matches a typical tulip at arm's length (the raw path
+        was overly tall/narrow after a prior resize).
+      */}
+      <g transform="translate(200 300) scale(1.08 0.92) translate(-200 -300)">
+        <path
+          d="
           M340,100 
           L337,50a30,30,0,0,0-30-29 
           H93a30,30,0,0,0-30,29
@@ -22,12 +30,13 @@ export function PintGlassOverlay({ className = "" }: { className?: string }) {
           C333,175 336,164 337.3,157
           C342,132 341.3,121 340,100Z
         "
-        stroke="currentColor"
-        strokeWidth="4"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+          stroke="currentColor"
+          strokeWidth="4"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
     </svg>
   );
 } 

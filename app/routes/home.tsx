@@ -1569,8 +1569,13 @@ export default function Home() {
                         ref={canvasRef}
                         className="absolute inset-0 h-full w-full object-cover"
                       />
-                      <div className="absolute inset-0 flex translate-y-6 items-center justify-center lg:translate-y-4">
-                        <PintGlassOverlay className="h-[26rem] w-72 text-guinness-gold opacity-50 sm:h-[28rem] sm:w-80 lg:h-[min(28rem,calc(100dvh-16rem))] lg:w-[min(20rem,45vw)]" />
+                      <div className="absolute inset-0 flex translate-y-3 items-center justify-center sm:translate-y-4 lg:translate-y-3">
+                        {/*
+                          Height-first + w-auto keeps 400:600 viewBox; caps stop the guide
+                          from dominating the preview (users had to move the phone far
+                          back for a real pint to “fit”).
+                        */}
+                        <PintGlassOverlay className="h-[min(20rem,58dvh)] w-auto text-guinness-gold opacity-[0.55] sm:h-[min(22rem,54dvh)] lg:h-[min(24rem,min(52dvh,calc(100dvh-12rem)))]" />
                       </div>
                     </div>
                   ) : (
