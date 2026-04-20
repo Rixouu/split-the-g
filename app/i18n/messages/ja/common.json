@@ -10,6 +10,10 @@
   "tryAgain": "もう一度やり直してください",
   "headsUp": "注意喚起",
   "couldntProcessImage": "その画像を処理できませんでした",
+  "analyticsPrivacyTitle": "プライバシー設定",
+  "analyticsConsentBody": "注ぎスコアの精度、コンペの公平性、アプリ全体のパフォーマンス向上のために分析を利用します。完全なトラッキングは同意後にのみ有効になり、この設定は後でプロフィールアカウントから変更できます。",
+  "analyticsReject": "拒否",
+  "analyticsAccept": "同意する",
   "buyCreatorBeer": "制作者にビールをおごる",
   "footerAria": "著作権表示",
   "footerCopyright": "© {year} Split the G"

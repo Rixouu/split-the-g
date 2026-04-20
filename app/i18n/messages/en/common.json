@@ -10,6 +10,10 @@
   "tryAgain": "Try Again",
   "headsUp": "Heads up",
   "couldntProcessImage": "Couldn't process that image",
+  "analyticsPrivacyTitle": "Privacy settings",
+  "analyticsConsentBody": "We use analytics to improve pour scoring, competition fairness, and overall app performance. We only enable full tracking after your consent, and you can change this later in Profile Account.",
+  "analyticsReject": "Reject",
+  "analyticsAccept": "Accept",
   "buyCreatorBeer": "Buy the creator a beer",
   "footerAria": "Copyright",
   "footerCopyright": "© {year} Split the G"

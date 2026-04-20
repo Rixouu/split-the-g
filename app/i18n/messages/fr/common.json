@@ -10,6 +10,10 @@
   "tryAgain": "Essayer à nouveau",
   "headsUp": "Attention",
   "couldntProcessImage": "Impossible de traiter cette image",
+  "analyticsPrivacyTitle": "Paramètres de confidentialité",
+  "analyticsConsentBody": "Nous utilisons les analyses pour améliorer l'évaluation des pours, l'équité des compétitions et les performances globales de l'application. Le suivi complet n'est activé qu'après votre consentement, et vous pouvez modifier ce choix plus tard dans le compte Profil.",
+  "analyticsReject": "Refuser",
+  "analyticsAccept": "Accepter",
   "buyCreatorBeer": "Offrir une bière au créateur",
   "footerAria": "Copyright",
   "footerCopyright": "© {year} Split the G"

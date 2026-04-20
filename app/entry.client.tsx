@@ -9,6 +9,9 @@ declare global {
       SUPABASE_URL: string;
       SUPABASE_ANON_KEY: string;
       GOOGLE_PLACES_API_KEY: string;
+      GA_MEASUREMENT_ID: string;
+      POSTHOG_KEY: string;
+      POSTHOG_HOST: string;
     };
   }
 }
@@ -18,6 +21,9 @@ window.ENV = {
   SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || "",
   SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
   GOOGLE_PLACES_API_KEY: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+  GA_MEASUREMENT_ID: import.meta.env.VITE_GA_MEASUREMENT_ID || "",
+  POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY || "",
+  POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST || "",
 };
 
 startTransition(() => {

@@ -10,6 +10,10 @@
   "tryAgain": "Riprova",
   "headsUp": "Dritta",
   "couldntProcessImage": "Impossibile elaborare l'immagine",
+  "analyticsPrivacyTitle": "Impostazioni privacy",
+  "analyticsConsentBody": "Utilizziamo l'analisi per migliorare il punteggio dei pour, l'equità delle competizioni e le prestazioni generali dell'app. Il tracciamento completo viene attivato solo dopo il tuo consenso e puoi modificarlo in seguito nell'account Profilo.",
+  "analyticsReject": "Rifiuta",
+  "analyticsAccept": "Accetta",
   "buyCreatorBeer": "Offri una birra al creatore",
   "footerAria": "Copyright",
   "footerCopyright": "© {year} Split the G"

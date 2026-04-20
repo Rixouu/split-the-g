@@ -16,6 +16,7 @@ import {
 } from "~/utils/analytics/consent";
 import { analyticsEventNames } from "~/utils/analytics/events";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { useTChrome } from "~/i18n/context";
 
 interface AnalyticsManagerProps {
   gaMeasurementId?: string;
@@ -53,6 +54,7 @@ export function AnalyticsManager({
   posthogHost,
   lang,
 }: AnalyticsManagerProps) {
+  const t = useTChrome();
   const location = useLocation();
   const [consentStatus, setConsentStatus] = useState<AnalyticsConsentStatus>("unset");
   const initializedRef = useRef(false);
@@ -151,33 +153,42 @@ export function AnalyticsManager({
   if (consentStatus !== "unset") return null;
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-[80] mx-auto max-w-xl rounded-xl border border-guinness-gold/35 bg-guinness-black/95 p-4 text-guinness-cream shadow-[0_10px_40px_rgba(0,0,0,0.45)]">
-      <p className="text-sm text-guinness-tan/90">
-        We use analytics to improve pour scoring, competition flows, and app
-        performance.
-      </p>
-      <div className="mt-3 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          className="rounded-md border border-guinness-gold/35 px-3 py-2 text-xs font-semibold text-guinness-tan/90 transition-colors hover:bg-guinness-black/60"
-          onClick={() => {
-            setAnalyticsConsent("rejected");
-            setConsentStatus("rejected");
-          }}
-        >
-          Reject
-        </button>
-        <button
-          type="button"
-          className="rounded-md bg-guinness-gold px-3 py-2 text-xs font-semibold text-guinness-black transition-colors hover:bg-guinness-tan"
-          onClick={() => {
-            setAnalyticsConsent("accepted");
-            setConsentStatus("accepted");
-          }}
-        >
-          Accept
-        </button>
+    <section
+      aria-label="Analytics consent"
+      className="fixed inset-x-3 bottom-3 z-[80] mx-auto w-[min(52rem,calc(100vw-1.5rem))] rounded-2xl border border-guinness-gold/30 bg-[linear-gradient(180deg,rgba(10,10,10,0.98),rgba(5,5,5,0.98))] p-4 text-guinness-cream shadow-[0_16px_45px_rgba(0,0,0,0.55)] sm:inset-x-4 sm:bottom-4 sm:p-5"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-guinness-gold/75">
+            {t("common.analyticsPrivacyTitle")}
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-guinness-tan/90 sm:mt-1.5">
+            {t("common.analyticsConsentBody")}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          <button
+            type="button"
+            className="min-w-20 rounded-lg border border-guinness-gold/35 px-3 py-2 text-xs font-semibold text-guinness-tan/90 transition-colors hover:bg-guinness-black/60"
+            onClick={() => {
+              setAnalyticsConsent("rejected");
+              setConsentStatus("rejected");
+            }}
+          >
+            {t("common.analyticsReject")}
+          </button>
+          <button
+            type="button"
+            className="min-w-20 rounded-lg bg-guinness-gold px-3 py-2 text-xs font-semibold text-guinness-black transition-colors hover:bg-guinness-tan"
+            onClick={() => {
+              setAnalyticsConsent("accepted");
+              setConsentStatus("accepted");
+            }}
+          >
+            {t("common.analyticsAccept")}
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

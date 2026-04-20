@@ -10,6 +10,10 @@
   "tryAgain": "Intentar otra vez",
   "headsUp": "Aviso",
   "couldntProcessImage": "No se pudo procesar esa imagen",
+  "analyticsPrivacyTitle": "Configuración de privacidad",
+  "analyticsConsentBody": "Usamos analítica para mejorar la puntuación de los pours, la equidad de las competiciones y el rendimiento general de la app. Solo activamos el seguimiento completo después de tu consentimiento, y puedes cambiarlo más tarde en la cuenta de Perfil.",
+  "analyticsReject": "Rechazar",
+  "analyticsAccept": "Aceptar",
   "buyCreatorBeer": "Invitar una cerveza al creador",
   "footerAria": "Copyright",
   "footerCopyright": "© {year} Split the G"

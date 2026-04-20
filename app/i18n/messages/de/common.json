@@ -10,6 +10,10 @@
   "tryAgain": "Versuchen Sie es erneut",
   "headsUp": "Kopf hoch",
   "couldntProcessImage": "Das Bild konnte nicht verarbeitet werden",
+  "analyticsPrivacyTitle": "Datenschutzeinstellungen",
+  "analyticsConsentBody": "Wir verwenden Analysen, um die Bewertung von Pours, die Fairness von Wettbewerben und die allgemeine App-Leistung zu verbessern. Vollständiges Tracking wird erst nach Ihrer Zustimmung aktiviert und kann später im Profilkonto geändert werden.",
+  "analyticsReject": "Ablehnen",
+  "analyticsAccept": "Akzeptieren",
   "buyCreatorBeer": "Dem Ersteller ein Bier spendieren",
   "footerAria": "Urheberrecht",
   "footerCopyright": "© {year} Split the G"
