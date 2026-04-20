@@ -20,6 +20,7 @@ import {
 import { VercelSpeedInsights } from "~/components/vercel-speed-insights";
 import { VercelAnalytics } from "~/components/vercel-analytics";
 import { GoogleMapsScript } from "~/components/GoogleMapsScript";
+import { AnalyticsManager } from "~/components/AnalyticsManager";
 import { pathnameNeedsGoogleMapsScript } from "~/utils/google-maps-routes";
 import { htmlLangAttribute, DEFAULT_LOCALE } from "~/i18n/config";
 import { createTranslator } from "~/i18n/load-messages";
@@ -34,6 +35,9 @@ declare global {
       SUPABASE_URL: string;
       SUPABASE_ANON_KEY: string;
       GOOGLE_PLACES_API_KEY: string;
+      GA_MEASUREMENT_ID: string;
+      POSTHOG_KEY: string;
+      POSTHOG_HOST: string;
     };
   }
 }
@@ -71,6 +75,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
     GOOGLE_PLACES_API_KEY: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    GA_MEASUREMENT_ID: import.meta.env.VITE_GA_MEASUREMENT_ID ?? "",
+    POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY ?? "",
+    POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST ?? "",
     WEB_PUSH_PUBLIC_KEY: webPushPublicKey,
     SITE_ORIGIN: (import.meta.env.VITE_SITE_URL ?? requestOrigin ?? SITE_URL).replace(
       /\/$/,
@@ -140,6 +147,12 @@ export default function App() {
           <GlobalCompetitionPourToast />
           <PostOAuthReturnRedirect />
         </Suspense>
+        <AnalyticsManager
+          gaMeasurementId={env.GA_MEASUREMENT_ID}
+          posthogKey={env.POSTHOG_KEY}
+          posthogHost={env.POSTHOG_HOST}
+          lang={getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE}
+        />
         <ScrollRestoration />
         <VercelSpeedInsights />
         <VercelAnalytics />

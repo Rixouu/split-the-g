@@ -71,6 +71,13 @@ import { stripLocalePrefix } from "~/i18n/paths";
 import { useIsDesktopMd } from "~/utils/useDesktopMd";
 import { PushNotificationsManager } from "~/components/PushNotificationsManager";
 import { ProfileCountryPicker } from "~/components/profile/ProfileCountryPicker";
+import { analyticsEventNames } from "~/utils/analytics/events";
+import { trackEvent } from "~/utils/analytics/client";
+import {
+  getAnalyticsConsent,
+  setAnalyticsConsent,
+  type AnalyticsConsentStatus,
+} from "~/utils/analytics/consent";
 
 export function meta({ params }: { params: { lang?: string } }) {
   return seoMetaForRoute(params, "/profile/progress", "profile");
@@ -141,6 +148,9 @@ export default function ProfileLayout() {
   /** ISO 3166-1 alpha-2; empty = not set */
   const [countryCode, setCountryCode] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [hasPendingProfileSignIn, setHasPendingProfileSignIn] = useState(false);
+  const [analyticsConsentStatus, setAnalyticsConsentStatus] =
+    useState<AnalyticsConsentStatus>("unset");
   const countryOptions = useMemo(() => getCountryOptions(), []);
 
   const profileNavLinkItems = useMemo(
@@ -651,8 +661,14 @@ export default function ProfileLayout() {
 
   useEffect(() => {
     if (!user) return;
+    if (hasPendingProfileSignIn) {
+      trackEvent(analyticsEventNames.authGoogleSignInSucceeded, {
+        source: "profile",
+      });
+      setHasPendingProfileSignIn(false);
+    }
     void loadProfileData(user);
-  }, [loadProfileData, user]);
+  }, [hasPendingProfileSignIn, loadProfileData, user]);
 
   useEffect(() => {
     clearPostOAuthReturnIfMatchesCurrentPath(
@@ -661,7 +677,15 @@ export default function ProfileLayout() {
     );
   }, [location.pathname, location.search]);
 
+  useEffect(() => {
+    setAnalyticsConsentStatus(getAnalyticsConsent());
+  }, []);
+
   const signInGoogle = async () => {
+    trackEvent(analyticsEventNames.authGoogleSignInStarted, {
+      source: "profile",
+    });
+    setHasPendingProfileSignIn(true);
     hideToast();
     rememberPathBeforeGoogleOAuth();
     const supabase = await getSupabaseBrowserClient();
@@ -670,6 +694,11 @@ export default function ProfileLayout() {
       options: { redirectTo: googleOAuthRedirectToSiteRoot() },
     });
     if (error) {
+      trackEvent(analyticsEventNames.authGoogleSignInFailed, {
+        source: "profile",
+        reason: error.message,
+      });
+      setHasPendingProfileSignIn(false);
       const detail =
         error.message?.trim() || t("pages.profile.msgSignInFallback");
       showToast(t("pages.profile.msgSignInFailed", { detail }));
@@ -769,6 +798,10 @@ export default function ProfileLayout() {
       setFullName(nameTrim);
       setNickname(nickTrim);
       setCountryCode(ccRaw);
+      trackEvent(analyticsEventNames.profileSaved, {
+        hasNickname: Boolean(nickTrim),
+        hasCountryCode: Boolean(ccRaw),
+      });
       await loadProfileData(user, { includeScores: true, includeSocial: true });
       revalidator.revalidate();
       showToast(t("pages.profile.msgProfileSaved"));
@@ -1405,6 +1438,46 @@ export default function ProfileLayout() {
                   </form>
 
                   <div className="mt-5 border-t border-guinness-gold/10 pt-4">
+                    <div className="mb-6 rounded-lg border border-guinness-gold/20 bg-guinness-black/35 p-4">
+                      <p className="type-label text-guinness-gold/90">
+                        Tracking preference
+                      </p>
+                      <p className="type-meta mt-1 text-guinness-tan/75">
+                        Choose whether analytics can be used to improve app flows.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnalyticsConsent("accepted");
+                            setAnalyticsConsentStatus("accepted");
+                            showToast("Analytics enabled.");
+                          }}
+                          className={`rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${
+                            analyticsConsentStatus === "accepted"
+                              ? "border-guinness-gold bg-guinness-gold text-guinness-black"
+                              : "border-guinness-gold/35 text-guinness-tan/90 hover:bg-guinness-gold/10"
+                          }`}
+                        >
+                          Allow analytics
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnalyticsConsent("rejected");
+                            setAnalyticsConsentStatus("rejected");
+                            showToast("Analytics disabled.");
+                          }}
+                          className={`rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${
+                            analyticsConsentStatus === "rejected"
+                              ? "border-guinness-gold bg-guinness-gold text-guinness-black"
+                              : "border-guinness-gold/35 text-guinness-tan/90 hover:bg-guinness-gold/10"
+                          }`}
+                        >
+                          Disable analytics
+                        </button>
+                      </div>
+                    </div>
                     <div className="mb-6 md:mb-8">
                       <PushNotificationsManager />
                     </div>

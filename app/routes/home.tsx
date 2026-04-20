@@ -35,6 +35,8 @@ import {
   enqueueOfflinePour,
   flushOfflinePourQueue,
 } from "~/utils/offline-pour-queue";
+import { analyticsEventNames } from "~/utils/analytics/events";
+import { trackEvent } from "~/utils/analytics/client";
 
 const isClient = typeof window !== "undefined";
 
@@ -687,6 +689,7 @@ export default function Home() {
     resolve: () => void;
     reject: (e: Error) => void;
   } | null>(null);
+  const lastSubmitSourceRef = useRef<"camera" | "upload">("camera");
 
   const submitQueuedPourItem = useCallback(
     (item: {
@@ -749,6 +752,7 @@ export default function Home() {
     void flushOfflinePourQueue({
       submitPour: submitQueuedPourItem,
       onBatchSynced: () => {
+        trackEvent(analyticsEventNames.offlinePourSynced, {});
         setHomeToast({
           message: t("pages.home.pourSyncedFromQueue"),
           variant: "success",
@@ -806,9 +810,12 @@ export default function Home() {
       base64Image: string,
       opts?: {
         onQueuedOffline?: () => void;
+        source?: "camera" | "upload";
       },
     ) => {
       void (async () => {
+        const source = opts?.source ?? "camera";
+        lastSubmitSourceRef.current = source;
         if (typeof navigator !== "undefined" && !navigator.onLine) {
           try {
             await enqueueOfflinePour({
@@ -823,6 +830,11 @@ export default function Home() {
               queuedAt: Date.now(),
             });
             opts?.onQueuedOffline?.();
+            trackEvent(analyticsEventNames.offlinePourQueued, {
+              hasCompetition: Boolean(
+                competitionIdParam && UUID_RE.test(competitionIdParam),
+              ),
+            });
             setHomeToast({
               message: t("pages.home.pourQueuedOffline"),
               variant: "info",
@@ -854,6 +866,12 @@ export default function Home() {
           method: "post",
           action: ".",
           encType: "multipart/form-data",
+        });
+        trackEvent(analyticsEventNames.pourSubmitted, {
+          source,
+          hasCompetition: Boolean(
+            competitionIdParam && UUID_RE.test(competitionIdParam),
+          ),
         });
       })();
     },
@@ -1124,6 +1142,7 @@ export default function Home() {
                         setIsProcessing(false);
                         setIsSubmitting(false);
                       },
+                      source: "camera",
                     });
                   }
                 } else if (next >= 2) {
@@ -1207,6 +1226,10 @@ export default function Home() {
         }
         window.location.assign(redirectTo);
       })();
+      trackEvent(analyticsEventNames.pourSaved, {
+        hasCompetition: Boolean(competitionIdParam && UUID_RE.test(competitionIdParam)),
+        scoreId: scoreId || undefined,
+      });
       return;
     }
 
@@ -1217,6 +1240,10 @@ export default function Home() {
 
     if ("success" in actionData && actionData.success === false) {
       const err = actionData.error;
+      trackEvent(analyticsEventNames.pourProcessingFailed, {
+        code: err,
+        source: lastSubmitSourceRef.current,
+      });
       let msg: string;
       if (err === "PROCESS_FAILED") {
         msg = t("errors.failedProcessImage");
@@ -1295,6 +1322,7 @@ export default function Home() {
       }
       sendPourImageBase64(base64Image, {
         onQueuedOffline: () => setIsUploadProcessing(false),
+        source: "upload",
       });
     };
     reader.readAsDataURL(file);
@@ -1580,7 +1608,12 @@ export default function Home() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setIsCameraActive(true)}
+                      onClick={() => {
+                        trackEvent(analyticsEventNames.pourCaptureStarted, {
+                          source: "camera",
+                        });
+                        setIsCameraActive(true);
+                      }}
                       className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 py-6 text-guinness-gold transition-colors duration-300 hover:text-guinness-tan sm:gap-2.5 sm:py-8 lg:gap-2.5 lg:py-8"
                     >
                       <span

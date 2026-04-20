@@ -39,6 +39,8 @@ import { useI18n } from "~/i18n/context";
 import { createTranslator } from "~/i18n/load-messages";
 import { seoMetaForRoute, seoMetaForScoreDetail } from "~/i18n/seo-meta";
 import { supabase } from "~/utils/supabase";
+import { analyticsEventNames } from "~/utils/analytics/events";
+import { trackEvent } from "~/utils/analytics/client";
 
 const COMPETITION_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -302,6 +304,7 @@ export default function Score() {
   const [signInToastError, setSignInToastError] = useState<string | null>(null);
   const [unclaimConfirmOpen, setUnclaimConfirmOpen] = useState(false);
   const [isUnclaiming, setIsUnclaiming] = useState(false);
+  const [hasPendingScoreSignIn, setHasPendingScoreSignIn] = useState(false);
 
   const isPourOwner = useMemo(
     () =>
@@ -324,9 +327,18 @@ export default function Score() {
       user_id: u.user.id,
     });
     if (error) {
+      trackEvent(analyticsEventNames.competitionAttachFailed, {
+        competitionId: compId,
+        scoreId,
+        reason: error.message,
+      });
       setCompetitionAttachMessage(error.message);
       return;
     }
+    trackEvent(analyticsEventNames.competitionAttachSucceeded, {
+      competitionId: compId,
+      scoreId,
+    });
     setCompetitionAttachMessage(t("pages.score.msgAddedCompetition"));
     revalidator.revalidate();
   }
@@ -390,6 +402,14 @@ export default function Score() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!hasPendingScoreSignIn || !authUser) return;
+    trackEvent(analyticsEventNames.authGoogleSignInSucceeded, {
+      source: "score",
+    });
+    setHasPendingScoreSignIn(false);
+  }, [authUser, hasPendingScoreSignIn]);
+
   const jwtUsernameSyncDoneKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -424,6 +444,10 @@ export default function Score() {
   ]);
 
   const handleGoogleSignIn = async () => {
+    trackEvent(analyticsEventNames.authGoogleSignInStarted, {
+      source: "score",
+    });
+    setHasPendingScoreSignIn(true);
     setClaimMessage(null);
     setSignInToastError(null);
     rememberPathBeforeGoogleOAuth();
@@ -435,6 +459,11 @@ export default function Score() {
       },
     });
     if (error) {
+      trackEvent(analyticsEventNames.authGoogleSignInFailed, {
+        source: "score",
+        reason: error.message,
+      });
+      setHasPendingScoreSignIn(false);
       const detail =
         error.message?.trim() ||
         t("pages.score.msgSignInTryAgainDetail");
@@ -447,6 +476,7 @@ export default function Score() {
   const handleClaimWithGoogle = async () => {
     if (!authUser?.email || !isPourOwner) return;
 
+    trackEvent(analyticsEventNames.pourClaimStarted, { scoreId: score.id });
     setIsClaiming(true);
     setClaimMessage(null);
 
@@ -475,12 +505,14 @@ export default function Score() {
       setDisplayUsername(leaderboardName);
       setClaimedEmail(authUser.email);
       setClaimMessage(t("pages.score.msgClaimSuccess"));
+      trackEvent(analyticsEventNames.pourClaimSucceeded, { scoreId: score.id });
       if (competitionId) {
         void attachScoreToCompetition(competitionId, score.id);
       }
       revalidator.revalidate();
     } catch (_error) {
       setClaimMessage(t("pages.score.msgClaimFailed"));
+      trackEvent(analyticsEventNames.pourClaimFailed, { scoreId: score.id });
     } finally {
       setIsClaiming(false);
     }
@@ -616,6 +648,11 @@ export default function Score() {
 
       setPlaceGeo(null);
       setSubmitSuccess(true);
+      trackEvent(analyticsEventNames.venueDetailsSaved, {
+        scoreId: score.id,
+        hasPrice: pintPriceVal != null,
+        hasPlaceId: Boolean(placeIdForSave),
+      });
       if (competitionId) {
         void attachScoreToCompetition(competitionId, score.id);
       }

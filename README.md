@@ -99,6 +99,9 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 #### Common optional
 ```env
 VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+VITE_POSTHOG_KEY=phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+VITE_POSTHOG_HOST=https://us.i.posthog.com
 RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL="Split The G <noreply@your-domain>"
 APP_URL=https://your-site.example
@@ -130,6 +133,18 @@ VITE_ROBOFLOW_INFERENCE_VERSION=8
 # Server-side secret (preferred)
 ROBOFLOW_PRIVATE_API_KEY=your-private-api-key
 ```
+
+## 📈 Analytics & Tracking
+
+- The app supports **GA4 + PostHog** with a shared typed event layer under `app/utils/analytics/`.
+- Tracking is **consent-gated** and can be toggled later from profile account settings.
+- Core tracked surfaces include page views, pour funnel, competition actions, auth/sign-in, registrations, and profile saves.
+- UTM first-touch + last-touch attribution is captured and attached to analytics events.
+
+### Analytics docs
+
+- Tracking QA and event checklist: `docs/analytics-tracking.md`
+- Prebuilt PostHog dashboard/insight blueprint: `docs/posthog-insights.spec.json`
 
 ## 📁 Project Structure
 ```txt

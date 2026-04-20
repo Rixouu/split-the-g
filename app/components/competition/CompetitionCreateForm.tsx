@@ -18,6 +18,8 @@ import {
 } from "~/routes/competitions.shared";
 import { competitionDetailPath } from "~/utils/competitionPath";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { analyticsEventNames } from "~/utils/analytics/events";
+import { trackEvent } from "~/utils/analytics/client";
 
 export function CompetitionCreateForm() {
   const { t, lang } = useI18n();
@@ -148,6 +150,11 @@ export function CompetitionCreateForm() {
         setFormError(t("pages.competitions.errCreateNoRow"));
         return;
       }
+      trackEvent(analyticsEventNames.competitionCreated, {
+        competitionId: inserted.id as string,
+        visibility: createPublic ? "public" : "private",
+        winRule: createWinRule,
+      });
 
       navigate(
         localizePath(

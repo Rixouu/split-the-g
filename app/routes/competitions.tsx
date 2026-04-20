@@ -43,6 +43,8 @@ import {
   type FriendPick,
   type InviteRow,
 } from "./competitions.shared";
+import { analyticsEventNames } from "~/utils/analytics/events";
+import { trackEvent } from "~/utils/analytics/client";
 
 export { loader } from "./competitions.loader";
 
@@ -376,6 +378,7 @@ export default function Competitions() {
       return;
     }
     setJoinedIds((prev) => new Set(prev).add(compId));
+    trackEvent(analyticsEventNames.competitionJoined, { competitionId: compId });
     revalidator.revalidate();
     setUiToast({ text: t("pages.competitions.msgJoined"), variant: "success" });
   }
@@ -401,6 +404,7 @@ export default function Competitions() {
       next.delete(compId);
       return next;
     });
+    trackEvent(analyticsEventNames.competitionLeft, { competitionId: compId });
     revalidator.revalidate();
     setUiToast({ text: t("pages.competitions.msgLeft"), variant: "info" });
   }

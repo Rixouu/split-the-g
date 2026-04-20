@@ -1,0 +1,157 @@
+{
+  "meta": {
+    "name": "Split the G Analytics Insights Spec",
+    "version": 1,
+    "description": "Blueprint for creating PostHog insights from tracked GA4/PostHog events in this repo."
+  },
+  "globalFilters": {
+    "events": [
+      "page_view",
+      "pour_capture_started",
+      "pour_submitted",
+      "pour_saved",
+      "pour_processing_failed",
+      "competition_joined",
+      "competition_created",
+      "auth_user_registered",
+      "auth_user_signed_in"
+    ]
+  },
+  "insights": [
+    {
+      "key": "funnel_pour_capture_to_save",
+      "name": "Pour Funnel: Capture to Save",
+      "type": "funnel",
+      "description": "Core conversion funnel for pour workflow.",
+      "steps": [
+        { "event": "pour_capture_started" },
+        { "event": "pour_submitted" },
+        { "event": "pour_saved" }
+      ],
+      "windowInterval": 24,
+      "windowIntervalUnit": "hour",
+      "display": "steps"
+    },
+    {
+      "key": "trend_pour_failures_by_code",
+      "name": "Pour Processing Failures by Code",
+      "type": "trends",
+      "description": "Operational reliability for scoring pipeline.",
+      "series": [
+        {
+          "event": "pour_processing_failed",
+          "math": "total"
+        }
+      ],
+      "breakdown": {
+        "property": "code",
+        "type": "event"
+      },
+      "interval": "day",
+      "display": "actionsLineGraph"
+    },
+    {
+      "key": "trend_new_users_registered",
+      "name": "New Users Registered",
+      "type": "trends",
+      "description": "New account registrations over time.",
+      "series": [
+        {
+          "event": "auth_user_registered",
+          "math": "total"
+        }
+      ],
+      "interval": "day",
+      "display": "actionsLineGraph"
+    },
+    {
+      "key": "trend_returning_signins",
+      "name": "Returning Sign-ins",
+      "type": "trends",
+      "description": "Successful sign-ins for existing users.",
+      "series": [
+        {
+          "event": "auth_user_signed_in",
+          "math": "total",
+          "properties": [
+            {
+              "key": "isNewUser",
+              "value": "false",
+              "operator": "exact",
+              "type": "event"
+            }
+          ]
+        }
+      ],
+      "interval": "day",
+      "display": "actionsLineGraph"
+    },
+    {
+      "key": "trend_new_vs_returning_signins",
+      "name": "New vs Returning Sign-ins",
+      "type": "trends",
+      "description": "Compare new and returning auth sessions.",
+      "series": [
+        {
+          "event": "auth_user_signed_in",
+          "math": "total",
+          "properties": [
+            {
+              "key": "isNewUser",
+              "value": "true",
+              "operator": "exact",
+              "type": "event"
+            }
+          ],
+          "label": "new_signins"
+        },
+        {
+          "event": "auth_user_signed_in",
+          "math": "total",
+          "properties": [
+            {
+              "key": "isNewUser",
+              "value": "false",
+              "operator": "exact",
+              "type": "event"
+            }
+          ],
+          "label": "returning_signins"
+        }
+      ],
+      "interval": "day",
+      "display": "actionsLineGraph"
+    },
+    {
+      "key": "trend_competition_engagement",
+      "name": "Competition Engagement",
+      "type": "trends",
+      "description": "Weekly competition participation and creation.",
+      "series": [
+        {
+          "event": "competition_joined",
+          "math": "total",
+          "label": "joined"
+        },
+        {
+          "event": "competition_created",
+          "math": "total",
+          "label": "created"
+        }
+      ],
+      "interval": "week",
+      "display": "actionsLineGraph"
+    }
+  ],
+  "dashboard": {
+    "name": "Split the G Product Analytics",
+    "tileOrder": [
+      "funnel_pour_capture_to_save",
+      "trend_pour_failures_by_code",
+      "trend_new_users_registered",
+      "trend_returning_signins",
+      "trend_new_vs_returning_signins",
+      "trend_competition_engagement"
+    ]
+  }
+}
