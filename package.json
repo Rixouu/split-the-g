@@ -22,6 +22,7 @@
     "@react-router/serve": "^7.14.1",
     "@supabase/supabase-js": "^2.47.10",
     "@types/js-cookie": "^3.0.6",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "date-fns": "^4.1.0",
     "exifr": "^7.1.3",
