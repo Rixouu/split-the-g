@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import type { User } from "@supabase/supabase-js";
 import { captureAttributionFromCurrentUrl } from "~/utils/analytics/attribution";
@@ -56,12 +56,15 @@ export function AnalyticsManager({
 }: AnalyticsManagerProps) {
   const t = useTChrome();
   const location = useLocation();
-  const [consentStatus, setConsentStatus] = useState<AnalyticsConsentStatus>("unset");
+  /** Avoid banner flash: SSR and first paint use "pending"; sync from localStorage before paint. */
+  const [consentStatus, setConsentStatus] = useState<
+    AnalyticsConsentStatus | "pending"
+  >("pending");
   const initializedRef = useRef(false);
   const previousUserIdRef = useRef<string | null>(null);
   const lastSignedInEventRef = useRef<{ userId: string; atMs: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setConsentStatus(getAnalyticsConsent());
   }, []);
 
@@ -150,7 +153,7 @@ export function AnalyticsManager({
     };
   }, [isEnabled]);
 
-  if (consentStatus !== "unset") return null;
+  if (consentStatus === "pending" || consentStatus !== "unset") return null;
 
   return (
     <section
