@@ -42,7 +42,7 @@ function loadDeferredGoogleOpeningHours(
   ]).catch(() => null);
 }
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params, request }: LoaderFunctionArgs) {
   const lang = langFromParams(params);
   const raw = params.barKey?.trim();
   if (!raw) throw new Response("Not found", { status: 404 });
@@ -127,6 +127,9 @@ export async function loader({ params }: LoaderFunctionArgs) {
       googleOpeningHoursLines: Promise.resolve(null) as Promise<string[] | null>,
       wallPours,
       wallError,
+      userId: null,
+      userEmail: null,
+      favId: null,
     };
   }
 
@@ -149,6 +152,35 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const resolvedPlaceId =
     placeDetailsTyped?.google_place_id?.trim() || bar.google_place_id?.trim() || null;
 
+  let userId: string | null = null;
+  let userEmail: string | null = null;
+  let favId: string | null = null;
+
+  const { getSupabaseAccessTokenFromRequestCookies, getSupabaseUserFromAccessToken } = await import("~/utils/pour-auth-claim.server");
+  const token = getSupabaseAccessTokenFromRequestCookies(request);
+  if (token) {
+    const user = await getSupabaseUserFromAccessToken(token);
+    if (user) {
+      userId = user.id;
+      userEmail = user.email ?? null;
+
+      const { createClient } = await import("@supabase/supabase-js");
+      const envUrl = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL || "";
+      const envAnon = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+      const scopedClient = createClient(envUrl, envAnon, {
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      const { data: favs } = await scopedClient
+        .from("user_favorite_bars")
+        .select("id, bar_name")
+        .eq("user_id", userId);
+        
+      const match = (favs ?? []).find((r) => r.bar_name.trim().toLowerCase() === barKey);
+      favId = match?.id ?? null;
+    }
+  }
+
   return {
     barKey,
     bar,
@@ -159,5 +191,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
     googleOpeningHoursLines: loadDeferredGoogleOpeningHours(resolvedPlaceId),
     wallPours,
     wallError,
+    userId,
+    userEmail,
+    favId,
   };
 }

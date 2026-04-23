@@ -1,7 +1,7 @@
-import { type LoaderFunction } from "react-router";
-import { useLoaderData } from "react-router";
+import { type LoaderFunction, type LoaderFunctionArgs } from "react-router";
+import { useLoaderData, useSearchParams, useNavigation } from "react-router";
 import { AppLink } from "~/i18n/app-link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   PageHeader,
   homePourButtonClass,
@@ -40,34 +40,128 @@ function mapRows(data: unknown): LeaderboardEntry[] {
   return data as LeaderboardEntry[];
 }
 
-export const loader: LoaderFunction = async () => {
+export const loader: LoaderFunction = async ({ request }: LoaderFunctionArgs) => {
+  const url = new URL(request.url);
+  const tab = (url.searchParams.get("tab") as LeaderboardTab) || "global";
   const since = weekAgoIso();
-  const { data, error } = await supabase.rpc("leaderboard_scores_global", {
-    p_since: since,
-    p_limit: 15,
-  });
 
-  if (error) {
-    const hint = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
-    if (
-      error.code === "42883" ||
-      hint.includes("leaderboard_scores_global") ||
-      hint.includes("function")
-    ) {
-      const fb = await supabase
-        .from("scores")
-        .select(SCORES_LEADERBOARD_COLUMNS)
-        .gte("created_at", since)
-        .order("split_score", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(15);
-      if (fb.error) throw fb.error;
-      return { entries: (fb.data ?? []) as LeaderboardEntry[] };
+  if (tab === "global") {
+    const { data, error } = await supabase.rpc("leaderboard_scores_global", {
+      p_since: since,
+      p_limit: 15,
+    });
+
+    if (error) {
+      const hint = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
+      if (
+        error.code === "42883" ||
+        hint.includes("leaderboard_scores_global") ||
+        hint.includes("function")
+      ) {
+        const fb = await supabase
+          .from("scores")
+          .select(SCORES_LEADERBOARD_COLUMNS)
+          .gte("created_at", since)
+          .order("split_score", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(15);
+        if (fb.error) throw fb.error;
+        return { entries: (fb.data ?? []) as LeaderboardEntry[], hintKey: null, hintText: null, tab };
+      }
+      throw error;
     }
-    throw error;
+
+    return { entries: (data ?? []) as LeaderboardEntry[], hintKey: null, hintText: null, tab };
   }
 
-  return { entries: (data ?? []) as LeaderboardEntry[] };
+  const { getSupabaseAccessTokenFromRequestCookies, getSupabaseUserFromAccessToken } = await import("~/utils/pour-auth-claim.server");
+  const token = getSupabaseAccessTokenFromRequestCookies(request);
+  let user = null;
+  if (token) {
+    user = await getSupabaseUserFromAccessToken(token);
+  }
+
+  if (tab === "local") {
+    if (!user) {
+      return { entries: [], hintKey: "pages.leaderboard.hintLocalSignIn", hintText: null, tab };
+    }
+
+    const { data: prof, error: perr } = await supabase
+      .from("public_profiles")
+      .select("country_code")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (perr || !prof?.country_code?.trim()) {
+      return { entries: [], hintKey: "pages.leaderboard.hintLocalNoCountry", hintText: null, tab };
+    }
+
+    const code = prof.country_code.trim().toUpperCase();
+    const { data, error } = await supabase.rpc("leaderboard_scores_for_country", {
+      p_country: code,
+      p_since: since,
+      p_limit: 15,
+    });
+
+    if (error) {
+      if (error.message.includes("function") || error.code === "42883") {
+        return { entries: [], hintKey: "pages.leaderboard.hintMigrationCountry", hintText: null, tab };
+      }
+      return { entries: [], hintKey: null, hintText: error.message, tab };
+    }
+
+    return { entries: mapRows(data), hintKey: null, hintText: null, tab };
+  }
+
+  if (tab === "friends") {
+    if (!user?.email) {
+      return { entries: [], hintKey: "pages.leaderboard.hintFriendsSignIn", hintText: null, tab };
+    }
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const envUrl = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL || "";
+    const envAnon = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+    
+    const scopedClient = createClient(envUrl, envAnon, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+
+    const uid = user.id;
+    const { data: fr } = await scopedClient
+      .from("user_friends")
+      .select("user_id, friend_user_id, peer_email")
+      .or(`user_id.eq.${uid},friend_user_id.eq.${uid}`);
+
+    const emailSet = new Set<string>();
+    emailSet.add(normalizeEmail(user.email));
+    for (const row of fr ?? []) {
+      const peer = row.peer_email?.trim();
+      if (peer) emailSet.add(normalizeEmail(peer));
+    }
+
+    const emails = [...emailSet];
+    const { data, error } = await supabase.rpc("leaderboard_scores_for_emails", {
+      p_emails: emails,
+      p_since: since,
+      p_limit: 15,
+    });
+
+    if (error) {
+      if (error.message.includes("function") || error.code === "42883") {
+        return { entries: [], hintKey: "pages.leaderboard.hintMigrationEmails", hintText: null, tab };
+      }
+      return { entries: [], hintKey: null, hintText: error.message, tab };
+    }
+
+    return { 
+      entries: mapRows(data), 
+      hintKey: emails.length < 2 ? "pages.leaderboard.hintFriendsSolo" : null, 
+      hintText: null, 
+      tab 
+    };
+  }
+
+  return { entries: [], hintKey: null, hintText: null, tab };
 };
 
 export function headers() {
@@ -154,145 +248,18 @@ function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
 
 export default function Leaderboard() {
   const { t } = useI18n();
-  const { entries: globalFromLoader } = useLoaderData<{
+  const { entries, hintKey, hintText, tab } = useLoaderData<{
     entries: LeaderboardEntry[];
+    hintKey: string | null;
+    hintText: string | null;
+    tab: LeaderboardTab;
   }>();
-  const [tab, setTab] = useState<LeaderboardTab>("global");
-  const [entries, setEntries] = useState<LeaderboardEntry[]>(globalFromLoader);
-  const [loading, setLoading] = useState(false);
-  const [hint, setHint] = useState<string | null>(null);
+  
+  const [, setSearchParams] = useSearchParams();
+  const navigation = useNavigation();
+  const loading = navigation.state === "loading" && navigation.location.pathname === "/leaderboard";
 
-  useEffect(() => {
-    if (tab === "global") {
-      setEntries(globalFromLoader);
-      setHint(null);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setHint(null);
-
-    void (async () => {
-      const since = weekAgoIso();
-
-      if (tab === "local") {
-        const { data: auth } = await supabase.auth.getUser();
-        const uid = auth.user?.id;
-        if (!uid) {
-          if (!cancelled) {
-            setEntries([]);
-            setHint(t("pages.leaderboard.hintLocalSignIn"));
-          }
-          setLoading(false);
-          return;
-        }
-
-        const { data: prof, error: perr } = await supabase
-          .from("public_profiles")
-          .select("country_code")
-          .eq("user_id", uid)
-          .maybeSingle();
-
-        if (perr || !prof?.country_code?.trim()) {
-          if (!cancelled) {
-            setEntries([]);
-            setHint(t("pages.leaderboard.hintLocalNoCountry"));
-          }
-          setLoading(false);
-          return;
-        }
-
-        const code = prof.country_code.trim().toUpperCase();
-        const { data, error } = await supabase.rpc("leaderboard_scores_for_country", {
-          p_country: code,
-          p_since: since,
-          p_limit: 15,
-        });
-
-        if (error) {
-          if (!cancelled) {
-            setEntries([]);
-            setHint(
-              error.message.includes("function") || error.code === "42883"
-                ? t("pages.leaderboard.hintMigrationCountry")
-                : error.message,
-            );
-          }
-          setLoading(false);
-          return;
-        }
-
-        if (!cancelled) {
-          setEntries(mapRows(data));
-          setHint(null);
-        }
-        setLoading(false);
-        return;
-      }
-
-      if (tab === "friends") {
-        const { data: auth } = await supabase.auth.getUser();
-        const user = auth.user;
-        if (!user?.email) {
-          if (!cancelled) {
-            setEntries([]);
-            setHint(t("pages.leaderboard.hintFriendsSignIn"));
-          }
-          setLoading(false);
-          return;
-        }
-
-        const uid = user.id;
-        const { data: fr } = await supabase
-          .from("user_friends")
-          .select("user_id, friend_user_id, peer_email")
-          .or(`user_id.eq.${uid},friend_user_id.eq.${uid}`);
-
-        const emailSet = new Set<string>();
-        emailSet.add(normalizeEmail(user.email));
-        for (const row of fr ?? []) {
-          const peer = row.peer_email?.trim();
-          if (peer) emailSet.add(normalizeEmail(peer));
-        }
-
-        const emails = [...emailSet];
-        const { data, error } = await supabase.rpc("leaderboard_scores_for_emails", {
-          p_emails: emails,
-          p_since: since,
-          p_limit: 15,
-        });
-
-        if (error) {
-          if (!cancelled) {
-            setEntries([]);
-            setHint(
-              error.message.includes("function") || error.code === "42883"
-                ? t("pages.leaderboard.hintMigrationEmails")
-                : error.message,
-            );
-          }
-          setLoading(false);
-          return;
-        }
-
-        if (!cancelled) {
-          setEntries(mapRows(data));
-          if (emails.length < 2) {
-            setHint(t("pages.leaderboard.hintFriendsSolo"));
-          } else {
-            setHint(null);
-          }
-        }
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tab, globalFromLoader, t]);
+  const hint = hintKey ? t(hintKey) : hintText;
 
   const title = useMemo(() => {
     switch (tab) {
@@ -319,7 +286,7 @@ export default function Leaderboard() {
           className="mb-6"
           layoutClassName="flex w-full"
           value={tab}
-          onValueChange={(v) => setTab(v as LeaderboardTab)}
+          onValueChange={(v) => setSearchParams({ tab: v }, { preventScrollReset: true })}
           items={[
             { value: "global", label: t("pages.leaderboard.tabGlobal") },
             { value: "local", label: t("pages.leaderboard.tabLocal") },
@@ -360,3 +327,4 @@ export default function Leaderboard() {
     </main>
   );
 }
+

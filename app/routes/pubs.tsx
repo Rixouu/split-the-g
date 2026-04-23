@@ -120,7 +120,36 @@ const filterFieldShell = `w-full min-h-11 rounded-lg border ${PUB_LIST_STROKE} b
 const filterInputClass = `${filterFieldShell} px-3`;
 const selectFieldClass = `${filterFieldShell} pl-3 ${NATIVE_SELECT_APPEARANCE_CLASS}`;
 
-export async function loader(_args: LoaderFunctionArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
+  let favIdByBarKey: Record<string, string> = {};
+  let userId: string | null = null;
+  
+  const { getSupabaseAccessTokenFromRequestCookies, getSupabaseUserFromAccessToken } = await import("~/utils/pour-auth-claim.server");
+  const token = getSupabaseAccessTokenFromRequestCookies(request);
+  if (token) {
+    const user = await getSupabaseUserFromAccessToken(token);
+    if (user) {
+      userId = user.id;
+      const { createClient } = await import("@supabase/supabase-js");
+      const envUrl = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL || "";
+      const envAnon = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+      const scopedClient = createClient(envUrl, envAnon, {
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+      const { data } = await scopedClient
+        .from("user_favorite_bars")
+        .select("id, bar_name")
+        .eq("user_id", userId);
+        
+      if (data) {
+        for (const row of data) {
+          const key = row.bar_name.trim().toLowerCase();
+          favIdByBarKey[key] = row.id;
+        }
+      }
+    }
+  }
+
   const projection =
     "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
   /**
@@ -134,7 +163,7 @@ export async function loader(_args: LoaderFunctionArgs) {
     .order("rating_count", { ascending: false })
     .limit(120);
   if (!live.error) {
-    return { bars: (live.data ?? []) as BarStat[], source: "view" as const };
+    return { bars: (live.data ?? []) as BarStat[], source: "view" as const, favIdByBarKey, userId };
   }
 
   const mv = await supabase
@@ -143,7 +172,7 @@ export async function loader(_args: LoaderFunctionArgs) {
     .order("rating_count", { ascending: false })
     .limit(120);
   if (!mv.error) {
-    return { bars: (mv.data ?? []) as BarStat[], source: "mv" as const };
+    return { bars: (mv.data ?? []) as BarStat[], source: "mv" as const, favIdByBarKey, userId };
   }
 
   const { data: scores, error: scoresError } = await supabase
@@ -158,19 +187,18 @@ export async function loader(_args: LoaderFunctionArgs) {
   return {
     bars: aggregateFromScores(scores ?? []),
     source: "fallback" as const,
+    favIdByBarKey,
+    userId,
   };
 }
 
 export default function Pubs() {
   const { t } = useI18n();
-  const { bars, source } = useLoaderData<typeof loader>();
+  const { bars, source, favIdByBarKey: initialFavs, userId } = useLoaderData<typeof loader>();
   const [search, setSearch] = useState("");
   const [minPours, setMinPours] = useState("0");
   const [minRating, setMinRating] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
-  const [favIdByBarKey, setFavIdByBarKey] = useState<Record<string, string>>(
-    {},
-  );
+  const [favIdByBarKey, setFavIdByBarKey] = useState<Record<string, string>>(initialFavs);
   const [favBusyKey, setFavBusyKey] = useState<string | null>(null);
   const [favMessage, setFavMessage] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -184,54 +212,6 @@ export default function Pubs() {
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
-
-  const loadFavorites = useCallback(async (uid: string) => {
-    const supabase = await getSupabaseBrowserClient();
-    const { data, error } = await supabase
-      .from("user_favorite_bars")
-      .select("id, bar_name")
-      .eq("user_id", uid);
-
-    if (error || !data) {
-      setFavIdByBarKey({});
-      return;
-    }
-
-    const next: Record<string, string> = {};
-    for (const row of data) {
-      const key = row.bar_name.trim().toLowerCase();
-      next[key] = row.id;
-    }
-    setFavIdByBarKey(next);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    async function run() {
-      const supabase = await getSupabaseBrowserClient();
-      const { data } = await supabase.auth.getUser();
-      if (cancelled) return;
-      const uid = data.user?.id ?? null;
-      setUserId(uid);
-      if (uid) await loadFavorites(uid);
-      else setFavIdByBarKey({});
-    }
-
-    void run();
-    void getSupabaseBrowserClient().then((supabase) => {
-      if (cancelled) return;
-      const { data: sub } = supabase.auth.onAuthStateChange(() => {
-        void run();
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, [loadFavorites]);
 
   const filteredBars = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -409,6 +409,9 @@ export default function PubDetail() {
     googleOpeningHoursLines,
     wallPours,
     wallError,
+    userId: loaderUserId,
+    userEmail: loaderUserEmail,
+    favId: initialFavId,
   } = useLoaderData<typeof pubDetailLoader>();
   const revalidator = useRevalidator();
   const navigate = useNavigate();
@@ -419,9 +422,9 @@ export default function PubDetail() {
     lastImportHandledKey.current = null;
   }, [barKey]);
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [favId, setFavId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(loaderUserId);
+  const [userEmail, setUserEmail] = useState<string | null>(loaderUserEmail);
+  const [favId, setFavId] = useState<string | null>(initialFavId);
   const [favBusy, setFavBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [toastOk, setToastOk] = useState(true);
@@ -504,37 +507,6 @@ export default function PubDetail() {
     [userEmail],
   );
 
-  const loadFav = useCallback(async (uid: string) => {
-    const { data: rows } = await supabase
-      .from("user_favorite_bars")
-      .select("id, bar_name")
-      .eq("user_id", uid);
-    const match = (rows ?? []).find(
-      (r) => r.bar_name.trim().toLowerCase() === barKey,
-    );
-    setFavId(match?.id ?? null);
-  }, [barKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      const { data } = await supabase.auth.getUser();
-      if (cancelled) return;
-      const uid = data.user?.id ?? null;
-      setUserId(uid);
-      setUserEmail(data.user?.email ?? null);
-      if (uid) await loadFav(uid);
-      else setFavId(null);
-    }
-    void run();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      void run();
-    });
-    return () => {
-      cancelled = true;
-      sub.subscription.unsubscribe();
-    };
-  }, [loadFav]);
 
   async function toggleFavorite() {
     setToast(null);
