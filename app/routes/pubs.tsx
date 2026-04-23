@@ -2,8 +2,6 @@ import { useLoaderData } from "react-router";
 import { AppLink } from "~/i18n/app-link";
 import type { LoaderFunctionArgs } from "react-router";
 import {
-  useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useState,
@@ -15,7 +13,6 @@ import {
   pageShellClass,
 } from "~/components/PageHeader";
 import { routeViewTransitionLinkProps } from "~/utils/routeViewTransition";
-import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { pubDetailPath } from "~/utils/pubPath";
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
 import { useI18n } from "~/i18n/context";
@@ -120,48 +117,71 @@ const filterFieldShell = `w-full min-h-11 rounded-lg border ${PUB_LIST_STROKE} b
 const filterInputClass = `${filterFieldShell} px-3`;
 const selectFieldClass = `${filterFieldShell} pl-3 ${NATIVE_SELECT_APPEARANCE_CLASS}`;
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  let favIdByBarKey: Record<string, string> = {};
-  let userId: string | null = null;
-  
-  const { getSupabaseAccessTokenFromRequestCookies, getSupabaseUserFromAccessToken } = await import("~/utils/pour-auth-claim.server");
+/**
+ * Resolve user auth + favorites in a single async branch.
+ */
+async function resolveUserFavorites(
+  request: Request,
+): Promise<{ favIdByBarKey: Record<string, string>; userId: string | null }> {
+  const {
+    getSupabaseAccessTokenFromRequestCookies,
+    getSupabaseUserFromAccessToken,
+  } = await import("~/utils/pour-auth-claim.server");
   const token = getSupabaseAccessTokenFromRequestCookies(request);
-  if (token) {
-    const user = await getSupabaseUserFromAccessToken(token);
-    if (user) {
-      userId = user.id;
-      const { createClient } = await import("@supabase/supabase-js");
-      const envUrl = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL || "";
-      const envAnon = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-      const scopedClient = createClient(envUrl, envAnon, {
-        global: { headers: { Authorization: `Bearer ${token}` } }
-      });
-      const { data } = await scopedClient
-        .from("user_favorite_bars")
-        .select("id, bar_name")
-        .eq("user_id", userId);
-        
-      if (data) {
-        for (const row of data) {
-          const key = row.bar_name.trim().toLowerCase();
-          favIdByBarKey[key] = row.id;
-        }
-      }
+  if (!token) return { favIdByBarKey: {}, userId: null };
+
+  const user = await getSupabaseUserFromAccessToken(token);
+  if (!user) return { favIdByBarKey: {}, userId: null };
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const envUrl =
+    (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) ||
+    import.meta.env.VITE_SUPABASE_URL ||
+    "";
+  const envAnon =
+    (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
+    "";
+  const scopedClient = createClient(envUrl, envAnon, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data } = await scopedClient
+    .from("user_favorite_bars")
+    .select("id, bar_name")
+    .eq("user_id", user.id);
+
+  const favIdByBarKey: Record<string, string> = {};
+  if (data) {
+    for (const row of data) {
+      favIdByBarKey[row.bar_name.trim().toLowerCase()] = row.id;
     }
   }
+  return { favIdByBarKey, userId: user.id };
+}
 
+export function headers() {
+  return {
+    "Cache-Control":
+      "public, s-maxage=60, stale-while-revalidate=300",
+  };
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
   const projection =
     "bar_key, display_name, sample_address, google_place_id, avg_pour_rating, rating_count, submission_count";
-  /**
-   * Prefer the live `bar_pub_stats` view so new pours appear in the directory
-   * immediately. `bar_pub_stats_mv` is only refreshed periodically and caused
-   * pub detail 404s + missing list rows for new venues.
-   */
-  const live = await supabase
-    .from("bar_pub_stats")
-    .select(projection)
-    .order("rating_count", { ascending: false })
-    .limit(120);
+
+  // ── Run auth AND bar stats in parallel ──
+  const [authResult, live] = await Promise.all([
+    resolveUserFavorites(request),
+    supabase
+      .from("bar_pub_stats")
+      .select(projection)
+      .order("rating_count", { ascending: false })
+      .limit(120),
+  ]);
+
+  const { favIdByBarKey, userId } = authResult;
+
   if (!live.error) {
     return { bars: (live.data ?? []) as BarStat[], source: "view" as const, favIdByBarKey, userId };
   }
@@ -239,7 +259,6 @@ export default function Pubs() {
       return;
     }
 
-    const supabase = await getSupabaseBrowserClient();
     const existingId = favIdByBarKey[b.bar_key];
     setFavBusyKey(b.bar_key);
 

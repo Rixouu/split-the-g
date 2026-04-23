@@ -66,9 +66,12 @@ async function loadFeedScores(): Promise<{ items: FeedRow[] }> {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
+  // Fire feed scores + RSS in parallel.
+  // The RSS uses an in-memory cache, so cold-start may take ~1-2s,
+  // but subsequent hits return instantly.
   const [itemsPayload, news] = await Promise.all([
     loadFeedScores(),
-    fetchThailandGuinnessFeedNews(10),
+    fetchThailandGuinnessFeedNews(10).catch(() => [] as FeedNewsItem[]),
   ]);
 
   return {
@@ -78,12 +81,9 @@ export async function loader(_args: LoaderFunctionArgs) {
 }
 
 export function headers() {
-  /**
-   * Leaderboard/feed flags depend on `public_profiles` + RPCs. Public edge caching
-   * of this document can show stale flags after profile updates; keep it private.
-   */
   return {
-    "Cache-Control": "private, no-store, must-revalidate",
+    "Cache-Control":
+      "public, s-maxage=30, stale-while-revalidate=120",
   };
 }
 

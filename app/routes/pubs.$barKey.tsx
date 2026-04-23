@@ -11,7 +11,6 @@ import type { ActionFunctionArgs } from "react-router";
 import {
   lazy,
   Suspense,
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -55,6 +54,12 @@ import {
 } from "./pubs.$barKey.shared";
 
 export { loader } from "./pubs.$barKey.loader";
+export function headers() {
+  return {
+    "Cache-Control":
+      "public, s-maxage=60, stale-while-revalidate=300",
+  };
+}
 export function meta({
   params,
 }: {

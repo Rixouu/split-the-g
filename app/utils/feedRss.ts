@@ -22,7 +22,7 @@ const BANGKOK_POST_RSS_FEEDS = [
 
 const MAX_NEWS_AGE_MS = 120 * 24 * 60 * 60 * 1000;
 const FEED_NEWS_CACHE_TTL_MS = 5 * 60 * 1000;
-const FEED_NEWS_FETCH_TIMEOUT_MS = 2_500;
+const FEED_NEWS_FETCH_TIMEOUT_MS = 1_500;
 
 type FeedNewsCacheEntry = {
   expiresAt: number;

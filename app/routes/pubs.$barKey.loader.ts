@@ -42,6 +42,53 @@ function loadDeferredGoogleOpeningHours(
   ]).catch(() => null);
 }
 
+/**
+ * Resolve the user's auth + favorites in a single async branch.
+ * This runs concurrently with the main data queries.
+ */
+async function resolveUserAndFavorites(
+  request: Request,
+  barKey: string,
+): Promise<{ userId: string | null; userEmail: string | null; favId: string | null }> {
+  const {
+    getSupabaseAccessTokenFromRequestCookies,
+    getSupabaseUserFromAccessToken,
+  } = await import("~/utils/pour-auth-claim.server");
+  const token = getSupabaseAccessTokenFromRequestCookies(request);
+  if (!token) return { userId: null, userEmail: null, favId: null };
+
+  const user = await getSupabaseUserFromAccessToken(token);
+  if (!user) return { userId: null, userEmail: null, favId: null };
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const envUrl =
+    (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) ||
+    import.meta.env.VITE_SUPABASE_URL ||
+    "";
+  const envAnon =
+    (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
+    "";
+  const scopedClient = createClient(envUrl, envAnon, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+
+  const { data: favs } = await scopedClient
+    .from("user_favorite_bars")
+    .select("id, bar_name")
+    .eq("user_id", user.id);
+
+  const match = (favs ?? []).find(
+    (r) => r.bar_name.trim().toLowerCase() === barKey,
+  );
+
+  return {
+    userId: user.id,
+    userEmail: user.email ?? null,
+    favId: match?.id ?? null,
+  };
+}
+
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const lang = langFromParams(params);
   const raw = params.barKey?.trim();
@@ -54,10 +101,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (isPrettyPubPathSegment(prettySeg)) {
     const incoming = decodePubUrlSegment(raw).trim().toLowerCase();
     if (incoming !== prettySeg) {
-      return redirect(localizePath(pubDetailPath(barKey), lang), { status: 301 });
+      return redirect(localizePath(pubDetailPath(barKey), lang), {
+        status: 301,
+      });
     }
   }
 
+  // ── Fire stat query + all secondary data + auth in ONE parallel batch ──
   let statQuery = await supabase
     .from("bar_pub_stats_mv")
     .select(barStatProjection)
@@ -75,28 +125,38 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const bar = stat as BarStat;
   const nowIso = new Date().toISOString();
-  const [wallRes, extraRes, placeRes, compRes] = await Promise.all([
-    supabase.rpc("pub_wall_scores", { p_bar_key: barKey, p_limit: PUB_WALL_PAGE_LIMIT }),
-    supabase.rpc("pub_extra_stats_for_bar", { p_bar_key: barKey }),
-    supabase
-      .from("pub_place_details")
-      .select(
-        "bar_key, opening_hours, guinness_info, alcohol_promotions, maps_place_url, google_place_id, updated_at, updated_by",
-      )
-      .eq("bar_key", barKey)
-      .maybeSingle(),
-    supabase
-      .from("competitions")
-      .select("id, title, starts_at, ends_at, path_segment")
-      .eq("linked_bar_key", barKey)
-      .gt("ends_at", nowIso)
-      .order("ends_at", { ascending: true }),
-  ]);
+
+  // ── Run ALL remaining network calls in parallel ──
+  // Previously auth ran AFTER these; now it runs concurrently.
+  const [wallRes, extraRes, placeRes, compRes, authResult] =
+    await Promise.all([
+      supabase.rpc("pub_wall_scores", {
+        p_bar_key: barKey,
+        p_limit: PUB_WALL_PAGE_LIMIT,
+      }),
+      supabase.rpc("pub_extra_stats_for_bar", { p_bar_key: barKey }),
+      supabase
+        .from("pub_place_details")
+        .select(
+          "bar_key, opening_hours, guinness_info, alcohol_promotions, maps_place_url, google_place_id, updated_at, updated_by",
+        )
+        .eq("bar_key", barKey)
+        .maybeSingle(),
+      supabase
+        .from("competitions")
+        .select("id, title, starts_at, ends_at, path_segment")
+        .eq("linked_bar_key", barKey)
+        .gt("ends_at", nowIso)
+        .order("ends_at", { ascending: true }),
+      // Auth + favorites runs concurrently instead of after data queries
+      resolveUserAndFavorites(request, barKey),
+    ]);
 
   let wallPours: PubWallRow[] = [];
   let wallError: string | null = null;
   if (wallRes.error) {
-    const msg = `${wallRes.error.message ?? ""} ${wallRes.error.code ?? ""}`.toLowerCase();
+    const msg =
+      `${wallRes.error.message ?? ""} ${wallRes.error.code ?? ""}`.toLowerCase();
     if (
       wallRes.error.code === "42883" ||
       msg.includes("pub_wall_scores") ||
@@ -124,12 +184,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       extraError: extraError.message,
       placeDetails: null as PubPlaceRow | null,
       linkedCompetitions: [] as LinkedCompetition[],
-      googleOpeningHoursLines: Promise.resolve(null) as Promise<string[] | null>,
+      googleOpeningHoursLines: Promise.resolve(null) as Promise<
+        string[] | null
+      >,
       wallPours,
       wallError,
-      userId: null,
-      userEmail: null,
-      favId: null,
+      userId: authResult.userId,
+      userEmail: authResult.userEmail,
+      favId: authResult.favId,
     };
   }
 
@@ -148,38 +210,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const { data: placeRow, error: placeErr } = placeRes;
   const { data: comps, error: compErr } = compRes;
-  const placeDetailsTyped = !placeErr ? ((placeRow ?? null) as PubPlaceRow | null) : null;
+  const placeDetailsTyped = !placeErr
+    ? ((placeRow ?? null) as PubPlaceRow | null)
+    : null;
   const resolvedPlaceId =
-    placeDetailsTyped?.google_place_id?.trim() || bar.google_place_id?.trim() || null;
-
-  let userId: string | null = null;
-  let userEmail: string | null = null;
-  let favId: string | null = null;
-
-  const { getSupabaseAccessTokenFromRequestCookies, getSupabaseUserFromAccessToken } = await import("~/utils/pour-auth-claim.server");
-  const token = getSupabaseAccessTokenFromRequestCookies(request);
-  if (token) {
-    const user = await getSupabaseUserFromAccessToken(token);
-    if (user) {
-      userId = user.id;
-      userEmail = user.email ?? null;
-
-      const { createClient } = await import("@supabase/supabase-js");
-      const envUrl = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL || "";
-      const envAnon = (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-      const scopedClient = createClient(envUrl, envAnon, {
-        global: { headers: { Authorization: `Bearer ${token}` } }
-      });
-
-      const { data: favs } = await scopedClient
-        .from("user_favorite_bars")
-        .select("id, bar_name")
-        .eq("user_id", userId);
-        
-      const match = (favs ?? []).find((r) => r.bar_name.trim().toLowerCase() === barKey);
-      favId = match?.id ?? null;
-    }
-  }
+    placeDetailsTyped?.google_place_id?.trim() ||
+    bar.google_place_id?.trim() ||
+    null;
 
   return {
     barKey,
@@ -187,12 +224,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     extra,
     extraError: null as string | null,
     placeDetails: placeDetailsTyped,
-    linkedCompetitions: !compErr ? ((comps ?? []) as LinkedCompetition[]) : [],
+    linkedCompetitions: !compErr
+      ? ((comps ?? []) as LinkedCompetition[])
+      : [],
     googleOpeningHoursLines: loadDeferredGoogleOpeningHours(resolvedPlaceId),
     wallPours,
     wallError,
-    userId,
-    userEmail,
-    favId,
+    userId: authResult.userId,
+    userEmail: authResult.userEmail,
+    favId: authResult.favId,
   };
 }
