@@ -137,7 +137,7 @@ export default function Competitions() {
           slotLabel={t("pages.competitions.advertiseBannerSlotLabel")}
           title={t("pages.competitions.advertiseBannerTitle")}
           body={t("pages.competitions.advertiseBannerBody")}
-          ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20competitions%20advertising"
+          ctaHref="mailto:contact@split-the-g.app?subject=Split%20the%20G%20%E2%80%94%20competitions%20advertising"
           ctaLabel={t("pages.competitions.advertiseBannerCta")}
         />
 

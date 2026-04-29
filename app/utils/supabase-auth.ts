@@ -1,4 +1,4 @@
-import type { User } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
@@ -41,6 +41,14 @@ export async function getSupabaseAccessToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
+export async function subscribeToSupabaseAuthChanges(
+  callback: (event: AuthChangeEvent, session: Session | null) => void,
+): Promise<() => void> {
+  const supabase = await getSupabaseBrowserClient();
+  const { data: sub } = supabase.auth.onAuthStateChange(callback);
+  return () => sub.subscription.unsubscribe();
+}
+
 export function useSupabaseAuthUser() {
   const [snapshot, setSnapshot] = useState<SupabaseAuthUserSnapshot>(
     EMPTY_AUTH_SNAPSHOT,
@@ -66,15 +74,17 @@ export function useSupabaseAuthUser() {
 
     void syncSnapshot();
 
-    void getSupabaseBrowserClient()
-      .then((supabase) => {
-        if (cancelled) return;
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (cancelled) return;
-          setSnapshot(toSupabaseAuthUserSnapshot(session?.user ?? null));
-          setAuthResolved(true);
-        });
-        unsubscribe = () => sub.subscription.unsubscribe();
+    void subscribeToSupabaseAuthChanges((_event, session) => {
+      if (cancelled) return;
+      setSnapshot(toSupabaseAuthUserSnapshot(session?.user ?? null));
+      setAuthResolved(true);
+    })
+      .then((nextUnsubscribe) => {
+        if (cancelled) {
+          nextUnsubscribe();
+          return;
+        }
+        unsubscribe = nextUnsubscribe;
       })
       .catch(() => {
         if (!cancelled) setAuthResolved(true);

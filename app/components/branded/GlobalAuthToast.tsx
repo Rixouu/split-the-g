@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
 import { signInToastFromT } from "~/i18n/auth-copy";
 import { useTChrome } from "~/i18n/context";
+import { subscribeToSupabaseAuthChanges } from "~/utils/supabase-auth";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { BrandedToast } from "./BrandedToast";
 import { toastAutoCloseForVariant } from "./feedback-variant";
@@ -58,31 +59,32 @@ export function GlobalAuthToast() {
     let unsubscribe: (() => void) | null = null;
     let isDisposed = false;
 
-    void getSupabaseBrowserClient().then((supabase) => {
+    void subscribeToSupabaseAuthChanges((event, session) => {
       if (isDisposed) return;
-
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          void (async () => {
-            let preferred = "there";
-            try {
-              preferred = await resolvePreferredName(session.user);
-            } catch {
-              preferred = "there";
-            }
-            if (isDisposed) return;
-            const { title: nextTitle, message } = signInToastFromT(t, preferred);
-            setTitle(nextTitle);
-            setText(message);
-            setOpen(true);
-          })();
-        }
-        if (event === "SIGNED_OUT") {
-          onClose();
-        }
-      });
-
-      unsubscribe = () => sub.subscription.unsubscribe();
+      if (event === "SIGNED_IN" && session?.user) {
+        void (async () => {
+          let preferred = "there";
+          try {
+            preferred = await resolvePreferredName(session.user);
+          } catch {
+            preferred = "there";
+          }
+          if (isDisposed) return;
+          const { title: nextTitle, message } = signInToastFromT(t, preferred);
+          setTitle(nextTitle);
+          setText(message);
+          setOpen(true);
+        })();
+      }
+      if (event === "SIGNED_OUT") {
+        onClose();
+      }
+    }).then((nextUnsubscribe) => {
+      if (isDisposed) {
+        nextUnsubscribe();
+        return;
+      }
+      unsubscribe = nextUnsubscribe;
     });
 
     return () => {

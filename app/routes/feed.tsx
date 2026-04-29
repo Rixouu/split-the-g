@@ -315,7 +315,7 @@ export default function Feed() {
               slotLabel={t("pages.feed.advertiseBannerSlotLabel")}
               title={t("pages.feed.advertiseBannerTitle")}
               body={t("pages.feed.advertiseBannerBody")}
-              ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20feed%20advertising"
+              ctaHref="mailto:contact@split-the-g.app?subject=Split%20the%20G%20%E2%80%94%20feed%20advertising"
               ctaLabel={t("pages.feed.advertiseBannerCta")}
             />
 

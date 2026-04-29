@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { useTChrome } from "~/i18n/context";
+import { useSupabaseAuthUser } from "~/utils/supabase-auth";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { BrandedToast } from "./BrandedToast";
 import { toastAutoCloseForVariant } from "./feedback-variant";
@@ -28,6 +29,7 @@ function phaseAt(meta: CompTimeline, nowMs: number): Phase {
  */
 export function GlobalCompetitionPourToast() {
   const t = useTChrome();
+  const { userId } = useSupabaseAuthUser();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [toastVariant, setToastVariant] =
@@ -142,32 +144,31 @@ export function GlobalCompetitionPourToast() {
   }, [syncPhases]);
 
   useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
+
+  useEffect(() => {
     let cancelled = false;
-    let unsubscribe: (() => void) | null = null;
 
     async function subscribe() {
       await teardownChannel();
 
-      const supabase = await getSupabase();
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id ?? null;
-      userIdRef.current = uid;
-
-      if (!uid) {
+      if (!userId) {
         relevantCompIdsRef.current = new Set();
         titleByCompRef.current = new Map();
         compTimelineRef.current = new Map();
         phaseMapRef.current = new Map();
         return;
       }
+      const supabase = await getSupabase();
 
-      await loadRelevantMeta(uid);
+      await loadRelevantMeta(userId);
       if (cancelled) return;
 
       syncPhases(false);
 
       const channel = supabase
-        .channel(`competition_pour_activity_${uid}`)
+        .channel(`competition_pour_activity_${userId}`)
         .on(
           "postgres_changes",
           {
@@ -204,16 +205,6 @@ export function GlobalCompetitionPourToast() {
 
     void subscribe();
 
-    void getSupabase().then((supabase) => {
-      if (cancelled) return;
-
-      const { data: sub } = supabase.auth.onAuthStateChange(() => {
-        void subscribe();
-      });
-
-      unsubscribe = () => sub.subscription.unsubscribe();
-    });
-
     const metaInterval = window.setInterval(() => {
       const me = userIdRef.current;
       if (me) {
@@ -225,11 +216,10 @@ export function GlobalCompetitionPourToast() {
 
     return () => {
       cancelled = true;
-      unsubscribe?.();
       window.clearInterval(metaInterval);
       void teardownChannel();
     };
-  }, [getSupabase, loadRelevantMeta, showToast, syncPhases, teardownChannel, t]);
+  }, [getSupabase, loadRelevantMeta, showToast, syncPhases, teardownChannel, t, userId]);
 
   const toastTitle =
     toastVariant === "success"

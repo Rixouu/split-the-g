@@ -302,7 +302,7 @@ export default function Collage() {
             slotLabel={t("pages.wall.advertiseBannerSlotLabel")}
             title={t("pages.wall.advertiseBannerTitle")}
             body={t("pages.wall.advertiseBannerBody")}
-            ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20wall%20advertising"
+            ctaHref="mailto:contact@split-the-g.app?subject=Split%20the%20G%20%E2%80%94%20wall%20advertising"
             ctaLabel={t("pages.wall.advertiseBannerCta")}
           />
         </div>

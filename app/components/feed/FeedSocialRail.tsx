@@ -5,6 +5,7 @@ import type { FriendRequestRow } from "~/routes/profile/profile-shared";
 import { normalizeEmail } from "~/routes/profile/profile-shared";
 import { scorePourPathFromFields } from "~/utils/scorePath";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { useSupabaseAuthUser } from "~/utils/supabase-auth";
 import { pubDetailPath } from "~/utils/pubPath";
 import type { User } from "@supabase/supabase-js";
 
@@ -26,7 +27,7 @@ const FRIEND_POUR_SELECT_COLUMNS =
 
 export function FeedSocialRail() {
   const { t } = useI18n();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, authResolved } = useSupabaseAuthUser();
   const [incoming, setIncoming] = useState<FriendRequestRow[]>([]);
   const [friendPours, setFriendPours] = useState<FeedPourRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,25 +97,9 @@ export function FeedSocialRail() {
   }, []);
 
   useEffect(() => {
-    let alive = true;
-    let unsubscribe: (() => void) | undefined;
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!alive) return;
-      const u = session?.user ?? null;
-      setUser(u);
-      await load(u);
-      const { data } = supabase.auth.onAuthStateChange((_event, s) => {
-        if (!alive) return;
-        const next = s?.user ?? null;
-        setUser(next);
-        void load(next);
-      });
-      unsubscribe = () => data.subscription.unsubscribe();
-    })();
-    return () => { alive = false; unsubscribe?.(); };
-  }, [load]);
+    if (!authResolved) return;
+    void load(user);
+  }, [authResolved, load, user]);
 
   async function respondRequest(row: FriendRequestRow, status: "accepted" | "declined") {
     if (!user) return;

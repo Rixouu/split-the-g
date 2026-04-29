@@ -15,7 +15,10 @@ import {
   type AnalyticsConsentStatus,
 } from "~/utils/analytics/consent";
 import { analyticsEventNames } from "~/utils/analytics/events";
-import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import {
+  subscribeToSupabaseAuthChanges,
+  useSupabaseAuthUser,
+} from "~/utils/supabase-auth";
 import { useTChrome } from "~/i18n/context";
 
 interface AnalyticsManagerProps {
@@ -56,6 +59,7 @@ export function AnalyticsManager({
 }: AnalyticsManagerProps) {
   const t = useTChrome();
   const location = useLocation();
+  const { user } = useSupabaseAuthUser();
   /** Avoid banner flash: SSR and first paint use "pending"; sync from localStorage before paint. */
   const [consentStatus, setConsentStatus] = useState<
     AnalyticsConsentStatus | "pending"
@@ -103,52 +107,57 @@ export function AnalyticsManager({
       }
       return;
     }
-    let mounted = true;
-    let unsubscribe: (() => void) | null = null;
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data } = await supabase.auth.getUser();
-      if (!mounted) return;
-      const userId = data.user?.id ?? null;
-      if (userId) {
-        identifyUser(userId);
-        previousUserIdRef.current = userId;
-        if (data.user) maybeTrackRegistration(data.user);
-      }
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        const nextUserId = session?.user?.id ?? null;
-        if (nextUserId) {
-          identifyUser(nextUserId);
-          previousUserIdRef.current = nextUserId;
-          if (session?.user) {
-            const isNewUser = isWithinNewUserWindow(session.user);
-            const lastSigned = lastSignedInEventRef.current;
-            const isDuplicateSignInEvent =
-              event === "SIGNED_IN" &&
-              lastSigned?.userId === session.user.id &&
-              Date.now() - lastSigned.atMs < SIGNED_IN_TRACK_WINDOW_MS;
+    const userId = user?.id ?? null;
+    if (userId) {
+      const currentUser = user;
+      if (!currentUser) return;
+      identifyUser(userId);
+      previousUserIdRef.current = userId;
+      maybeTrackRegistration(currentUser);
+      return;
+    }
+    if (previousUserIdRef.current) {
+      resetUser();
+      previousUserIdRef.current = null;
+    }
+  }, [isEnabled, user]);
 
-            if (event === "SIGNED_IN" && !isDuplicateSignInEvent) {
-              trackEvent(analyticsEventNames.authUserSignedIn, {
-                method: "google",
-                isNewUser,
-              });
-              lastSignedInEventRef.current = {
-                userId: session.user.id,
-                atMs: Date.now(),
-              };
-            }
-            if (isNewUser) maybeTrackRegistration(session.user);
-          }
-        } else if (previousUserIdRef.current) {
-          resetUser();
-          previousUserIdRef.current = null;
-        }
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-    })();
+  useEffect(() => {
+    if (!isEnabled) return;
+    let disposed = false;
+    let unsubscribe: (() => void) | null = null;
+
+    void subscribeToSupabaseAuthChanges((event, session) => {
+      const nextUser = session?.user ?? null;
+      if (!nextUser) return;
+      const isNewUser = isWithinNewUserWindow(nextUser);
+      const lastSigned = lastSignedInEventRef.current;
+      const isDuplicateSignInEvent =
+        event === "SIGNED_IN" &&
+        lastSigned?.userId === nextUser.id &&
+        Date.now() - lastSigned.atMs < SIGNED_IN_TRACK_WINDOW_MS;
+
+      if (event === "SIGNED_IN" && !isDuplicateSignInEvent) {
+        trackEvent(analyticsEventNames.authUserSignedIn, {
+          method: "google",
+          isNewUser,
+        });
+        lastSignedInEventRef.current = {
+          userId: nextUser.id,
+          atMs: Date.now(),
+        };
+      }
+      if (isNewUser) maybeTrackRegistration(nextUser);
+    }).then((nextUnsubscribe) => {
+      if (disposed) {
+        nextUnsubscribe();
+        return;
+      }
+      unsubscribe = nextUnsubscribe;
+    });
+
     return () => {
-      mounted = false;
+      disposed = true;
       unsubscribe?.();
     };
   }, [isEnabled]);

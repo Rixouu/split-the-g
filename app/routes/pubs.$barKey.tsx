@@ -678,7 +678,7 @@ export default function PubDetail() {
               slotLabel={t("pages.pubDetail.advertiseBannerSlotLabel")}
               title={t("pages.pubDetail.advertiseBannerTitle")}
               body={t("pages.pubDetail.advertiseBannerBody")}
-              ctaHref="mailto:jonathan.rycx@gmail.com?subject=Split%20the%20G%20%E2%80%94%20banner%20ads"
+              ctaHref="mailto:contact@split-the-g.app?subject=Split%20the%20G%20%E2%80%94%20banner%20ads"
               ctaLabel={t("pages.pubDetail.advertiseBannerCta")}
             />
 
