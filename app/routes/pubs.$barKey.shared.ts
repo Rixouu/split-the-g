@@ -36,6 +36,17 @@ export interface LinkedCompetition {
   path_segment?: string | null;
 }
 
+export type ImportGoogleActionData =
+  | {
+      ok: true;
+      placeId: string;
+      name: string | null;
+      formattedAddress: string | null;
+      weekdayLines: string[] | null;
+      mapsUrl: string | null;
+    }
+  | { ok: false; message?: string };
+
 export const PUB_WALL_PAGE_LIMIT = 120;
 
 export function isPubDirectoryAdmin(email: string | null | undefined): boolean {

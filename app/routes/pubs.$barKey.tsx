@@ -11,11 +11,7 @@ import type { ActionFunctionArgs } from "react-router";
 import {
   lazy,
   Suspense,
-  useEffect,
   useMemo,
-  useRef,
-  useState,
-  type FormEvent,
   type ReactNode,
 } from "react";
 import {
@@ -31,10 +27,6 @@ import {
   resolveGoogleMapsKeyForServer,
   resolvePlaceIdForPubImport,
 } from "~/utils/googlePlaceDetails";
-import {
-  pubDetailPath,
-  resolveBarKeyFromPubPathSegment,
-} from "~/utils/pubPath";
 import { useI18n } from "~/i18n/context";
 import { createTranslator } from "~/i18n/load-messages";
 import { langFromParams } from "~/i18n/lang-param";
@@ -43,15 +35,16 @@ import type { loader as pubDetailLoader } from "./pubs.$barKey.loader";
 import { AdSlotBanner } from "~/components/ad-slot-banner";
 import {
   PUB_WALL_PAGE_LIMIT,
+  type ImportGoogleActionData,
   isPubDirectoryAdmin,
   mapsSearchUrl,
-  normalizeBarKeyInput,
   pubDivider,
   pubPanel,
   pubPanelShell,
   pubPanelMuted,
   pubStroke,
 } from "./pubs.$barKey.shared";
+import { usePubDetailState } from "./usePubDetailState";
 
 export { loader } from "./pubs.$barKey.loader";
 export function headers() {
@@ -77,17 +70,6 @@ const PubWallTab = lazy(async () => {
   return { default: mod.PubWallTab };
 });
 
-
-type ImportGoogleActionData =
-  | {
-      ok: true;
-      placeId: string;
-      name: string | null;
-      formattedAddress: string | null;
-      weekdayLines: string[] | null;
-      mapsUrl: string | null;
-    }
-  | { ok: false; message?: string };
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const t = createTranslator(langFromParams(params ?? {}));
@@ -421,303 +403,51 @@ export default function PubDetail() {
   const revalidator = useRevalidator();
   const navigate = useNavigate();
   const importFetcher = useFetcher<ImportGoogleActionData>();
-  const lastImportHandledKey = useRef<string | null>(null);
-
-  useEffect(() => {
-    lastImportHandledKey.current = null;
-  }, [barKey]);
-
-  const [userId, setUserId] = useState<string | null>(loaderUserId);
-  const [userEmail, setUserEmail] = useState<string | null>(loaderUserEmail);
-  const [favId, setFavId] = useState<string | null>(initialFavId);
-  const [favBusy, setFavBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const [toastOk, setToastOk] = useState(true);
-
-  const [openingHours, setOpeningHours] = useState(
-    placeDetails?.opening_hours ?? "",
-  );
-  const [guinnessInfo, setGuinnessInfo] = useState(
-    placeDetails?.guinness_info ?? "",
-  );
-  const [promotions, setPromotions] = useState(
-    placeDetails?.alcohol_promotions ?? "",
-  );
-  const [mapsPlaceUrl, setMapsPlaceUrl] = useState(
-    placeDetails?.maps_place_url ?? "",
-  );
-  const [directoryGooglePlaceId, setDirectoryGooglePlaceId] = useState(
-    placeDetails?.google_place_id ?? "",
-  );
-  /** Written to every pour (scores) for this pub; import pre-fills from Google. */
-  const [canonicalBarName, setCanonicalBarName] = useState(bar.display_name);
-  const [canonicalBarAddress, setCanonicalBarAddress] = useState(
-    bar.sample_address ?? "",
-  );
-  const [mergeTargetBarKey, setMergeTargetBarKey] = useState("");
-  const [mergeBusy, setMergeBusy] = useState(false);
-  /** Collapsed by default — admin-only merge tool. */
-  const [mergeSectionOpen, setMergeSectionOpen] = useState(false);
-  const [directoryBusy, setDirectoryBusy] = useState(false);
-
-  const [pubTab, setPubTab] = useState<"promos" | "competitions" | "wall">(
-    "promos",
-  );
-
-  useEffect(() => {
-    if (importFetcher.state !== "idle" || importFetcher.data == null) return;
-    const key = JSON.stringify(importFetcher.data);
-    if (lastImportHandledKey.current === key) return;
-    lastImportHandledKey.current = key;
-
-    const d = importFetcher.data;
-    if (d.ok) {
-      if (d.weekdayLines?.length) setOpeningHours(d.weekdayLines.join("\n"));
-      if (d.mapsUrl) setMapsPlaceUrl(d.mapsUrl);
-      if (d.placeId) setDirectoryGooglePlaceId(d.placeId);
-      if (d.name?.trim()) setCanonicalBarName(d.name.trim());
-      if (d.formattedAddress?.trim())
-        setCanonicalBarAddress(d.formattedAddress.trim());
-      setToastOk(true);
-      const bits = [d.name, d.formattedAddress].filter(Boolean).join(" — ");
-      const hoursMsg = d.weekdayLines?.length
-        ? t("pages.pubDetail.importHoursReview")
-        : t("pages.pubDetail.importHoursMissing");
-      setToast(
-        bits
-          ? t("pages.pubDetail.importSuccessWithBits", { bits, hint: hoursMsg })
-          : t("pages.pubDetail.importSuccessNoBits", { hint: hoursMsg }),
-      );
-    } else {
-      setToastOk(false);
-      setToast(d.message ?? t("pages.pubDetail.importFailedFallback"));
-    }
-  }, [importFetcher.state, importFetcher.data, t]);
-
-  useEffect(() => {
-    setOpeningHours(placeDetails?.opening_hours ?? "");
-    setGuinnessInfo(placeDetails?.guinness_info ?? "");
-    setPromotions(placeDetails?.alcohol_promotions ?? "");
-    setMapsPlaceUrl(placeDetails?.maps_place_url ?? "");
-    setDirectoryGooglePlaceId(placeDetails?.google_place_id ?? "");
-  }, [placeDetails]);
-
-  useEffect(() => {
-    setCanonicalBarName(bar.display_name);
-    setCanonicalBarAddress(bar.sample_address ?? "");
-  }, [bar.display_name, bar.sample_address, barKey]);
-
-  const canEditPubDirectory = useMemo(
-    () => isPubDirectoryAdmin(userEmail),
-    [userEmail],
-  );
-
-
-  async function toggleFavorite() {
-    setToast(null);
-    if (!userId) {
-      setToastOk(false);
-      setToast(t("pages.pubs.signInForFavorites"));
-      return;
-    }
-    setFavBusy(true);
-    try {
-      if (favId) {
-        const { error } = await supabase
-          .from("user_favorite_bars")
-          .delete()
-          .eq("id", favId);
-        if (error) {
-          setToastOk(false);
-          setToast(error.message);
-          return;
-        }
-        setFavId(null);
-        setToastOk(true);
-        setToast(t("pages.pubDetail.toastFavoriteRemoved"));
-      } else {
-        const { data, error } = await supabase
-          .from("user_favorite_bars")
-          .insert({
-            user_id: userId,
-            bar_name: bar.display_name,
-            bar_address: bar.sample_address,
-          })
-          .select("id")
-          .single();
-        if (error) {
-          setToastOk(false);
-          setToast(error.message);
-          return;
-        }
-        if (data?.id) setFavId(data.id as string);
-        setToastOk(true);
-        setToast(t("pages.pubDetail.toastFavoriteSaved"));
-      }
-    } finally {
-      setFavBusy(false);
-    }
-  }
-
-  async function saveDirectory(e: FormEvent) {
-    e.preventDefault();
-    setToast(null);
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastSignInUpdatePub"));
-      return;
-    }
-    if (!isPubDirectoryAdmin(auth.user.email)) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastAdminOnlyDirectory"));
-      return;
-    }
-    setDirectoryBusy(true);
-    try {
-      const nameTrim = canonicalBarName.trim();
-      if (!nameTrim) {
-        setToastOk(false);
-        setToast(t("pages.pubDetail.toastPubNameRequired"));
-        return;
-      }
-      const addrTrim = canonicalBarAddress.trim();
-      const placeTrim = directoryGooglePlaceId.trim();
-
-      const { data: rpcData, error: rpcError } = await supabase.rpc(
-        "admin_apply_pub_canonical_on_scores",
-        {
-          p_current_bar_key: barKey,
-          p_bar_name: nameTrim,
-          p_bar_address: addrTrim || null,
-          p_google_place_id: placeTrim || null,
-        },
-      );
-
-      if (rpcError) {
-        setToastOk(false);
-        const msg = `${rpcError.message ?? ""} ${rpcError.code ?? ""}`.toLowerCase();
-        setToast(
-          rpcError.code === "42883" || msg.includes("admin_apply_pub_canonical")
-            ? t("pages.pubDetail.toastPubMigrationHint")
-            : (rpcError.message ?? t("pages.pubDetail.toastCouldNotUpdatePours")),
-        );
-        return;
-      }
-
-      const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-      const newBarKey = String(
-        (rpcRow as { new_bar_key?: string } | null)?.new_bar_key ?? barKey,
-      ).trim();
-
-      const payload = {
-        bar_key: newBarKey,
-        opening_hours: openingHours.trim() || null,
-        guinness_info: guinnessInfo.trim() || null,
-        alcohol_promotions: promotions.trim() || null,
-        maps_place_url: mapsPlaceUrl.trim() || null,
-        google_place_id: placeTrim || null,
-        updated_by: auth.user.id,
-        updated_at: new Date().toISOString(),
-      };
-      const { error } = await supabase.from("pub_place_details").upsert(
-        payload,
-        { onConflict: "bar_key" },
-      );
-      if (error) {
-        setToastOk(false);
-        setToast(error.message);
-        return;
-      }
-      setToastOk(true);
-      setToast(t("pages.pubDetail.toastPubSaved"));
-      if (newBarKey !== barKey) {
-        navigate(pubDetailPath(newBarKey), { replace: true });
-      }
-      revalidator.revalidate();
-    } finally {
-      setDirectoryBusy(false);
-    }
-  }
-
-  async function mergeIntoTargetPub() {
-    setToast(null);
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastSignInMerge"));
-      return;
-    }
-    if (!isPubDirectoryAdmin(auth.user.email)) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastAdminOnlyMerge"));
-      return;
-    }
-    const pasted = normalizeBarKeyInput(mergeTargetBarKey);
-    if (!pasted) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastMergePasteTarget"));
-      return;
-    }
-    const tgt = await resolveBarKeyFromPubPathSegment(supabase, pasted);
-    if (!tgt) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastMergePubNotFound"));
-      return;
-    }
-    if (tgt === barKey) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastMergeSamePub"));
-      return;
-    }
-    setMergeBusy(true);
-    try {
-      const { error } = await supabase.rpc("admin_merge_pub_into_target", {
-        p_source_bar_key: barKey,
-        p_target_bar_key: tgt,
-      });
-      if (error) {
-        setToastOk(false);
-        const msg = `${error.message ?? ""} ${error.code ?? ""}`.toLowerCase();
-        setToast(
-          error.code === "42883" || msg.includes("admin_merge_pub_into_target")
-            ? t("pages.pubDetail.toastMergeMigrationHint")
-            : (error.message ?? t("pages.pubDetail.toastMergeFailed")),
-        );
-        return;
-      }
-      setToastOk(true);
-      setToast(t("pages.pubDetail.toastMergeSuccess"));
-      setMergeTargetBarKey("");
-      navigate(pubDetailPath(tgt), { replace: true });
-      revalidator.revalidate();
-    } finally {
-      setMergeBusy(false);
-    }
-  }
-
-  async function submitImportFromGoogle() {
-    setToast(null);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) {
-      setToastOk(false);
-      setToast(t("pages.pubDetail.toastSignInImport"));
-      return;
-    }
-    const placeInput = [directoryGooglePlaceId, mapsPlaceUrl]
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .join("\n");
-    const fd = new FormData();
-    fd.set("intent", "importGooglePlace");
-    fd.set("accessToken", token);
-    fd.set("placeInput", placeInput);
-    fd.set("barGooglePlaceId", bar.google_place_id ?? "");
-    fd.set("barDisplayName", bar.display_name);
-    fd.set("barSampleAddress", bar.sample_address ?? "");
-    importFetcher.submit(fd, { method: "post" });
-  }
+  const {
+    userId,
+    favId,
+    favBusy,
+    toast,
+    toastOk,
+    openingHours,
+    setOpeningHours,
+    guinnessInfo,
+    setGuinnessInfo,
+    promotions,
+    setPromotions,
+    mapsPlaceUrl,
+    setMapsPlaceUrl,
+    directoryGooglePlaceId,
+    setDirectoryGooglePlaceId,
+    canonicalBarName,
+    setCanonicalBarName,
+    canonicalBarAddress,
+    setCanonicalBarAddress,
+    mergeTargetBarKey,
+    setMergeTargetBarKey,
+    mergeBusy,
+    mergeSectionOpen,
+    setMergeSectionOpen,
+    directoryBusy,
+    pubTab,
+    setPubTab,
+    canEditPubDirectory,
+    toggleFavorite,
+    saveDirectory,
+    mergeIntoTargetPub,
+    submitImportFromGoogle,
+  } = usePubDetailState({
+    barKey,
+    bar,
+    placeDetails,
+    loaderUserId,
+    loaderUserEmail,
+    initialFavId,
+    importFetcher,
+    revalidator,
+    navigate,
+    t,
+  });
 
   const mapsHref = useMemo(() => mapsSearchUrl(bar), [bar]);
   const mapSearchQuery = useMemo(
