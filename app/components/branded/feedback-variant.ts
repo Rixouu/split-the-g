@@ -4,6 +4,7 @@ export function feedbackVariantFromMessage(message: string): BrandedNoticeVarian
   const lower = message.toLowerCase();
   if (
     message === "Profile saved." ||
+    lower.includes("analytics enabled") ||
     lower.includes("signed out successfully") ||
     lower.includes("you're signed out") ||
     lower.includes("you’re signed out") ||
@@ -20,6 +21,7 @@ export function feedbackVariantFromMessage(message: string): BrandedNoticeVarian
     return "success";
   }
   if (
+    lower.includes("analytics disabled") ||
     lower.includes("friend request declined") ||
     lower.includes("friend removed") ||
     lower.includes("favorite removed")
