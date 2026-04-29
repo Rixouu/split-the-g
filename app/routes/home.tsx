@@ -1,10 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  useSubmit,
-  useFetcher,
-  useActionData,
-  useSearchParams,
-} from "react-router";
+import { useState } from "react";
 import { Zap, ZapOff } from "lucide-react";
 import { AppDocumentLink } from "~/i18n/app-link";
 import { PintGlassOverlay } from "~/components/PintGlassOverlay";
@@ -12,70 +6,17 @@ import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useI18n } from "~/i18n/context";
 import { langFromParams } from "~/i18n/lang-param";
-import type {
-  InferenceEngine as RoboflowInferenceEngine,
-  InferencePrediction,
-} from "inferencejs";
 import { BuyCreatorABeer } from "~/components/BuyCreatorABeer";
 import { PwaInstallBanner } from "~/components/pwa-install-banner";
-import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
-import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
-import {
-  enqueueOfflinePour,
-  flushOfflinePourQueue,
-} from "~/utils/offline-pour-queue";
-import { analyticsEventNames } from "~/utils/analytics/events";
-import { trackEvent } from "~/utils/analytics/client";
 import { handleHomePourAction } from "./home-pour.server";
-
-const isClient = typeof window !== "undefined";
+import { useHomePourClient } from "./useHomePourClient";
 
 /** Compact mobile browse links — avoids full-width gold blocks on small screens. */
 const homeMobileBrowseLinkClass =
   "inline-flex min-h-9 w-full items-center justify-center rounded-md border border-guinness-gold/30 bg-guinness-black/40 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-guinness-gold transition-colors hover:border-guinness-gold/50 hover:bg-guinness-gold/10 active:bg-guinness-gold/15";
-
-const MAX_POUR_IMAGE_BYTES = 18 * 1024 * 1024;
-
-/** inferencejs (browser) — Roboflow Publishable key (`rf_...`); optional override, else falls back to VITE_ROBOFLOW_API_KEY. */
-const ROBOFLOW_PUBLISHABLE_KEY =
-  import.meta.env.VITE_ROBOFLOW_PUBLISHABLE_KEY ??
-  import.meta.env.VITE_ROBOFLOW_API_KEY ??
-  "";
-
-/** inferencejs (browser) — project slug + version from your model’s Deploy page (not the workflow id). */
-const ROBOFLOW_INFERENCE_MODEL =
-  import.meta.env.VITE_ROBOFLOW_INFERENCE_MODEL ?? "split-g-label-experiment";
-const ROBOFLOW_INFERENCE_VERSION =
-  import.meta.env.VITE_ROBOFLOW_INFERENCE_VERSION ?? "8";
-const INFERENCEJS_CDN_URL =
-  "https://esm.sh/inferencejs@1.2.3?target=es2022";
-
-/** Second argument to `InferenceEngine.infer` (CDN build matches npm typings). */
-type InferenceImageInput = Parameters<RoboflowInferenceEngine["infer"]>[1];
-
-type InferenceJsModule = {
-  InferenceEngine: new () => RoboflowInferenceEngine;
-  CVImage: new (source: HTMLVideoElement) => InferenceImageInput;
-};
-
-type TorchTrackCapabilities = MediaTrackCapabilities & {
-  torch?: boolean;
-  fillLightMode?: string[];
-};
-
-let inferenceModulePromise: Promise<InferenceJsModule> | null = null;
-
-async function loadInferenceJsModule(): Promise<InferenceJsModule> {
-  if (!inferenceModulePromise) {
-    inferenceModulePromise = import(
-      /* @vite-ignore */ INFERENCEJS_CDN_URL
-    ) as Promise<InferenceJsModule>;
-  }
-  return inferenceModulePromise;
-}
 
 export async function loader(_args: LoaderFunctionArgs) {
   return {};
@@ -90,9 +31,6 @@ export const config = {
   maxDuration: 60,
 };
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 export async function action({ request, params }: ActionFunctionArgs) {
   return handleHomePourAction({
     request,
@@ -102,689 +40,30 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function Home() {
   const { t } = useI18n();
-  const [searchParams] = useSearchParams();
-  const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [actorMeta, setActorMeta] = useState<{ userId: string; actorName: string }>({
-    userId: "",
-    actorName: "",
-  });
-  const [isFlashSupported, setIsFlashSupported] = useState(false);
-  const [isFlashEnabled, setIsFlashEnabled] = useState(false);
-  const [isFlashUpdating, setIsFlashUpdating] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  /** Holds the active stream so we can stop tracks on unmount / tab hide even if the video node is gone. */
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-
-  const stopCameraTracks = useCallback(() => {
-    const stream = mediaStreamRef.current;
-    if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
-      mediaStreamRef.current = null;
-    }
-    const vid = videoRef.current;
-    if (vid) {
-      vid.srcObject = null;
-    }
-    setIsVideoReady(false);
-    setIsFlashSupported(false);
-    setIsFlashEnabled(false);
-    setIsFlashUpdating(false);
-  }, []);
-  const submit = useSubmit();
-  const queueFetcher = useFetcher<typeof action>();
-  const actionData = useActionData<typeof action>();
-  const offlineFlushPendingRef = useRef<{
-    resolve: () => void;
-    reject: (e: Error) => void;
-  } | null>(null);
-  const lastSubmitSourceRef = useRef<"camera" | "upload">("camera");
-
-  const submitQueuedPourItem = useCallback(
-    (item: {
-      imageBase64: string;
-      competitionId: string;
-      actorUserId: string;
-      actorName: string;
-    }) => {
-      return new Promise<void>((resolve, reject) => {
-        offlineFlushPendingRef.current = {
-          resolve,
-          reject,
-        };
-        const fd = new FormData();
-        fd.append("image", item.imageBase64);
-        if (item.competitionId && UUID_RE.test(item.competitionId)) {
-          fd.append("competition", item.competitionId);
-        }
-        if (item.actorName) fd.append("actorName", item.actorName);
-        void getSupabaseBrowserClient()
-          .then(async (sb) => {
-            const { data: sessionData } = await sb.auth.getSession();
-            const at = sessionData.session?.access_token;
-            if (at) fd.append("accessToken", at);
-          })
-          .catch(() => null)
-          .finally(() => {
-            queueFetcher.submit(fd, {
-              method: "post",
-              encType: "multipart/form-data",
-              action: ".",
-            });
-          });
-      });
-    },
-    [queueFetcher],
-  );
-
-  useEffect(() => {
-    if (queueFetcher.state !== "idle") return;
-    const pending = offlineFlushPendingRef.current;
-    if (!pending) return;
-    offlineFlushPendingRef.current = null;
-    const d = queueFetcher.data;
-    if (
-      d &&
-      typeof d === "object" &&
-      "success" in d &&
-      (d as { success: boolean }).success === false
-    ) {
-      const code = (d as { error?: string }).error ?? "PROCESS_FAILED";
-      pending.reject(new Error(code));
-      return;
-    }
-    pending.resolve();
-  }, [queueFetcher.state, queueFetcher.data]);
-
-  const tryFlushOfflineQueue = useCallback(() => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
-    void flushOfflinePourQueue({
-      submitPour: submitQueuedPourItem,
-      onBatchSynced: () => {
-        trackEvent(analyticsEventNames.offlinePourSynced, {});
-        setHomeToast({
-          message: t("pages.home.pourSyncedFromQueue"),
-          variant: "success",
-        });
-      },
-      onItemFailed: (_item, err) => {
-        const code = err instanceof Error ? err.message : "";
-        if (code === "RATE_LIMITED") {
-          setHomeToast({ message: t("errors.pourRateLimited"), variant: "danger" });
-        } else if (code === "DUPLICATE_IMAGE") {
-          setHomeToast({ message: t("errors.duplicatePourImage"), variant: "danger" });
-        } else if (code === "STALE_IMAGE_EXIF") {
-          setHomeToast({ message: t("errors.imageTimestampStale"), variant: "danger" });
-        } else {
-          setHomeToast({
-            message: t("pages.home.pourQueueSyncFailed"),
-            variant: "danger",
-          });
-        }
-      },
-    });
-  }, [submitQueuedPourItem, t]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onOnline = () => {
-      tryFlushOfflineQueue();
-    };
-    const onVis = () => {
-      if (document.visibilityState === "visible") tryFlushOfflineQueue();
-    };
-    window.addEventListener("online", onOnline);
-    document.addEventListener("visibilitychange", onVis);
-    void tryFlushOfflineQueue();
-    return () => {
-      window.removeEventListener("online", onOnline);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [tryFlushOfflineQueue]);
-
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
-    function onSwMessage(e: MessageEvent) {
-      if (e.data?.type === "FLUSH_POUR_QUEUE") {
-        tryFlushOfflineQueue();
-      }
-    }
-    navigator.serviceWorker.addEventListener("message", onSwMessage);
-    return () =>
-      navigator.serviceWorker.removeEventListener("message", onSwMessage);
-  }, [tryFlushOfflineQueue]);
-
-  const sendPourImageBase64 = useCallback(
-    (
-      base64Image: string,
-      opts?: {
-        onQueuedOffline?: () => void;
-        source?: "camera" | "upload";
-      },
-    ) => {
-      void (async () => {
-        const source = opts?.source ?? "camera";
-        lastSubmitSourceRef.current = source;
-        if (typeof navigator !== "undefined" && !navigator.onLine) {
-          try {
-            await enqueueOfflinePour({
-              id: crypto.randomUUID(),
-              imageBase64: base64Image,
-              competitionId:
-                competitionIdParam && UUID_RE.test(competitionIdParam)
-                  ? competitionIdParam
-                  : "",
-              actorUserId: actorMeta.userId,
-              actorName: actorMeta.actorName,
-              queuedAt: Date.now(),
-            });
-            opts?.onQueuedOffline?.();
-            trackEvent(analyticsEventNames.offlinePourQueued, {
-              hasCompetition: Boolean(
-                competitionIdParam && UUID_RE.test(competitionIdParam),
-              ),
-            });
-            setHomeToast({
-              message: t("pages.home.pourQueuedOffline"),
-              variant: "info",
-            });
-          } catch {
-            opts?.onQueuedOffline?.();
-            setHomeToast({
-              message: t("pages.home.pourQueueSaveFailed"),
-              variant: "danger",
-            });
-          }
-          return;
-        }
-        const formData = new FormData();
-        formData.append("image", base64Image);
-        if (competitionIdParam && UUID_RE.test(competitionIdParam)) {
-          formData.append("competition", competitionIdParam);
-        }
-        if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
-        try {
-          const sb = await getSupabaseBrowserClient();
-          const { data: sessionData } = await sb.auth.getSession();
-          const at = sessionData.session?.access_token;
-          if (at) formData.append("accessToken", at);
-        } catch {
-          // anonymous pour still works
-        }
-        submit(formData, {
-          method: "post",
-          action: ".",
-          encType: "multipart/form-data",
-        });
-        trackEvent(analyticsEventNames.pourSubmitted, {
-          source,
-          hasCompetition: Boolean(
-            competitionIdParam && UUID_RE.test(competitionIdParam),
-          ),
-        });
-      })();
-    },
-    [
-      actorMeta.actorName,
-      actorMeta.userId,
-      competitionIdParam,
-      submit,
-      t,
-    ],
-  );
-
-  // Load inferencejs only when the user turns the camera on — keeps first paint / upload-only path light.
-  const [inferEngine, setInferEngine] =
-    useState<RoboflowInferenceEngine | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !isCameraActive) return;
-    if (inferEngine) return;
-
-    let cancelled = false;
-    void loadInferenceJsModule()
-      .then(({ InferenceEngine }) => {
-        if (cancelled) return;
-        setInferEngine(new InferenceEngine());
-      })
-      .catch((err) => {
-        console.error("Could not load inference module:", err);
-        if (cancelled) return;
-        setHomeToast({
-          message: t("pages.home.inferenceUnavailable"),
-          variant: "warning",
-        });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isCameraActive, inferEngine, t]);
-
-  const [modelWorkerId, setModelWorkerId] = useState<string | null>(null);
-  const [modelLoading, setModelLoading] = useState(false);
-
-  // Initialize model when inference engine is ready
-  useEffect(() => {
-    if (!inferEngine || modelLoading) return;
-
-    setModelLoading(true);
-    inferEngine
-      .startWorker(
-        ROBOFLOW_INFERENCE_MODEL,
-        ROBOFLOW_INFERENCE_VERSION,
-        ROBOFLOW_PUBLISHABLE_KEY
-      )
-      .then((id: string) => setModelWorkerId(id))
-      .catch((error) => {
-        console.error("Could not start inference worker:", error);
-        setModelWorkerId(null);
-        setHomeToast({
-          message: t("pages.home.inferenceUnavailable"),
-          variant: "warning",
-        });
-      })
-      .finally(() => {
-        setModelLoading(false);
-      });
-  }, [inferEngine, modelLoading, t]);
-
-  const [isVideoReady, setIsVideoReady] = useState(false);
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
-  const [homeToast, setHomeToast] = useState<{
-    message: string;
-    variant: BrandedNoticeVariant;
-  } | null>(null);
-
-  const toggleFlash = useCallback(async () => {
-    const stream = mediaStreamRef.current;
-    const track = stream?.getVideoTracks()[0];
-    if (!track || !isFlashSupported || isFlashUpdating) return;
-
-    const next = !isFlashEnabled;
-    setIsFlashUpdating(true);
-    try {
-      await track.applyConstraints({
-        advanced: [{ torch: next } as MediaTrackConstraintSet],
-      });
-      setIsFlashEnabled(next);
-    } catch (error) {
-      console.error("Flash toggle failed:", error);
-      setHomeToast({
-        message: t("pages.home.flashUnavailable"),
-        variant: "warning",
-      });
-    } finally {
-      setIsFlashUpdating(false);
-    }
-  }, [isFlashEnabled, isFlashSupported, isFlashUpdating, t]);
-
-  // Camera: start when active; always stop tracks on deactivate, unmount, or aborted getUserMedia.
-  useEffect(() => {
-    if (!isCameraActive) return;
-
-    if (!videoRef.current) return;
-
-    const constraints = {
-      video: {
-        facingMode: { ideal: "environment" },
-        width: 720,
-        height: 960,
-      },
-    };
-
-    let cancelled = false;
-
-    navigator.mediaDevices
-      .getUserMedia(constraints)
-      .then((stream) => {
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        mediaStreamRef.current = stream;
-        const track = stream.getVideoTracks()[0];
-        const capabilities = track?.getCapabilities?.() as TorchTrackCapabilities;
-        const supportsTorch =
-          Boolean(capabilities?.torch) ||
-          Boolean(capabilities?.fillLightMode?.includes("flash")) ||
-          Boolean(capabilities?.fillLightMode?.includes("torch"));
-        setIsFlashSupported(supportsTorch);
-        setIsFlashEnabled(false);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
-      })
-      .catch((err) => {
-        console.error("Camera error:", err);
-        mediaStreamRef.current = null;
-        setIsCameraActive(false);
-        setHomeToast({
-          message: t("pages.home.cameraDenied"),
-          variant: "warning",
-        });
-      });
-
-    return () => {
-      cancelled = true;
-      const active = mediaStreamRef.current;
-      if (active) {
-        active.getTracks().forEach((t) => t.stop());
-        mediaStreamRef.current = null;
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      setIsVideoReady(false);
-    };
-  }, [isCameraActive, t]);
-
-  // Release camera when the user leaves the tab (indicator otherwise stays on in many browsers).
-  useEffect(() => {
-    if (!isCameraActive || typeof document === "undefined") return;
-
-    function onVisibilityChange() {
-      if (document.visibilityState === "hidden") {
-        stopCameraTracks();
-        setIsCameraActive(false);
-      }
-    }
-
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [isCameraActive, stopCameraTracks]);
-
-  // Add new state for tracking detections
-  const [, setConsecutiveDetections] = useState(0);
-  const [feedbackMessage, setFeedbackMessage] = useState(() =>
-    t("pages.home.feedbackShowGlass"),
-  );
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadProcessing, setIsUploadProcessing] = useState(false);
-  const [showNoGModal, setShowNoGModal] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getSupabaseBrowserClient()
-      .then(async (supabaseClient) => {
-        const { data } = await supabaseClient.auth.getUser();
-        if (cancelled) return;
-        const user = data.user;
-        const actor =
-          (user?.user_metadata?.full_name as string | undefined)?.trim() ||
-          (user?.user_metadata?.name as string | undefined)?.trim() ||
-          "";
-        setActorMeta({ userId: user?.id ?? "", actorName: actor });
-      })
-      .catch(() => null);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Detection loop: import inferencejs once per interval (not every 500ms tick).
-  useEffect(() => {
-    if (
-      !isClient ||
-      !inferEngine ||
-      !modelWorkerId ||
-      !isCameraActive ||
-      !isVideoReady
-    )
-      return;
-
-    let intervalId: ReturnType<typeof setInterval> | undefined;
-    let cancelled = false;
-
-    void loadInferenceJsModule()
-      .then(({ CVImage }) => {
-        if (cancelled) return;
-
-        const detectFrame = async () => {
-          if (!modelWorkerId || !videoRef.current) return;
-
-          try {
-            const img = new CVImage(videoRef.current);
-            const predictions: InferencePrediction[] = await inferEngine.infer(
-              modelWorkerId,
-              img,
-            );
-
-            const hasGlass = predictions.some(
-              (pred: InferencePrediction) => pred.class === "glass",
-            );
-            const hasG = predictions.some(
-              (pred: InferencePrediction) => pred.class === "G",
-            );
-
-            if (hasGlass && hasG) {
-              setConsecutiveDetections((prev) => {
-                if (prev >= 4) return prev;
-                const next = prev + 1;
-                if (next === 4) {
-                  setFeedbackMessage(t("pages.home.feedbackPerfect"));
-                  setIsProcessing(true);
-                  setIsSubmitting(true);
-
-                  const vid = videoRef.current;
-                  const canvas = canvasRef.current;
-                  if (vid && canvas) {
-                    const context = canvas.getContext("2d");
-                    canvas.width = vid.videoWidth;
-                    canvas.height = vid.videoHeight;
-                    context?.drawImage(vid, 0, 0, canvas.width, canvas.height);
-
-                    const imageData = canvas.toDataURL("image/jpeg");
-                    const base64Image = imageData.replace(
-                      /^data:image\/\w+;base64,/,
-                      "",
-                    );
-
-                    stopCameraTracks();
-                    setIsCameraActive(false);
-
-                    sendPourImageBase64(base64Image, {
-                      onQueuedOffline: () => {
-                        setIsProcessing(false);
-                        setIsSubmitting(false);
-                      },
-                      source: "camera",
-                    });
-                  }
-                } else if (next >= 2) {
-                  setFeedbackMessage(t("pages.home.feedbackHoldStill"));
-                } else {
-                  setFeedbackMessage(t("pages.home.feedbackCentered"));
-                }
-                return next;
-              });
-            } else {
-              setConsecutiveDetections(0);
-              if (!hasGlass) {
-                setFeedbackMessage(t("pages.home.feedbackShowGlass"));
-              } else if (!hasG) {
-                setFeedbackMessage(t("pages.home.feedbackGVisible"));
-              }
-            }
-          } catch (error) {
-            console.error("Detection error:", error);
-          }
-        };
-
-        intervalId = setInterval(detectFrame, 500);
-      })
-      .catch((err) => {
-        console.error("Could not load inference module:", err);
-      });
-
-    return () => {
-      cancelled = true;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [
-    modelWorkerId,
+  const {
     isCameraActive,
-    inferEngine,
-    isVideoReady,
-    sendPourImageBase64,
-    stopCameraTracks,
-    competitionIdParam,
-    t,
-  ]);
-
-  // Update the effect that handles action response
-  useEffect(() => {
-    if (!actionData) return;
-    setIsUploadProcessing(false);
-    setIsSubmitting(false);
-    setIsProcessing(false);
-
-    if (
-      "success" in actionData &&
-      actionData.success === true &&
-      "redirectTo" in actionData &&
-      typeof actionData.redirectTo === "string"
-    ) {
-      const redirectTo = actionData.redirectTo;
-      const scoreId =
-        "scoreId" in actionData && typeof actionData.scoreId === "string"
-          ? actionData.scoreId
-          : "";
-      void (async () => {
-        try {
-          const comp =
-            competitionIdParam && UUID_RE.test(competitionIdParam)
-              ? competitionIdParam
-              : "";
-          if (comp && scoreId) {
-            const sb = await getSupabaseBrowserClient();
-            const { data: u } = await sb.auth.getUser();
-            if (u.user) {
-              await sb.from("competition_scores").insert({
-                competition_id: comp,
-                score_id: scoreId,
-                user_id: u.user.id,
-              });
-            }
-          }
-        } catch {
-          // best-effort; pour is already saved
-        }
-        window.location.assign(redirectTo);
-      })();
-      trackEvent(analyticsEventNames.pourSaved, {
-        hasCompetition: Boolean(competitionIdParam && UUID_RE.test(competitionIdParam)),
-        scoreId: scoreId || undefined,
-      });
-      return;
-    }
-
-    if (actionData.error === "NO_G") {
-      setShowNoGModal(true);
-      return;
-    }
-
-    if ("success" in actionData && actionData.success === false) {
-      const err = actionData.error;
-      trackEvent(analyticsEventNames.pourProcessingFailed, {
-        code: err,
-        source: lastSubmitSourceRef.current,
-      });
-      let msg: string;
-      if (err === "PROCESS_FAILED") {
-        msg = t("errors.failedProcessImage");
-      } else if (err === "ANALYSIS_TIMEOUT") {
-        msg = t("errors.pourAnalysisTimedOut");
-      } else if (err === "ROBOFLOW_FAILED") {
-        msg = t("errors.pourScoringServiceUnavailable");
-      } else if (err === "RATE_LIMITED") {
-        msg = t("errors.pourRateLimited");
-      } else if (err === "DUPLICATE_IMAGE") {
-        msg = t("errors.duplicatePourImage");
-      } else if (err === "STALE_IMAGE_EXIF") {
-        msg = t("errors.imageTimestampStale");
-      } else if (err === "INVALID_IMAGE") {
-        msg = t("errors.readImageFailedShort");
-      } else if (typeof (actionData as { detail?: string }).detail === "string") {
-        msg = (actionData as { detail: string }).detail;
-      } else {
-        msg = t("errors.genericPourError");
-      }
-      setHomeToast({
-        message: msg,
-        variant: "danger",
-      });
-    }
-  }, [actionData, competitionIdParam, t]);
-
-  // Update the handleFileChange function
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const input = event.target;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setHomeToast({
-        message: t("errors.invalidImageType"),
-        variant: "warning",
-      });
-      return;
-    }
-    if (file.size > MAX_POUR_IMAGE_BYTES) {
-      setHomeToast({
-        message: t("errors.imageTooLarge", {
-          maxMb: Math.round(MAX_POUR_IMAGE_BYTES / (1024 * 1024)),
-        }),
-        variant: "warning",
-      });
-      return;
-    }
-
-    setIsUploadProcessing(true);
-    const reader = new FileReader();
-
-    reader.onerror = () => {
-      setIsUploadProcessing(false);
-      setHomeToast({
-        message: t("errors.readImageFailed"),
-        variant: "danger",
-      });
-    };
-
-    reader.onloadend = () => {
-      const base64Image = reader.result
-        ?.toString()
-        .replace(/^data:image\/\w+;base64,/, "");
-      if (!base64Image) {
-        setIsUploadProcessing(false);
-        setHomeToast({
-          message: t("errors.readImageFailedShort"),
-          variant: "danger",
-        });
-        return;
-      }
-      sendPourImageBase64(base64Image, {
-        onQueuedOffline: () => setIsUploadProcessing(false),
-        source: "upload",
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleUploadInstead = useCallback(() => {
-    if (isCameraActive) {
-      stopCameraTracks();
-      setIsCameraActive(false);
-    }
-    document.getElementById("file-upload")?.click();
-  }, [actorMeta.actorName, actorMeta.userId, isCameraActive, stopCameraTracks]);
+    isFlashSupported,
+    isFlashEnabled,
+    isFlashUpdating,
+    videoRef,
+    canvasRef,
+    fileInputRef,
+    feedbackMessage,
+    isProcessing,
+    isSubmitting,
+    isUploadProcessing,
+    showNoGModal,
+    homeToast,
+    toggleFlash,
+    handleStartCamera,
+    handleVideoLoadedMetadata,
+    handleVideoError,
+    handleUploadInstead,
+    handleFileChange,
+    closeNoGModal,
+    dismissHomeToast,
+  } = useHomePourClient({ t });
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   return (
     <main className="flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden bg-guinness-black text-guinness-cream max-lg:overflow-y-auto lg:max-h-dvh lg:min-h-0 lg:overflow-y-auto">
@@ -812,7 +91,7 @@ export default function Home() {
             </p>
             <button
               type="button"
-              onClick={() => setShowNoGModal(false)}
+              onClick={closeNoGModal}
               className="px-6 py-2 bg-guinness-gold text-guinness-black rounded-lg hover:bg-guinness-tan transition-colors duration-300"
             >
               {t("common.tryAgain")}
@@ -1037,12 +316,8 @@ export default function Home() {
                         className="absolute inset-0 h-full w-full object-cover"
                         autoPlay
                         playsInline
-                        onLoadedMetadata={() => setIsVideoReady(true)}
-                        onError={(err) => {
-                          console.error("Camera error:", err);
-                          stopCameraTracks();
-                          setIsCameraActive(false);
-                        }}
+                        onLoadedMetadata={handleVideoLoadedMetadata}
+                        onError={handleVideoError}
                       />
                       <canvas
                         ref={canvasRef}
@@ -1059,12 +334,7 @@ export default function Home() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => {
-                        trackEvent(analyticsEventNames.pourCaptureStarted, {
-                          source: "camera",
-                        });
-                        setIsCameraActive(true);
-                      }}
+                      onClick={handleStartCamera}
                       className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 py-6 text-guinness-gold transition-colors duration-300 hover:text-guinness-tan sm:gap-2.5 sm:py-8 lg:gap-2.5 lg:py-8"
                     >
                       <span
@@ -1118,6 +388,7 @@ export default function Home() {
 
               <input
                 id="file-upload"
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 aria-label={t("pages.home.uploadAria")}
@@ -1141,7 +412,7 @@ export default function Home() {
               ? t("common.headsUp")
               : undefined
         }
-        onClose={() => setHomeToast(null)}
+        onClose={dismissHomeToast}
         autoCloseMs={
           homeToast ? toastAutoCloseForVariant(homeToast.variant) : undefined
         }
