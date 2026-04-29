@@ -13,6 +13,7 @@ import {
 } from "~/routes/competitions.shared";
 import { competitionDetailPath } from "~/utils/competitionPath";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { useSupabaseAuthUser } from "~/utils/supabase-auth";
 import {
   CompetitionFormFields,
   type CompetitionFormValues,
@@ -27,6 +28,7 @@ interface CompetitionEditFormProps {
 
 export function CompetitionEditForm({ competition }: CompetitionEditFormProps) {
   const { t, lang } = useI18n();
+  const { user } = useSupabaseAuthUser();
   const navigate = useNavigate();
   const [participantCount, setParticipantCount] = useState(0);
   const barLinkOptions = useCompetitionBarLinkOptions();
@@ -103,12 +105,11 @@ export function CompetitionEditForm({ competition }: CompetitionEditFormProps) {
     setFormError(null);
     setEditBusy(true);
     try {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user || userData.user.id !== competition.created_by) {
+      if (!user || user.id !== competition.created_by) {
         setFormError(t("pages.competitions.errEditOwnOnly"));
         return;
       }
+      const supabase = await getSupabaseBrowserClient();
 
       const validated = validateCompetitionForm(values, t, { participantCount });
       if ("error" in validated) {

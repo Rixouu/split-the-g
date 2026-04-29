@@ -8,6 +8,7 @@ import {
 } from "~/routes/competitions.shared";
 import { competitionDetailPath } from "~/utils/competitionPath";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { useSupabaseAuthUser } from "~/utils/supabase-auth";
 import { analyticsEventNames } from "~/utils/analytics/events";
 import { trackEvent } from "~/utils/analytics/client";
 import {
@@ -20,6 +21,7 @@ import {
 
 export function CompetitionCreateForm() {
   const { t, lang } = useI18n();
+  const { user } = useSupabaseAuthUser();
   const navigate = useNavigate();
   const copy = useCompetitionFormCopy(t);
   const barLinkOptions = useCompetitionBarLinkOptions();
@@ -44,12 +46,11 @@ export function CompetitionCreateForm() {
     setSaving(true);
 
     try {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user) {
+      if (!user) {
         setFormError(t("pages.competitions.errSignInGoogleFirst"));
         return;
       }
+      const supabase = await getSupabaseBrowserClient();
 
       const validated = validateCompetitionForm(values, t);
       if ("error" in validated) {
@@ -63,7 +64,7 @@ export function CompetitionCreateForm() {
         .from("competitions")
         .insert({
           title: values.title.trim(),
-          created_by: userData.user.id,
+          created_by: user.id,
           max_participants: values.maxParticipants,
           glasses_per_person: values.winRule === "most_submissions"
             ? GLASSES_PER_PERSON_UNLIMITED_SENTINEL
