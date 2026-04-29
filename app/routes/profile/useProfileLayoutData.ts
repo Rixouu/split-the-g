@@ -10,6 +10,7 @@ import {
   type AnalyticsConsentStatus,
 } from "~/utils/analytics/consent";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import { useSupabaseAuthUser } from "~/utils/supabase-auth";
 import { isValidNickname } from "~/utils/profile-nickname";
 import {
   clearPostOAuthReturnIfMatchesCurrentPath,
@@ -63,8 +64,7 @@ export function useProfileLayoutData({
   revalidate,
 }: UseProfileLayoutDataArgs) {
   const { t } = useI18n();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, authResolved } = useSupabaseAuthUser();
   const [scores, setScores] = useState<ScoreSummary[]>([]);
   const [favorites, setFavorites] = useState<FavoriteRow[]>([]);
   const [favoriteStats, setFavoriteStats] = useState<Record<string, FavoriteBarStats>>(
@@ -515,39 +515,10 @@ export function useProfileLayoutData({
   );
 
   useEffect(() => {
-    let cancelled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    async function init() {
-      const supabase = await getSupabaseBrowserClient();
-      const { data } = await supabase.auth.getUser();
-      if (cancelled) return;
-      setUser(data.user ?? null);
-      setLoading(false);
+    if (!user) {
+      resetProfileState();
+      return;
     }
-
-    void init();
-
-    void getSupabaseBrowserClient().then((supabase) => {
-      if (cancelled) return;
-      const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-        const next = session?.user ?? null;
-        setUser(next);
-        if (!next) {
-          resetProfileState();
-        }
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, [resetProfileState]);
-
-  useEffect(() => {
-    if (!user) return;
     if (hasPendingProfileSignIn) {
       trackEvent(analyticsEventNames.authGoogleSignInSucceeded, {
         source: "profile",
@@ -555,7 +526,7 @@ export function useProfileLayoutData({
       setHasPendingProfileSignIn(false);
     }
     void loadProfileData(user);
-  }, [hasPendingProfileSignIn, loadProfileData, user]);
+  }, [hasPendingProfileSignIn, loadProfileData, resetProfileState, user]);
 
   useEffect(() => {
     clearPostOAuthReturnIfMatchesCurrentPath(locationPathname, locationSearch);
@@ -995,6 +966,8 @@ export function useProfileLayoutData({
 
   const inputClass =
     "w-full rounded-lg border border-guinness-gold/25 bg-guinness-black/60 px-3 py-2 text-guinness-cream focus:border-guinness-gold focus:outline-none";
+
+  const loading = !authResolved;
 
   return {
     user,

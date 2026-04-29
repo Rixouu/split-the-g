@@ -4,7 +4,14 @@ import {
   useSearchParams,
   useSubmit,
 } from "react-router";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import type {
   InferenceEngine as RoboflowInferenceEngine,
   InferencePrediction,
@@ -18,6 +25,11 @@ import {
   flushOfflinePourQueue,
 } from "~/utils/offline-pour-queue";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import {
+  getSupabaseAccessToken,
+  getSupabaseAuthUserSnapshot,
+  useSupabaseAuthUser,
+} from "~/utils/supabase-auth";
 
 const isClient = typeof window !== "undefined";
 const MAX_POUR_IMAGE_BYTES = 18 * 1024 * 1024;
@@ -84,6 +96,7 @@ function toastForSubmissionError(t: TranslateFn, err?: string, detail?: string) 
 }
 
 export function useHomePourClient({ t }: { t: TranslateFn }) {
+  const { user } = useSupabaseAuthUser();
   const submit = useSubmit();
   const [searchParams] = useSearchParams();
   const actionData = useActionData<HomeActionResult>();
@@ -91,10 +104,6 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
   const competitionIdParam = searchParams.get("competition")?.trim() ?? "";
 
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [actorMeta, setActorMeta] = useState<{ userId: string; actorName: string }>({
-    userId: "",
-    actorName: "",
-  });
   const [isFlashSupported, setIsFlashSupported] = useState(false);
   const [isFlashEnabled, setIsFlashEnabled] = useState(false);
   const [isFlashUpdating, setIsFlashUpdating] = useState(false);
@@ -125,6 +134,16 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
     reject: (e: Error) => void;
   } | null>(null);
   const lastSubmitSourceRef = useRef<"camera" | "upload">("camera");
+  const actorMeta = useMemo(
+    () => ({
+      userId: user?.id ?? "",
+      actorName:
+        (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+        (user?.user_metadata?.name as string | undefined)?.trim() ||
+        "",
+    }),
+    [user],
+  );
 
   const stopCameraTracks = useCallback(() => {
     const stream = mediaStreamRef.current;
@@ -157,10 +176,8 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
           formData.append("competition", item.competitionId);
         }
         if (item.actorName) formData.append("actorName", item.actorName);
-        void getSupabaseBrowserClient()
-          .then(async (supabase) => {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const accessToken = sessionData.session?.access_token;
+        void getSupabaseAccessToken()
+          .then((accessToken) => {
             if (accessToken) formData.append("accessToken", accessToken);
           })
           .catch(() => null)
@@ -307,9 +324,7 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
         }
         if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
         try {
-          const supabase = await getSupabaseBrowserClient();
-          const { data: sessionData } = await supabase.auth.getSession();
-          const accessToken = sessionData.session?.access_token;
+          const accessToken = await getSupabaseAccessToken();
           if (accessToken) formData.append("accessToken", accessToken);
         } catch {
           // anonymous pour still works
@@ -454,25 +469,6 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
   }, [isCameraActive, stopCameraTracks]);
 
   useEffect(() => {
-    let cancelled = false;
-    void getSupabaseBrowserClient()
-      .then(async (supabase) => {
-        const { data } = await supabase.auth.getUser();
-        if (cancelled) return;
-        const user = data.user;
-        const actor =
-          (user?.user_metadata?.full_name as string | undefined)?.trim() ||
-          (user?.user_metadata?.name as string | undefined)?.trim() ||
-          "";
-        setActorMeta({ userId: user?.id ?? "", actorName: actor });
-      })
-      .catch(() => null);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     if (
       !isClient ||
       !inferEngine ||
@@ -595,12 +591,12 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
               : "";
           if (competitionId && scoreId) {
             const supabase = await getSupabaseBrowserClient();
-            const { data } = await supabase.auth.getUser();
-            if (data.user) {
+            const { user: authedUser } = await getSupabaseAuthUserSnapshot();
+            if (authedUser) {
               await supabase.from("competition_scores").insert({
                 competition_id: competitionId,
                 score_id: scoreId,
-                user_id: data.user.id,
+                user_id: authedUser.id,
               });
             }
           }

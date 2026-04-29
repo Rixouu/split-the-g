@@ -3,6 +3,10 @@ import type { NavigateFunction } from "react-router";
 import type { BarStat } from "~/routes/pubs";
 import type { TranslateFn } from "~/i18n/translate";
 import { pubDetailPath, resolveBarKeyFromPubPathSegment } from "~/utils/pubPath";
+import {
+  getSupabaseAccessToken,
+  getSupabaseAuthUserSnapshot,
+} from "~/utils/supabase-auth";
 import { supabase } from "~/utils/supabase";
 import {
   isPubDirectoryAdmin,
@@ -182,13 +186,13 @@ export function usePubDetailState({
   async function saveDirectory(event: FormEvent) {
     event.preventDefault();
     setToast(null);
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
+    const { user } = await getSupabaseAuthUserSnapshot();
+    if (!user) {
       setToastOk(false);
       setToast(t("pages.pubDetail.toastSignInUpdatePub"));
       return;
     }
-    if (!isPubDirectoryAdmin(auth.user.email)) {
+    if (!isPubDirectoryAdmin(user.email)) {
       setToastOk(false);
       setToast(t("pages.pubDetail.toastAdminOnlyDirectory"));
       return;
@@ -238,7 +242,7 @@ export function usePubDetailState({
         alcohol_promotions: promotions.trim() || null,
         maps_place_url: mapsPlaceUrl.trim() || null,
         google_place_id: placeTrim || null,
-        updated_by: auth.user.id,
+        updated_by: user.id,
         updated_at: new Date().toISOString(),
       };
       const { error } = await supabase.from("pub_place_details").upsert(payload, {
@@ -263,13 +267,13 @@ export function usePubDetailState({
 
   async function mergeIntoTargetPub() {
     setToast(null);
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
+    const { user } = await getSupabaseAuthUserSnapshot();
+    if (!user) {
       setToastOk(false);
       setToast(t("pages.pubDetail.toastSignInMerge"));
       return;
     }
-    if (!isPubDirectoryAdmin(auth.user.email)) {
+    if (!isPubDirectoryAdmin(user.email)) {
       setToastOk(false);
       setToast(t("pages.pubDetail.toastAdminOnlyMerge"));
       return;
@@ -321,8 +325,7 @@ export function usePubDetailState({
 
   async function submitImportFromGoogle() {
     setToast(null);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
+    const token = await getSupabaseAccessToken();
     if (!token) {
       setToastOk(false);
       setToast(t("pages.pubDetail.toastSignInImport"));

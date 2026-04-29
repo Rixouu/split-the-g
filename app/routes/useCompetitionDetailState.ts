@@ -8,6 +8,10 @@ import {
   type CompetitionScoreJoin,
 } from "~/utils/competitionLeaderboard";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
+import {
+  getSupabaseAccessToken,
+  useSupabaseAuthUser,
+} from "~/utils/supabase-auth";
 import type { CompetitionRow } from "./competitions.shared";
 import {
   normalizeEmail,
@@ -32,9 +36,8 @@ export function useCompetitionDetailState({
   effectiveId,
   t,
 }: UseCompetitionDetailStateArgs) {
+  const { user, userId, userEmail } = useSupabaseAuthUser();
   const [joined, setJoined] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [scoresJoined, setScoresJoined] = useState<CompetitionScoreJoin[]>([]);
   const [scoresLimited, setScoresLimited] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -59,13 +62,8 @@ export function useCompetitionDetailState({
     if (!id) return;
 
     const supabase = await getSupabaseBrowserClient();
-    const { data: auth } = await supabase.auth.getUser();
-    const uid = auth.user?.id ?? null;
-    const email = auth.user?.email?.trim() ?? null;
-    const normalizedEmail = email ? normalizeEmail(email) : null;
-
-    setUserId(uid);
-    setUserEmail(email);
+    const uid = userId;
+    const normalizedEmail = userEmail ? normalizeEmail(userEmail) : null;
 
     const [{ data: allParticipants }, { data: competitionScoreRows }] =
       await Promise.all([
@@ -157,7 +155,7 @@ export function useCompetitionDetailState({
     const nextScores = (competitionScoreRows ?? []) as CompetitionScoreJoin[];
     setScoresJoined(nextScores);
     setScoresLimited(nextScores.length >= COMPETITION_SCORE_LIMIT);
-  }, [effectiveId]);
+  }, [effectiveId, userEmail, userId]);
 
   useEffect(() => {
     void refreshAll();
@@ -221,13 +219,12 @@ export function useCompetitionDetailState({
 
   const sendFriendInviteToPeer = useCallback(
     async (toEmail: string, peerUserId: string) => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: auth } = await supabase.auth.getUser();
-      const me = auth.user;
+      const me = user;
       if (!me?.id || !me.email) {
         setMessage(t("pages.competitionDetail.msgSignInAddFriends"));
         return;
       }
+      const supabase = await getSupabaseBrowserClient();
       const to = normalizeEmail(toEmail);
       if (!to.includes("@")) {
         setMessage(t("pages.competitionDetail.msgNoEmailForPlayer"));
@@ -257,8 +254,7 @@ export function useCompetitionDetailState({
           (me.user_metadata?.full_name as string | undefined)?.trim() ||
           (me.user_metadata?.name as string | undefined)?.trim() ||
           null;
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
+        const accessToken = await getSupabaseAccessToken();
         if (accessToken) {
           await fetch("/api/push-notify", {
             method: "POST",
@@ -313,22 +309,21 @@ export function useCompetitionDetailState({
         setFriendInviteBusy(null);
       }
     },
-    [pendingFriendEmails, t],
+    [pendingFriendEmails, t, user],
   );
 
   async function handleJoin() {
     if (!effectiveId) return;
     setMessage(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
+    if (!user) {
       setMessage(t("pages.competitionDetail.msgSignInToJoin"));
       return;
     }
+    const supabase = await getSupabaseBrowserClient();
 
     const { error } = await supabase.from("competition_participants").insert({
       competition_id: effectiveId,
-      user_id: userData.user.id,
+      user_id: user.id,
     });
     if (error) {
       setMessage(error.message);
@@ -343,15 +338,14 @@ export function useCompetitionDetailState({
   async function handleLeave() {
     if (!effectiveId) return;
     setMessage(null);
+    if (!user) return;
     const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
 
     const { error } = await supabase
       .from("competition_participants")
       .delete()
       .eq("competition_id", effectiveId)
-      .eq("user_id", userData.user.id);
+      .eq("user_id", user.id);
     if (error) {
       setMessage(error.message);
       return;

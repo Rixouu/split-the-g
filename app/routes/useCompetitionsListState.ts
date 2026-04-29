@@ -12,6 +12,10 @@ import {
 } from "~/utils/competitionLeaderboard";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import {
+  getSupabaseAccessToken,
+  useSupabaseAuthUser,
+} from "~/utils/supabase-auth";
+import {
   COMPETITION_ROW_SELECT,
   type CompetitionRow,
   type FriendPick,
@@ -38,11 +42,10 @@ export function useCompetitionsListState({
   revalidate,
   t,
 }: UseCompetitionsListStateArgs) {
+  const { user, userId, userEmail } = useSupabaseAuthUser();
   const [formError, setFormError] = useState<string | null>(null);
   const [uiToast, setUiToast] = useState<UiToastState>(null);
   const [deleteTarget, setDeleteTarget] = useState<CompetitionRow | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [clientComps, setClientComps] = useState<CompetitionRow[] | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>(loaderCounts);
@@ -127,26 +130,20 @@ export function useCompetitionsListState({
 
   useEffect(() => {
     let cancelled = false;
-    let unsubscribe: (() => void) | null = null;
 
     async function syncJoined() {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id ?? null;
-      const email = auth.user?.email?.trim().toLowerCase() ?? null;
-      if (cancelled) return;
-      setUserId(uid);
-      setUserEmail(email);
-      if (!uid) {
+      if (!userId) {
         setJoinedIds(new Set());
         setClientComps(null);
         return;
       }
+      const supabase = await getSupabaseBrowserClient();
+      if (cancelled) return;
 
       const { data: rows } = await supabase
         .from("competition_participants")
         .select("competition_id")
-        .eq("user_id", uid);
+        .eq("user_id", userId);
       if (cancelled) return;
       setJoinedIds(new Set((rows ?? []).map((row) => row.competition_id as string)));
 
@@ -154,7 +151,7 @@ export function useCompetitionsListState({
       const { data: ownedRows } = await supabase
         .from("competitions")
         .select("id")
-        .eq("created_by", uid);
+        .eq("created_by", userId);
       if (cancelled) return;
 
       const ownedIds = (ownedRows ?? []).map((row) => row.id as string);
@@ -173,19 +170,11 @@ export function useCompetitionsListState({
     }
 
     void syncJoined();
-    void getSupabaseBrowserClient().then((supabase) => {
-      if (cancelled) return;
-      const { data: sub } = supabase.auth.onAuthStateChange(() => {
-        void syncJoined();
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-    });
 
     return () => {
       cancelled = true;
-      unsubscribe?.();
     };
-  }, [revalidatorState]);
+  }, [revalidatorState, userId]);
 
   useEffect(() => {
     const ids = mergedCompetitions
@@ -285,9 +274,7 @@ export function useCompetitionsListState({
 
   async function requestDeleteCompetition(competition: CompetitionRow) {
     setFormError(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user || userData.user.id !== competition.created_by) {
+    if (!user || user.id !== competition.created_by) {
       setFormError(t("pages.competitions.errDeleteOwnOnly"));
       return;
     }
@@ -316,12 +303,11 @@ export function useCompetitionsListState({
 
   async function handleJoin(compId: string) {
     setFormError(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
+    if (!user) {
       setFormError(t("pages.competitions.errSignInToJoin"));
       return;
     }
+    const supabase = await getSupabaseBrowserClient();
 
     const competition = mergedCompetitions.find((entry) => entry.id === compId);
     const count = counts[compId] ?? 0;
@@ -333,7 +319,7 @@ export function useCompetitionsListState({
 
     const { error } = await supabase.from("competition_participants").insert({
       competition_id: compId,
-      user_id: userData.user.id,
+      user_id: user.id,
     });
     if (error) {
       setFormError(error.message);
@@ -347,15 +333,14 @@ export function useCompetitionsListState({
 
   async function handleLeave(compId: string) {
     setFormError(null);
+    if (!user) return;
     const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
 
     const { error } = await supabase
       .from("competition_participants")
       .delete()
       .eq("competition_id", compId)
-      .eq("user_id", userData.user.id);
+      .eq("user_id", user.id);
 
     if (error) {
       setFormError(error.message);
@@ -380,18 +365,17 @@ export function useCompetitionsListState({
     setInviteBusy(compId);
     setFormError(null);
 
-    const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user?.email) {
+    if (!user?.email) {
       setInviteBusy(null);
       setFormError(t("pages.competitions.errSignInToInvite"));
       return;
     }
+    const supabase = await getSupabaseBrowserClient();
 
     const { error } = await supabase.from("competition_invites").insert({
       competition_id: compId,
       invited_email: raw,
-      invited_by: userData.user.id,
+      invited_by: user.id,
     });
     if (error) {
       setInviteBusy(null);
@@ -404,11 +388,10 @@ export function useCompetitionsListState({
 
     const competition = mergedCompetitions.find((entry) => entry.id === compId);
     const inviterName =
-      (userData.user.user_metadata?.full_name as string | undefined)?.trim() ||
-      (userData.user.user_metadata?.name as string | undefined)?.trim() ||
+      (user.user_metadata?.full_name as string | undefined)?.trim() ||
+      (user.user_metadata?.name as string | undefined)?.trim() ||
       null;
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
+    const accessToken = await getSupabaseAccessToken();
     if (accessToken) {
       await fetch("/api/push-notify", {
         method: "POST",
@@ -434,7 +417,7 @@ export function useCompetitionsListState({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          inviterEmail: userData.user.email,
+          inviterEmail: user.email,
           inviterName,
           toEmail: raw,
           invitePath: competitionDetailPath(
