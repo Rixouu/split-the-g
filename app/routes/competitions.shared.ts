@@ -1,4 +1,5 @@
 import { NATIVE_SELECT_APPEARANCE_CLASS } from "~/utils/native-select-classes";
+import type { TranslateFn } from "~/i18n/translate";
 
 export interface CompetitionRow {
   id: string;
@@ -93,6 +94,21 @@ export function winRuleLabel(rule: string): string {
       return "Best average score";
     default:
       return "Highest score";
+  }
+}
+
+export function winRuleLabelI18n(t: TranslateFn, rule: string): string {
+  switch (rule) {
+    case "closest_to_target":
+      return t("pages.competitions.winRuleOptionClosest");
+    case "most_submissions":
+      return t("pages.competitions.winRuleOptionMost");
+    case "lowest_score":
+      return t("pages.competitions.winRuleOptionLowest");
+    case "best_average":
+      return t("pages.competitions.winRuleOptionBestAverage");
+    default:
+      return t("pages.competitions.winRuleOptionHighest");
   }
 }
 

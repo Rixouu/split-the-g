@@ -1,13 +1,11 @@
 import { useLoaderData, useRevalidator } from "react-router";
 import { AppLink } from "~/i18n/app-link";
-import { useEffect, useMemo, useState } from "react";
 import { AdSlotBanner } from "~/components/ad-slot-banner";
 import {
   PageHeader,
   pageHeaderActionButtonClass,
   pageShellClass,
 } from "~/components/PageHeader";
-import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedNotice } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
@@ -18,18 +16,10 @@ import {
   competitionEditPath,
   competitionNewPath,
 } from "~/utils/competitionPath";
-import {
-  buildLeaderboard,
-  COMPETITION_SCORE_LIMIT,
-  COMPETITION_SCORES_SELECT,
-  type CompetitionScoreJoin,
-} from "~/utils/competitionLeaderboard";
-import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import { useI18n } from "~/i18n/context";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
 import type { loader as competitionsLoader } from "./competitions.loader";
 import {
-  COMPETITION_ROW_SELECT,
   competitionCardDividerClass,
   competitionCardFrameClass,
   competitionCardTopLightClass,
@@ -38,13 +28,10 @@ import {
   competitionStatCellClass,
   isPrivateCompetition,
   isStoredGlassesUnlimited,
+  winRuleLabelI18n,
   winRuleUsesUnlimitedGlasses,
-  type CompetitionRow,
-  type FriendPick,
-  type InviteRow,
 } from "./competitions.shared";
-import { analyticsEventNames } from "~/utils/analytics/events";
-import { trackEvent } from "~/utils/analytics/client";
+import { useCompetitionsListState } from "./useCompetitionsListState";
 
 export { loader } from "./competitions.loader";
 
@@ -57,473 +44,42 @@ export default function Competitions() {
   const { competitions, listError, participantCounts: loaderCounts } =
     useLoaderData<typeof competitionsLoader>();
   const revalidator = useRevalidator();
-
-  function winRuleLabelI18n(rule: string): string {
-    switch (rule) {
-      case "closest_to_target":
-        return t("pages.competitions.winRuleOptionClosest");
-      case "most_submissions":
-        return t("pages.competitions.winRuleOptionMost");
-      case "lowest_score":
-        return t("pages.competitions.winRuleOptionLowest");
-      case "best_average":
-        return t("pages.competitions.winRuleOptionBestAverage");
-      default:
-        return t("pages.competitions.winRuleOptionHighest");
-    }
-  }
-  const [formError, setFormError] = useState<string | null>(null);
-  const [uiToast, setUiToast] = useState<{
-    text: string;
-    variant: BrandedNoticeVariant;
-  } | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<CompetitionRow | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
-  const [clientComps, setClientComps] = useState<CompetitionRow[] | null>(null);
-  const [counts, setCounts] = useState<Record<string, number>>(loaderCounts);
-  const [myFriends, setMyFriends] = useState<FriendPick[]>([]);
-
-  const [invitesByComp, setInvitesByComp] = useState<
-    Record<string, InviteRow[]>
-  >({});
-  const [inviteInputs, setInviteInputs] = useState<Record<string, string>>({});
-  const [inviteBusy, setInviteBusy] = useState<string | null>(null);
-  const [invitedTitles, setInvitedTitles] = useState<
-    { competition_id: string; title: string }[]
-  >([]);
-  const [listingsTab, setListingsTab] = useState<"open" | "past">("open");
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  const [pastWinnerByCompId, setPastWinnerByCompId] = useState<
-    Record<string, string | null>
-  >({});
-
-  useEffect(() => {
-    const t = setInterval(() => setNowMs(Date.now()), 30000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    setCounts(loaderCounts);
-  }, [loaderCounts]);
-
-  const mergedCompetitions = useMemo(() => {
-    // Loader uses anon Supabase (no session): RLS only returns public rows. Signed-in
-    // users merge in clientComps (participant + created_by); null means not loaded yet.
-    if (!userId || clientComps === null) return competitions;
-    const map = new Map<string, CompetitionRow>();
-    for (const c of competitions) map.set(c.id, c);
-    for (const c of clientComps) map.set(c.id, c);
-    return [...map.values()].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
-  }, [competitions, clientComps, userId]);
-
-  const { openCompetitions, pastCompetitions } = useMemo(() => {
-    const open: CompetitionRow[] = [];
-    const past: CompetitionRow[] = [];
-    for (const c of mergedCompetitions) {
-      if (new Date(c.ends_at).getTime() > nowMs) open.push(c);
-      else past.push(c);
-    }
-    return { openCompetitions: open, pastCompetitions: past };
-  }, [mergedCompetitions, nowMs]);
-
-  const visibleCompetitions =
-    listingsTab === "open" ? openCompetitions : pastCompetitions;
-
-  useEffect(() => {
-    let cancelled = false;
-    if (pastCompetitions.length === 0) {
-      setPastWinnerByCompId({});
-      return;
-    }
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const entries = await Promise.all(
-        pastCompetitions.map(async (c) => {
-          const { data } = await supabase
-            .from("competition_scores")
-            .select(COMPETITION_SCORES_SELECT)
-            .eq("competition_id", c.id)
-            .order("created_at", { ascending: false })
-            .limit(COMPETITION_SCORE_LIMIT);
-          const rows = (data ?? []) as CompetitionScoreJoin[];
-          const target =
-            c.target_score != null ? Number(c.target_score) : null;
-          const ranked = buildLeaderboard(rows, c.win_rule, target);
-          const winner = ranked[0]?.username ?? null;
-          return [c.id, winner] as const;
-        }),
-      );
-      if (!cancelled) {
-        setPastWinnerByCompId(Object.fromEntries(entries));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [pastCompetitions]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    async function syncJoined() {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id ?? null;
-      const em = auth.user?.email?.trim().toLowerCase() ?? null;
-      if (cancelled) return;
-      setUserId(uid);
-      setUserEmail(em);
-      if (!uid) {
-        setJoinedIds(new Set());
-        setClientComps(null);
-        return;
-      }
-      const { data: rows } = await supabase
-        .from("competition_participants")
-        .select("competition_id")
-        .eq("user_id", uid);
-      if (cancelled) return;
-      setJoinedIds(new Set((rows ?? []).map((r) => r.competition_id as string)));
-
-      const joinedCompIds = (rows ?? []).map((r) => r.competition_id as string);
-
-      const { data: ownedRows } = await supabase
-        .from("competitions")
-        .select("id")
-        .eq("created_by", uid);
-      if (cancelled) return;
-      const ownedIds = (ownedRows ?? []).map((r) => r.id as string);
-
-      const idSet = new Set<string>([...joinedCompIds, ...ownedIds]);
-      if (idSet.size === 0) {
-        setClientComps([]);
-        return;
-      }
-      const { data: comps } = await supabase
-        .from("competitions")
-        .select(COMPETITION_ROW_SELECT)
-        .in("id", [...idSet]);
-      if (cancelled) return;
-      setClientComps((comps ?? []) as CompetitionRow[]);
-    }
-
-    void syncJoined();
-    void getSupabaseBrowserClient().then((supabase) => {
-      if (cancelled) return;
-      const { data: sub } = supabase.auth.onAuthStateChange(() => {
-        void syncJoined();
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, [revalidator.state]);
-
-  useEffect(() => {
-    const list = mergedCompetitions;
-    if (list.length === 0) return;
-    const ids = list
-      .map((c) => c.id)
-      .filter((id) => loaderCounts[id] == null);
-    if (ids.length === 0) return;
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data } = await supabase
-        .from("competition_participants")
-        .select("competition_id")
-        .in("competition_id", ids);
-      const m: Record<string, number> = {};
-      for (const r of data ?? []) {
-        const id = r.competition_id as string;
-        m[id] = (m[id] ?? 0) + 1;
-      }
-      setCounts((prev) => ({ ...prev, ...m }));
-    })();
-  }, [mergedCompetitions, loaderCounts]);
-
-  useEffect(() => {
-    if (!userId) {
-      setMyFriends([]);
-      return;
-    }
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data } = await supabase
-        .from("user_friends")
-        .select("friend_user_id, peer_email")
-        .eq("user_id", userId);
-      setMyFriends((data ?? []) as FriendPick[]);
-    })();
-  }, [userId, revalidator.state]);
-
-  useEffect(() => {
-    if (!userId) {
-      setInvitesByComp({});
-      return;
-    }
-    const owned = mergedCompetitions
-      .filter((c) => c.created_by === userId)
-      .map((c) => c.id);
-    if (owned.length === 0) {
-      setInvitesByComp({});
-      return;
-    }
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data } = await supabase
-        .from("competition_invites")
-        .select("id, competition_id, invited_email")
-        .in("competition_id", owned);
-      const m: Record<string, InviteRow[]> = {};
-      for (const row of data ?? []) {
-        const cid = row.competition_id as string;
-        if (!m[cid]) m[cid] = [];
-        m[cid].push({
-          id: row.id as string,
-          invited_email: String(row.invited_email),
-        });
-      }
-      setInvitesByComp(m);
-    })();
-  }, [userId, mergedCompetitions]);
-
-  useEffect(() => {
-    if (!userId || !userEmail) {
-      setInvitedTitles([]);
-      return;
-    }
-    const norm = userEmail.trim().toLowerCase();
-    void (async () => {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: inv } = await supabase
-        .from("competition_invites")
-        .select("competition_id")
-        .eq("invited_email", norm);
-      if (!inv || inv.length === 0) {
-        setInvitedTitles([]);
-        return;
-      }
-      const ids = [...new Set(inv.map((r) => r.competition_id as string))];
-      const { data: comps } = await supabase
-        .from("competitions")
-        .select("id, title")
-        .in("id", ids);
-      setInvitedTitles(
-        (comps ?? []).map((c) => ({
-          competition_id: c.id as string,
-          title: String(c.title),
-        })),
-      );
-    })();
-  }, [userId, userEmail]);
-
-  async function requestDeleteCompetition(c: CompetitionRow) {
-    setFormError(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user || userData.user.id !== c.created_by) {
-      setFormError(t("pages.competitions.errDeleteOwnOnly"));
-      return;
-    }
-    setDeleteTarget(c);
-  }
-
-  async function confirmDeleteCompetition() {
-    if (!deleteTarget) return;
-    const c = deleteTarget;
-    setDeleteTarget(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { error } = await supabase.from("competitions").delete().eq("id", c.id);
-    if (error) {
-      setFormError(error.message);
-      return;
-    }
-    revalidator.revalidate();
-    setUiToast({
-      text: t("pages.competitions.msgDeleted"),
-      variant: "success",
-    });
-  }
-
-  async function handleJoin(compId: string) {
-    setFormError(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      setFormError(t("pages.competitions.errSignInToJoin"));
-      return;
-    }
-    const comp = mergedCompetitions.find((x) => x.id === compId);
-    const count = counts[compId] ?? 0;
-    if (!comp || count >= comp.max_participants) {
-      setFormError(t("pages.competitions.errCompetitionFull"));
-      return;
-    }
-    if (joinedIds.has(compId)) return;
-
-    const { error } = await supabase.from("competition_participants").insert({
-      competition_id: compId,
-      user_id: userData.user.id,
-    });
-    if (error) {
-      setFormError(error.message);
-      return;
-    }
-    setJoinedIds((prev) => new Set(prev).add(compId));
-    trackEvent(analyticsEventNames.competitionJoined, { competitionId: compId });
-    revalidator.revalidate();
-    setUiToast({ text: t("pages.competitions.msgJoined"), variant: "success" });
-  }
-
-  async function handleLeave(compId: string) {
-    setFormError(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
-
-    const { error } = await supabase
-      .from("competition_participants")
-      .delete()
-      .eq("competition_id", compId)
-      .eq("user_id", userData.user.id);
-
-    if (error) {
-      setFormError(error.message);
-      return;
-    }
-    setJoinedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(compId);
-      return next;
-    });
-    trackEvent(analyticsEventNames.competitionLeft, { competitionId: compId });
-    revalidator.revalidate();
-    setUiToast({ text: t("pages.competitions.msgLeft"), variant: "info" });
-  }
-
-  async function addEmailInvite(compId: string) {
-    const raw = (inviteInputs[compId] ?? "").trim().toLowerCase();
-    if (!raw || !raw.includes("@")) {
-      setFormError(t("pages.competitions.errValidEmailInvite"));
-      return;
-    }
-    setInviteBusy(compId);
-    setFormError(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user?.email) {
-      setInviteBusy(null);
-      setFormError(t("pages.competitions.errSignInToInvite"));
-      return;
-    }
-    const { error } = await supabase.from("competition_invites").insert({
-      competition_id: compId,
-      invited_email: raw,
-      invited_by: u.user.id,
-    });
-    if (error) {
-      setInviteBusy(null);
-      setFormError(error.message);
-      return;
-    }
-    setInviteInputs((prev) => ({ ...prev, [compId]: "" }));
-    revalidator.revalidate();
-
-    const comp = mergedCompetitions.find((c) => c.id === compId);
-    const inviterName =
-      (u.user.user_metadata?.full_name as string | undefined)?.trim() ||
-      (u.user.user_metadata?.name as string | undefined)?.trim() ||
-      null;
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (accessToken) {
-      await fetch("/api/push-notify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          type: "competition_invite_received",
-          toEmail: raw,
-          actorName: inviterName,
-          competitionTitle: comp?.title ?? null,
-          path: competitionDetailPath(comp ?? { id: compId, path_segment: null }),
-        }),
-      }).catch(() => null);
-    }
-
-    let emailOk = false;
-    try {
-      const emailResponse = await fetch("/api/friend-invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          inviterEmail: u.user.email,
-          inviterName,
-          toEmail: raw,
-          invitePath: competitionDetailPath(
-            comp ?? { id: compId, path_segment: null },
-          ),
-          competitionTitle: comp?.title ?? null,
-        }),
-      });
-      emailOk = emailResponse.ok;
-    } catch {
-      emailOk = false;
-    }
-
-    setInviteBusy(null);
-    if (emailOk) {
-      setUiToast({
-        text: t("pages.competitions.msgInviteEmailSent"),
-        variant: "success",
-      });
-    } else {
-      setUiToast({
-        text: t("pages.competitions.msgInviteSavedNoEmail"),
-        variant: "warning",
-      });
-    }
-  }
-
-  async function removeInvite(compId: string, inviteId: string) {
-    const supabase = await getSupabaseBrowserClient();
-    const { error } = await supabase
-      .from("competition_invites")
-      .delete()
-      .eq("id", inviteId);
-    if (error) setFormError(error.message);
-    else {
-      revalidator.revalidate();
-      setUiToast({ text: t("pages.competitions.msgInviteRemoved"), variant: "info" });
-    }
-  }
-
-  async function addFriendParticipant(compId: string, friendUserId: string) {
-    setFormError(null);
-    const supabase = await getSupabaseBrowserClient();
-    const { error } = await supabase.from("competition_participants").insert({
-      competition_id: compId,
-      user_id: friendUserId,
-    });
-    if (error) setFormError(error.message);
-    else {
-      revalidator.revalidate();
-      setUiToast({
-        text: t("pages.competitions.msgFriendAddedToComp"),
-        variant: "success",
-      });
-    }
-  }
+  const {
+    formError,
+    uiToast,
+    deleteTarget,
+    counts,
+    myFriends,
+    invitesByComp,
+    inviteInputs,
+    inviteBusy,
+    invitedTitles,
+    listingsTab,
+    userId,
+    joinedIds,
+    pastWinnerByCompId,
+    openCompetitions,
+    pastCompetitions,
+    mergedCompetitions,
+    visibleCompetitions,
+    setInviteInputs,
+    setListingsTab,
+    requestDeleteCompetition,
+    confirmDeleteCompetition,
+    handleJoin,
+    handleLeave,
+    addEmailInvite,
+    removeInvite,
+    addFriendParticipant,
+    dismissToast,
+    closeDeleteNotice,
+  } = useCompetitionsListState({
+    competitions,
+    loaderCounts,
+    revalidatorState: revalidator.state,
+    revalidate: () => revalidator.revalidate(),
+    t,
+  });
 
   const fieldClass = competitionFieldClass;
   const outlineBtn = competitionOutlineButtonClass;
@@ -807,7 +363,7 @@ export default function Competitions() {
                               {t("pages.competitions.statRule")}
                             </span>
                             <span className="mt-0.5 block text-sm font-semibold leading-snug text-guinness-cream">
-                              {winRuleLabelI18n(c.win_rule)}
+                              {winRuleLabelI18n(t, c.win_rule)}
                               {c.win_rule === "closest_to_target" &&
                               c.target_score != null
                                 ? ` · ${Number(c.target_score).toFixed(2)}`
@@ -947,17 +503,14 @@ export default function Competitions() {
         title={
           formError && !uiToast ? t("toasts.toastDangerTitle") : undefined
         }
-        onClose={() => {
-          setFormError(null);
-          setUiToast(null);
-        }}
+        onClose={dismissToast}
         autoCloseMs={toastAuto}
       />
 
       <BrandedNotice
         open={deleteTarget != null}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
+          if (!open) closeDeleteNotice();
         }}
         title={
           deleteTarget
