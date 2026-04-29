@@ -12,7 +12,6 @@ import { SplitTheGLogo } from "~/components/SplitTheGLogo";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useI18n } from "~/i18n/context";
 import { langFromParams } from "~/i18n/lang-param";
-import { localizePath } from "~/i18n/paths";
 import type {
   InferenceEngine as RoboflowInferenceEngine,
   InferencePrediction,
@@ -23,13 +22,6 @@ import type { BrandedNoticeVariant } from "~/components/branded/BrandedNotice";
 import { BrandedToast } from "~/components/branded/BrandedToast";
 import { toastAutoCloseForVariant } from "~/components/branded/feedback-variant";
 import { seoMetaForRoute } from "~/i18n/seo-meta";
-import { scorePourPath } from "~/utils/scorePath";
-import { supabase } from "~/utils/supabase";
-import { generateBeerUsername } from "~/utils/usernameGenerator";
-import {
-  sendFriendSplitNotifications,
-  sendKnockedOutTop10NotificationForNewScore,
-} from "~/utils/push-notifications.server";
 import { getSupabaseBrowserClient } from "~/utils/supabase-browser";
 import {
   enqueueOfflinePour,
@@ -37,6 +29,7 @@ import {
 } from "~/utils/offline-pour-queue";
 import { analyticsEventNames } from "~/utils/analytics/events";
 import { trackEvent } from "~/utils/analytics/client";
+import { handleHomePourAction } from "./home-pour.server";
 
 const isClient = typeof window !== "undefined";
 
@@ -45,26 +38,6 @@ const homeMobileBrowseLinkClass =
   "inline-flex min-h-9 w-full items-center justify-center rounded-md border border-guinness-gold/30 bg-guinness-black/40 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-guinness-gold transition-colors hover:border-guinness-gold/50 hover:bg-guinness-gold/10 active:bg-guinness-gold/15";
 
 const MAX_POUR_IMAGE_BYTES = 18 * 1024 * 1024;
-
-/**
- * Roboflow workflow API base. Official Deploy snippets often use `https://detect.roboflow.com`;
- * some use `https://serverless.roboflow.com` — paths differ; `buildWorkflowInferUrl` handles both.
- */
-const ROBOFLOW_API_BASE_URL =
-  import.meta.env.VITE_ROBOFLOW_API_URL ?? "https://detect.roboflow.com";
-const ROBOFLOW_WORKSPACE = import.meta.env.VITE_ROBOFLOW_WORKSPACE ?? "";
-const ROBOFLOW_WORKFLOW_ID = import.meta.env.VITE_ROBOFLOW_WORKFLOW_ID ?? "";
-/** Paste full infer URL from Deploy if 404 (overrides base + workspace + id). */
-const ROBOFLOW_WORKFLOW_INFER_URL =
-  import.meta.env.VITE_ROBOFLOW_WORKFLOW_INFER_URL ?? "";
-const ROBOFLOW_WORKFLOW_VERSION_ID =
-  import.meta.env.VITE_ROBOFLOW_WORKFLOW_VERSION_ID ?? "";
-
-const ROBOFLOW_USE_SERVERLESS = Boolean(ROBOFLOW_WORKSPACE && ROBOFLOW_WORKFLOW_ID);
-
-/** Legacy: `workspace-id/workflow-id` on detect.roboflow.com — only if serverless env is not set. */
-const ROBOFLOW_LEGACY_WORKFLOW_PATH =
-  import.meta.env.VITE_ROBOFLOW_WORKFLOW ?? "rx-m9wzu/split-the-g-workflow";
 
 /** inferencejs (browser) — Roboflow Publishable key (`rf_...`); optional override, else falls back to VITE_ROBOFLOW_API_KEY. */
 const ROBOFLOW_PUBLISHABLE_KEY =
@@ -121,533 +94,10 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  try {
-    const lang = langFromParams(params);
-    const formData = await request.formData();
-    const base64Image = formData.get("image") as string;
-    const competitionRaw = formData.get("competition");
-    const competitionId =
-      typeof competitionRaw === "string" && UUID_RE.test(competitionRaw.trim())
-        ? competitionRaw.trim()
-        : "";
-    const actorNameRaw = formData.get("actorName");
-    const actorName =
-      typeof actorNameRaw === "string" && actorNameRaw.trim()
-        ? actorNameRaw.trim()
-        : null;
-    const { randomUUID } = await import("node:crypto");
-    const [
-      { calculateScore },
-      { uploadImage },
-      { getLocationData },
-      {
-        extractDetectionsFromWorkflow,
-        extractWorkflowOutputImageByNames,
-        extractPreferredWorkflowImageBase64,
-        predictionsIncludeClass,
-        runServerlessWorkflow,
-        stripBase64ImagePayload,
-        toLegacyScoringOutputs,
-      },
-      { generatePourSlug },
-    ] = await Promise.all([
-      import("~/utils/scoring"),
-      import("~/utils/imageStorage"),
-      import("~/utils/locationService"),
-      import("~/utils/roboflowWorkflow"),
-      import("~/utils/pourSlug"),
-    ]);
-    const sessionId = randomUUID();
-
-    // Prioritize Fly.io headers since we're using Fly hosting
-    const clientIP =
-      request.headers.get("Fly-Client-IP") ||
-      request.headers.get("fly-client-ip") ||
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-client-ip") ||
-      request.headers.get("fastly-client-ip") ||
-      "unknown";
-
-    /** Server workflow API — use Roboflow Private API key (not publishable). Non-VITE so it is not bundled for the browser. */
-    const roboflowServerKey =
-      (typeof process !== "undefined" && process.env?.ROBOFLOW_PRIVATE_API_KEY) ||
-      import.meta.env.VITE_ROBOFLOW_API_KEY;
-    if (!roboflowServerKey) {
-      throw new Error(
-        "Missing Roboflow server key. Set ROBOFLOW_PRIVATE_API_KEY (Private API key) in .env.local, or temporarily VITE_ROBOFLOW_API_KEY. Restart dev server.",
-      );
-    }
-
-    if (typeof base64Image !== "string" || !base64Image.trim()) {
-      return {
-        success: false,
-        error: "INVALID_IMAGE",
-        status: 400,
-      };
-    }
-
-    const imagePayload = stripBase64ImagePayload(base64Image);
-    let imageBuf: Buffer;
-    try {
-      imageBuf = Buffer.from(imagePayload, "base64");
-    } catch {
-      return { success: false, error: "INVALID_IMAGE", status: 400 };
-    }
-    if (!imageBuf.length) {
-      return { success: false, error: "INVALID_IMAGE", status: 400 };
-    }
-
-    const cookieHeader = request.headers.get("Cookie") ?? "";
-    const cookies = Object.fromEntries(
-      cookieHeader.split("; ").map((c) => {
-        const [key, ...v] = c.split("=");
-        return [key.trim(), v.join("=")];
-      }).filter(([k]) => k),
-    );
-    const sessionFromCookie = cookies["split-g-session"];
-
-    const {
-      getSupabaseAccessTokenFromRequestCookies,
-      getSupabaseUserFromAccessToken,
-      resolveLeaderboardUsernameForAuthUser,
-    } = await import("~/utils/pour-auth-claim.server");
-
-    const formAccessRaw = formData.get("accessToken");
-    const formAccess =
-      typeof formAccessRaw === "string" ? formAccessRaw.trim() : "";
-    const authHeader = request.headers.get("authorization") ?? "";
-    const bearer =
-      authHeader.toLowerCase().startsWith("bearer ")
-        ? authHeader.slice(7).trim()
-        : "";
-    const cookieAccess = getSupabaseAccessTokenFromRequestCookies(request);
-    const accessToken = formAccess || bearer || cookieAccess;
-
-    const verifiedAuthUser = accessToken
-      ? await getSupabaseUserFromAccessToken(accessToken)
-      : null;
-    // Never trust `actorUserId` from the form without a verified JWT; mismatches are ignored.
-    const verifiedUserId = verifiedAuthUser?.id ?? "";
-
-    const {
-      assertPourSubmissionRateAllowed,
-      assertPourImageNotDuplicate,
-      validatePourImageExifAge,
-      sha256HexOfBuffer,
-    } = await import("~/utils/pour-submission-guards.server");
-
-    const sourceImageSha256 = sha256HexOfBuffer(imageBuf);
-
-    const rateFail = await assertPourSubmissionRateAllowed(supabase, {
-      ingestIp: clientIP,
-      sessionIdFromCookie: sessionFromCookie?.trim() || undefined,
-      submitterUserId: verifiedUserId || undefined,
-    });
-    if (rateFail) {
-      return {
-        success: false,
-        error: rateFail.code,
-        status: 429,
-      };
-    }
-
-    const dupFail = await assertPourImageNotDuplicate(supabase, sourceImageSha256);
-    if (dupFail) {
-      return {
-        success: false,
-        error: dupFail.code,
-        status: 400,
-      };
-    }
-
-    const exifFail = await validatePourImageExifAge(imageBuf);
-    if (exifFail) {
-      return {
-        success: false,
-        error: exifFail.code,
-        status: 400,
-      };
-    }
-
-    const locationPromise = getLocationData(
-      clientIP !== "unknown" ? clientIP : undefined,
-      request.headers,
-    );
-
-    let splitImage: string;
-    let pintImage: string;
-    let splitScore: number;
-    let gCloseupBase64: string | null = null;
-
-    if (ROBOFLOW_USE_SERVERLESS) {
-      const result = await runServerlessWorkflow(
-        {
-          apiUrl: ROBOFLOW_API_BASE_URL,
-          workspace: ROBOFLOW_WORKSPACE,
-          workflowId: ROBOFLOW_WORKFLOW_ID,
-          apiKey: roboflowServerKey,
-          inferUrlOverride: ROBOFLOW_WORKFLOW_INFER_URL || undefined,
-          workflowVersionId: ROBOFLOW_WORKFLOW_VERSION_ID || undefined,
-        },
-        imagePayload,
-      );
-
-      const extracted = extractDetectionsFromWorkflow(result);
-      if (!extracted) {
-        throw new Error(
-          "Workflow returned no object-detection block this app understands. Ensure a detection step exposes predictions + image size (see Roboflow object-detection JSON).",
-        );
-      }
-
-      if (!predictionsIncludeClass(extracted, "G")) {
-        return {
-          success: false,
-          error: "NO_G",
-          status: 400,
-        };
-      }
-
-      const scoringBlock = toLegacyScoringOutputs(extracted);
-      splitScore = calculateScore(scoringBlock);
-
-      const splitImageFromNamedOutput = extractWorkflowOutputImageByNames(result, [
-        // In this workflow, `pint_image` is the full annotated frame and is best for "Your Split G".
-        "pint_image",
-        "pint image",
-        // Keep compatibility fallback if another workflow maps split visualization here.
-        "split_image",
-        "split image",
-      ]);
-
-      // Prefer annotated outputs from workflow steps; fall back to original capture.
-      const splitVisualization =
-        splitImageFromNamedOutput ??
-        extractPreferredWorkflowImageBase64(result, [
-          "visualize_split",
-          "g_label",
-          "g_visualization",
-          "beer_label",
-        ]) ?? imagePayload;
-      // "Original Pour" should always be the untouched source image from camera/upload.
-      const pintVisualization = imagePayload;
-
-      splitImage = stripBase64ImagePayload(splitVisualization);
-      pintImage = stripBase64ImagePayload(pintVisualization);
-
-      try {
-        const { cropGCloseupBase64 } = await import("~/utils/gCloseupCrop");
-        gCloseupBase64 = await cropGCloseupBase64(
-          imagePayload,
-          extracted.predictions,
-        );
-      } catch (cropErr) {
-        console.error("G close-up crop failed:", cropErr);
-      }
-    } else {
-      const response = await fetch(
-        `https://detect.roboflow.com/infer/workflows/${ROBOFLOW_LEGACY_WORKFLOW_PATH}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            api_key: roboflowServerKey,
-            inputs: {
-              image: { type: "base64", value: imagePayload },
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API request failed (${response.status}): ${errorText}`);
-      }
-
-      const result = await response.json();
-
-      const pintPredictions: {
-        class: string;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-        confidence?: number;
-      }[] =
-        result.outputs?.[0]?.["pint results"]?.predictions?.predictions || [];
-      const hasG = pintPredictions.some((pred: { class: string }) => pred.class === "G");
-
-      if (!hasG) {
-        return {
-          success: false,
-          error: "NO_G",
-          status: 400,
-        };
-      }
-
-      if (!result.outputs?.[0]) {
-        throw new Error("No outputs received from API");
-      }
-
-      const splitImageData = result.outputs[0]["split image"];
-      const pintImageData = result.outputs[0]["pint image"];
-
-      const legacySplit = splitImageData?.[0]?.value;
-      const legacyPint = pintImageData?.value;
-
-      if (!legacySplit || !legacyPint) {
-        throw new Error("Missing required image data from API response");
-      }
-
-      splitImage = legacySplit;
-      pintImage = legacyPint;
-      splitScore = calculateScore(result.outputs[0]);
-
-      try {
-        const { cropGCloseupBase64 } = await import("~/utils/gCloseupCrop");
-        gCloseupBase64 = await cropGCloseupBase64(imagePayload, pintPredictions);
-      } catch (cropErr) {
-        console.error("G close-up crop failed:", cropErr);
-      }
-    }
-
-    const closeupUpload =
-      gCloseupBase64 != null
-        ? uploadImage(gCloseupBase64, "g-closeup-images").catch((uploadErr) => {
-            console.error("G close-up upload failed:", uploadErr);
-            return null;
-          })
-        : Promise.resolve(null);
-
-    const [splitImageUrl, pintImageUrl, gCloseupImageUrl] = await Promise.all([
-      uploadImage(splitImage, "split-images"),
-      uploadImage(pintImage, "pint-images"),
-      closeupUpload,
-    ]);
-
-    const locationData = await locationPromise;
-
-    const rowUsername = verifiedAuthUser
-      ? await resolveLeaderboardUsernameForAuthUser(verifiedAuthUser, supabase)
-      : generateBeerUsername();
-
-    // Create database record with session_id, location, and short public slug when supported
-    type InsertShape = Record<string, unknown>;
-    let insertPayload: InsertShape = {
-      split_score: splitScore,
-      split_image_url: splitImageUrl,
-      pint_image_url: pintImageUrl,
-      g_closeup_image_url: gCloseupImageUrl,
-      username: rowUsername,
-      created_at: new Date().toISOString(),
-      session_id: sessionId,
-      city: locationData.city,
-      region: locationData.region,
-      country: locationData.country,
-      country_code: locationData.country_code,
-      source_image_sha256: sourceImageSha256,
-      ingest_ip: clientIP !== "unknown" ? clientIP : null,
-      submitter_user_id: verifiedUserId || null,
-    };
-
-    if (verifiedAuthUser?.email?.trim()) {
-      insertPayload.email = verifiedAuthUser.email.trim();
-      insertPayload.email_opted_out = false;
-    }
-
-    function isImageHashUniqueViolation(msg: string): boolean {
-      return (
-        msg.includes("source_image_sha256") ||
-        msg.includes("scores_source_image_sha256")
-      );
-    }
-
-    let score: {
-      id: string;
-      slug?: string | null;
-    } | null = null;
-    let dbError: Error | null = null;
-    let strippedAnticheatCols = false;
-
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const slug = generatePourSlug(8);
-      const res = await supabase
-        .from("scores")
-        .insert({ ...insertPayload, slug })
-        .select("id, slug")
-        .single();
-
-      if (!res.error && res.data) {
-        score = res.data;
-        break;
-      }
-
-      const msg = res.error?.message ?? "";
-      const code = (res.error as { code?: string })?.code;
-      if (code === "23505" && isImageHashUniqueViolation(msg)) {
-        return {
-          success: false,
-          error: "DUPLICATE_IMAGE",
-          status: 400,
-        };
-      }
-      if (code === "23505" || msg.includes("unique") || msg.includes("duplicate")) {
-        continue;
-      }
-      if (
-        !strippedAnticheatCols &&
-        code === "42703" &&
-        (msg.includes("source_image_sha256") ||
-          msg.includes("ingest_ip") ||
-          msg.includes("submitter_user_id"))
-      ) {
-        strippedAnticheatCols = true;
-        const {
-          source_image_sha256: _s,
-          ingest_ip: _i,
-          submitter_user_id: _u,
-          ...rest
-        } = insertPayload;
-        insertPayload = rest;
-        continue;
-      }
-      // Slug column not migrated yet — fall through to insert without slug
-      if (
-        code === "42703" ||
-        (msg.includes("slug") && msg.includes("does not exist"))
-      ) {
-        break;
-      }
-      dbError = res.error as Error;
-      break;
-    }
-
-    if (!score) {
-      const res = await supabase
-        .from("scores")
-        .insert(insertPayload)
-        .select("id")
-        .single();
-      if (!res.error && res.data) {
-        score = res.data;
-        dbError = null;
-      } else if (res.error) {
-        const msg = res.error.message ?? "";
-        const code = (res.error as { code?: string })?.code;
-        if (code === "23505" && isImageHashUniqueViolation(msg)) {
-          return {
-            success: false,
-            error: "DUPLICATE_IMAGE",
-            status: 400,
-          };
-        }
-        if (
-          !strippedAnticheatCols &&
-          code === "42703" &&
-          (msg.includes("source_image_sha256") ||
-            msg.includes("ingest_ip") ||
-            msg.includes("submitter_user_id")) &&
-          !dbError
-        ) {
-          strippedAnticheatCols = true;
-          const {
-            source_image_sha256: _s,
-            ingest_ip: _i,
-            submitter_user_id: _u,
-            ...rest
-          } = insertPayload;
-          insertPayload = rest;
-          const retry = await supabase
-            .from("scores")
-            .insert(rest)
-            .select("id")
-            .single();
-          if (!retry.error && retry.data) {
-            score = retry.data;
-            dbError = null;
-          } else if (retry.error && !dbError) {
-            dbError = retry.error as Error;
-          }
-        } else if (!dbError) {
-          dbError = res.error as Error;
-        }
-      }
-    }
-
-    if (dbError) throw dbError;
-    if (!score) throw new Error("Failed to save score");
-
-    // Set the session cookie before redirecting
-    const headers = new Headers();
-    headers.append(
-      "Set-Cookie",
-      `split-g-session=${sessionId}; Path=/; Max-Age=31536000; SameSite=Lax`
-    );
-
-    const path = scorePourPath(score);
-    const localized = localizePath(path, lang);
-    const dest = competitionId
-      ? `${localized}${localized.includes("?") ? "&" : "?"}competition=${encodeURIComponent(competitionId)}`
-      : localized;
-
-    if (verifiedUserId) {
-      const notifyName =
-        (typeof actorName === "string" && actorName.trim()
-          ? actorName.trim()
-          : null) ??
-        rowUsername;
-      void sendFriendSplitNotifications({
-        actorUserId: verifiedUserId,
-        actorName: notifyName,
-        score: splitScore,
-        path: localized,
-      }).catch((e) => console.error("sendFriendSplitNotifications:", e));
-    }
-    if (score.id) {
-      void sendKnockedOutTop10NotificationForNewScore({
-        newScoreId: score.id,
-        scorePath: localized,
-      }).catch((e) =>
-        console.error("sendKnockedOutTop10NotificationForNewScore:", e),
-      );
-    }
-
-    return Response.json(
-      {
-        success: true,
-        redirectTo: dest,
-        scoreId: score.id,
-      },
-      { headers },
-    );
-  } catch (error) {
-    console.error("Error processing image:", error);
-    const detail =
-      error instanceof Error
-        ? error.message
-        : typeof error === "string"
-          ? error
-          : "Unknown error occurred";
-
-    let code = "PROCESS_FAILED";
-    if (error instanceof Error && error.name === "AbortError") {
-      code = "ANALYSIS_TIMEOUT";
-    } else if (/Roboflow workflow failed|API request failed/i.test(detail)) {
-      code = "ROBOFLOW_FAILED";
-    } else if (/timeout|timed out|ETIMEDOUT|TIMEOUT/i.test(detail)) {
-      code = "ANALYSIS_TIMEOUT";
-    }
-
-    return {
-      success: false,
-      error: code,
-      detail,
-      status: code === "ANALYSIS_TIMEOUT" ? 504 : 500,
-    };
-  }
+  return handleHomePourAction({
+    request,
+    lang: langFromParams(params),
+  });
 }
 
 export default function Home() {
@@ -1361,6 +811,7 @@ export default function Home() {
               {t("pages.home.noGModalBody")}
             </p>
             <button
+              type="button"
               onClick={() => setShowNoGModal(false)}
               className="px-6 py-2 bg-guinness-gold text-guinness-black rounded-lg hover:bg-guinness-tan transition-colors duration-300"
             >
@@ -1452,7 +903,7 @@ export default function Home() {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-2 border-b border-[#312814]/45 px-3 py-2.5 text-left transition-colors hover:bg-guinness-black/20 lg:hidden"
-                  aria-expanded={howItWorksOpen}
+                  aria-expanded={howItWorksOpen ? "true" : "false"}
                   onClick={() => setHowItWorksOpen((o) => !o)}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-guinness-tan/50">
@@ -1568,7 +1019,7 @@ export default function Home() {
                           type="button"
                           onClick={() => void toggleFlash()}
                           disabled={isFlashUpdating}
-                          aria-pressed={isFlashEnabled}
+                          aria-pressed={isFlashEnabled ? "true" : "false"}
                           className="absolute right-3 top-3 z-20 inline-flex items-center gap-2 rounded-full border border-guinness-gold/35 bg-guinness-black/65 px-3 py-1.5 text-xs font-semibold text-guinness-gold backdrop-blur-sm transition-colors hover:bg-guinness-black/80 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isFlashEnabled ? (
