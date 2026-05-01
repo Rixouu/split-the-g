@@ -23,6 +23,7 @@
   "processingImage": "Procesando tu imagen...",
   "moment": "Esto sólo tomará un momento",
   "analyzingSplit": "Analizando tu división...",
+  "manualCapture": "Capturar manualmente",
   "noGModalBody": "Asegúrese de que el patrón G sea claramente visible en su imagen e inténtelo de nuevo.",
   "inferenceUnavailable": "La guía de cámara en vivo no está disponible temporalmente. Aún puedes subir una foto.",
   "cameraDenied": "Cámara no disponible o permiso denegado. Permita el acceso a la cámara o use Cargar una imagen en su lugar.",

@@ -401,6 +401,12 @@ export async function handleHomePourAction({
       typeof actorNameRaw === "string" && actorNameRaw.trim()
         ? actorNameRaw.trim()
         : null;
+    const clientFileLastModifiedRaw = formData.get("clientFileLastModifiedMs");
+    const clientFileLastModifiedMs =
+      typeof clientFileLastModifiedRaw === "string" &&
+      Number.isFinite(Number(clientFileLastModifiedRaw))
+        ? Number(clientFileLastModifiedRaw)
+        : undefined;
     const { randomUUID } = await import("node:crypto");
     const [{ uploadImage }, { getLocationData }, { stripBase64ImagePayload }] =
       await Promise.all([
@@ -482,7 +488,9 @@ export async function handleHomePourAction({
       };
     }
 
-    const exifFail = await validatePourImageExifAge(imageBuf);
+    const exifFail = await validatePourImageExifAge(imageBuf, {
+      clientFileLastModifiedMs,
+    });
     if (exifFail) {
       return {
         success: false,

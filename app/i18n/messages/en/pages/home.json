@@ -23,6 +23,7 @@
   "processingImage": "Processing your image...",
   "moment": "This will just take a moment",
   "analyzingSplit": "Analyzing your split...",
+  "manualCapture": "Capture manually",
   "noGModalBody": "Please make sure the G pattern is clearly visible in your image and try again.",
   "inferenceUnavailable": "Live camera guidance is temporarily unavailable. You can still upload a photo.",
   "cameraDenied": "Camera unavailable or permission denied. Allow camera access or use Upload an image instead.",

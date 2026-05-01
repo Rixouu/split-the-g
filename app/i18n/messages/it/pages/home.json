@@ -23,6 +23,7 @@
   "processingImage": "Elaborazione dell'immagine...",
   "moment": "Ci vorrà solo un momento",
   "analyzingSplit": "Analizzando la tua divisione...",
+  "manualCapture": "Scatta manualmente",
   "noGModalBody": "Assicurati che il motivo G sia chiaramente visibile nell'immagine e riprova.",
   "inferenceUnavailable": "La guida della telecamera in tempo reale è temporaneamente non disponibile. Puoi comunque caricare una foto.",
   "cameraDenied": "Fotocamera non disponibile o autorizzazione negata. Consenti l'accesso alla fotocamera o utilizza invece Carica un'immagine.",

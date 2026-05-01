@@ -112,6 +112,7 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
   );
   const [modelWorkerId, setModelWorkerId] = useState<string | null>(null);
   const [modelLoading, setModelLoading] = useState(false);
+  const [isInferenceUnavailable, setIsInferenceUnavailable] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState(() =>
     t("pages.home.feedbackShowGlass"),
@@ -279,6 +280,7 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
       opts?: {
         onQueuedOffline?: () => void;
         source?: "camera" | "upload";
+        clientFileLastModifiedMs?: number;
       },
     ) => {
       void (async () => {
@@ -323,6 +325,16 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
           formData.append("competition", competitionIdParam);
         }
         if (actorMeta.actorName) formData.append("actorName", actorMeta.actorName);
+        if (
+          typeof opts?.clientFileLastModifiedMs === "number" &&
+          Number.isFinite(opts.clientFileLastModifiedMs) &&
+          opts.clientFileLastModifiedMs > 0
+        ) {
+          formData.append(
+            "clientFileLastModifiedMs",
+            String(Math.trunc(opts.clientFileLastModifiedMs)),
+          );
+        }
         try {
           const accessToken = await getSupabaseAccessToken();
           if (accessToken) formData.append("accessToken", accessToken);
@@ -346,6 +358,52 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
     [actorMeta.actorName, actorMeta.userId, competitionIdParam, submit, t],
   );
 
+  const captureCurrentFrame = useCallback(
+    (opts?: { source?: "camera" | "upload" }) => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
+        setHomeToast({
+          message: t("errors.readImageFailedShort"),
+          variant: "danger",
+        });
+        return;
+      }
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        setHomeToast({
+          message: t("errors.readImageFailed"),
+          variant: "danger",
+        });
+        return;
+      }
+
+      setFeedbackMessage(t("pages.home.processingImage"));
+      setIsProcessing(true);
+      setIsSubmitting(true);
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = canvas.toDataURL("image/jpeg");
+      const base64Image = imageData.replace(/^data:image\/\w+;base64,/, "");
+
+      stopCameraTracks();
+      setIsCameraActive(false);
+
+      sendPourImageBase64(base64Image, {
+        onQueuedOffline: () => {
+          setIsProcessing(false);
+          setIsSubmitting(false);
+        },
+        source: opts?.source ?? "camera",
+      });
+    },
+    [sendPourImageBase64, stopCameraTracks, t],
+  );
+
   useEffect(() => {
     if (typeof window === "undefined" || !isCameraActive) return;
     if (inferEngine) return;
@@ -359,6 +417,7 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
       .catch((error) => {
         console.error("Could not load inference module:", error);
         if (cancelled) return;
+        setIsInferenceUnavailable(true);
         setHomeToast({
           message: t("pages.home.inferenceUnavailable"),
           variant: "warning",
@@ -380,10 +439,14 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
         ROBOFLOW_INFERENCE_VERSION,
         ROBOFLOW_PUBLISHABLE_KEY,
       )
-      .then((id: string) => setModelWorkerId(id))
+      .then((id: string) => {
+        setModelWorkerId(id);
+        setIsInferenceUnavailable(false);
+      })
       .catch((error) => {
         console.error("Could not start inference worker:", error);
         setModelWorkerId(null);
+        setIsInferenceUnavailable(true);
         setHomeToast({
           message: t("pages.home.inferenceUnavailable"),
           variant: "warning",
@@ -505,34 +568,7 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
                 const next = prev + 1;
                 if (next === 4) {
                   setFeedbackMessage(t("pages.home.feedbackPerfect"));
-                  setIsProcessing(true);
-                  setIsSubmitting(true);
-
-                  const video = videoRef.current;
-                  const canvas = canvasRef.current;
-                  if (video && canvas) {
-                    const context = canvas.getContext("2d");
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    context?.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                    const imageData = canvas.toDataURL("image/jpeg");
-                    const base64Image = imageData.replace(
-                      /^data:image\/\w+;base64,/,
-                      "",
-                    );
-
-                    stopCameraTracks();
-                    setIsCameraActive(false);
-
-                    sendPourImageBase64(base64Image, {
-                      onQueuedOffline: () => {
-                        setIsProcessing(false);
-                        setIsSubmitting(false);
-                      },
-                      source: "camera",
-                    });
-                  }
+                  captureCurrentFrame({ source: "camera" });
                 } else if (next >= 2) {
                   setFeedbackMessage(t("pages.home.feedbackHoldStill"));
                 } else {
@@ -568,8 +604,7 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
     isCameraActive,
     isVideoReady,
     modelWorkerId,
-    sendPourImageBase64,
-    stopCameraTracks,
+    captureCurrentFrame,
     t,
   ]);
 
@@ -676,6 +711,7 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
           return;
         }
         sendPourImageBase64(base64Image, {
+          clientFileLastModifiedMs: file.lastModified,
           onQueuedOffline: () => setIsUploadProcessing(false),
           source: "upload",
         });
@@ -697,8 +733,9 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
     trackEvent(analyticsEventNames.pourCaptureStarted, {
       source: "camera",
     });
+    setFeedbackMessage(t("pages.home.feedbackShowGlass"));
     setIsCameraActive(true);
-  }, []);
+  }, [t]);
 
   const handleVideoLoadedMetadata = useCallback(() => {
     setIsVideoReady(true);
@@ -752,12 +789,14 @@ export function useHomePourClient({ t }: { t: TranslateFn }) {
     isUploadProcessing,
     showNoGModal,
     homeToast,
+    isInferenceUnavailable,
     toggleFlash,
     handleStartCamera,
     handleVideoLoadedMetadata,
     handleVideoError,
     handleUploadInstead,
     handleFileChange,
+    handleManualCameraCapture: () => captureCurrentFrame({ source: "camera" }),
     closeNoGModal: () => setShowNoGModal(false),
     dismissHomeToast: () => setHomeToast(null),
   };

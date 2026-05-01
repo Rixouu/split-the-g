@@ -23,6 +23,7 @@
   "processingImage": "Ihr Bild wird bearbeitet...",
   "moment": "Das wird nur einen Moment dauern",
   "analyzingSplit": "Analysiere deine Trennung...",
+  "manualCapture": "Manuell aufnehmen",
   "noGModalBody": "Bitte stellen Sie sicher, dass das G-Muster in Ihrem Bild deutlich sichtbar ist, und versuchen Sie es erneut.",
   "inferenceUnavailable": "Die Live-Kameraführung ist vorübergehend nicht verfügbar. Sie können weiterhin ein Foto hochladen.",
   "cameraDenied": "Kamera nicht verfügbar oder Berechtigung verweigert. Erlauben Sie den Kamerazugriff oder verwenden Sie stattdessen „Bild hochladen“.",

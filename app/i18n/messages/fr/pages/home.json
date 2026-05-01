@@ -23,6 +23,7 @@
   "processingImage": "Traitement de votre image...",
   "moment": "Cela prendra juste un moment",
   "analyzingSplit": "Analyse de votre répartition...",
+  "manualCapture": "Capturer manuellement",
   "noGModalBody": "Veuillez vous assurer que le motif G est clairement visible sur votre image et réessayer.",
   "inferenceUnavailable": "Le guidage par caméra en direct est temporairement indisponible. Vous pouvez toujours télécharger une photo.",
   "cameraDenied": "Caméra indisponible ou autorisation refusée. Autorisez l’accès à la caméra ou utilisez plutôt Télécharger une image.",

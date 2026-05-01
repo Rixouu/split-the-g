@@ -40,6 +40,9 @@ export function sha256HexOfBase64Image(base64Payload: string): string {
  */
 export async function validatePourImageExifAge(
   imageBuffer: Buffer,
+  options?: {
+    clientFileLastModifiedMs?: number;
+  },
 ): Promise<PourGuardFailure | null> {
   const maxAgeMin = getPourExifMaxAgeMinutes();
   let taken: Date | undefined;
@@ -64,13 +67,22 @@ export async function validatePourImageExifAge(
   const now = Date.now();
   const ageMs = now - taken.getTime();
   const futureSkewMs = 2 * 60 * 1000;
+  const clientFileLastModifiedMs = options?.clientFileLastModifiedMs;
+  const hasFreshClientFileTimestamp =
+    typeof clientFileLastModifiedMs === "number" &&
+    Number.isFinite(clientFileLastModifiedMs) &&
+    clientFileLastModifiedMs > 0 &&
+    now - clientFileLastModifiedMs <= 30 * 60 * 1000 &&
+    clientFileLastModifiedMs - now <= futureSkewMs;
   if (ageMs < -futureSkewMs) {
+    if (hasFreshClientFileTimestamp) return null;
     return {
       code: "STALE_IMAGE_EXIF",
       message: "Image capture time is in the future.",
     };
   }
   if (ageMs > maxAgeMin * 60 * 1000) {
+    if (hasFreshClientFileTimestamp) return null;
     return {
       code: "STALE_IMAGE_EXIF",
       message: `Image EXIF timestamp is older than ${maxAgeMin} minutes.`,
