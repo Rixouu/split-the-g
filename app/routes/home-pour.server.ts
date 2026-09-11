@@ -110,9 +110,11 @@ async function analyzePourImage(imagePayload: string, roboflowServerKey: string)
 
     const extracted = extractDetectionsFromWorkflow(result);
     if (!extracted) {
-      throw new Error(
-        "Workflow returned no object-detection block this app understands. Ensure a detection step exposes predictions + image size (see Roboflow object-detection JSON).",
-      );
+      return {
+        success: false as const,
+        error: "NO_G",
+        status: 400,
+      };
     }
 
     if (!predictionsIncludeClass(extracted, "G")) {
