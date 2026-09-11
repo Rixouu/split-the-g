@@ -49,6 +49,9 @@ function resolveRoboflowServerKey(): string {
 }
 
 function readSessionCookie(request: Request): string | undefined {
+  const headerSession = request.headers.get("x-split-g-session")?.trim();
+  if (headerSession) return headerSession;
+
   const cookieHeader = request.headers.get("Cookie") ?? "";
   const cookies = Object.fromEntries(
     cookieHeader
@@ -401,6 +404,11 @@ export async function handleHomePourAction({
       typeof actorNameRaw === "string" && actorNameRaw.trim()
         ? actorNameRaw.trim()
         : null;
+    const mobileSessionRaw = formData.get("mobileSessionId");
+    const mobileSessionId =
+      typeof mobileSessionRaw === "string" && mobileSessionRaw.trim()
+        ? mobileSessionRaw.trim()
+        : "";
     const clientFileLastModifiedRaw = formData.get("clientFileLastModifiedMs");
     const clientFileLastModifiedMs =
       typeof clientFileLastModifiedRaw === "string" &&
@@ -414,7 +422,7 @@ export async function handleHomePourAction({
         import("~/utils/locationService"),
         import("~/utils/roboflowWorkflow"),
       ]);
-    const sessionId = randomUUID();
+    const sessionId = mobileSessionId || randomUUID();
     const clientIP = resolveClientIp(request);
     const roboflowServerKey = resolveRoboflowServerKey();
 
