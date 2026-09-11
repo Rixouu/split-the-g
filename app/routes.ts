@@ -22,6 +22,8 @@ export default [
   route("api/account", "./routes/api.account.tsx"),
   route("api/push-subscriptions", "./routes/api.push-subscriptions.tsx"),
   route("api/push-notify", "./routes/api.push-notify.tsx"),
+  route("privacy", "./routes/privacy.tsx"),
+  route("support", "./routes/support.tsx"),
   index("routes/root-redirect.tsx"),
   route(":lang", "routes/lang-layout.tsx", [
     index("routes/home.tsx"),
